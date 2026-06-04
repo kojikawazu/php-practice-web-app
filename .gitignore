@@ -1,0 +1,37 @@
+# Dependencies
+/apps/*/vendor/
+/apps/*/node_modules/
+
+# Environment
+.env
+/apps/*/.env
+
+# Laravel
+/apps/*/storage/*.key
+/apps/laravel-fullstack/storage/framework/cache/*
+/apps/laravel-fullstack/storage/framework/sessions/*
+/apps/laravel-fullstack/storage/framework/views/*
+/apps/laravel-fullstack/storage/logs/*
+/apps/laravel-api/storage/framework/cache/*
+/apps/laravel-api/storage/framework/sessions/*
+/apps/laravel-api/storage/framework/views/*
+/apps/laravel-api/storage/logs/*
+/apps/laravel-fullstack/public/build/
+/apps/laravel-api/public/build/
+
+# Laminas
+/apps/laminas/data/cache/*
+
+# Build artifacts
+*.log
+.phpunit.result.cache
+.phpunit.cache/
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Docker
+/docker/mysql/data/
