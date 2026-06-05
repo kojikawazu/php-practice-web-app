@@ -14,7 +14,7 @@
 |----|--------|------|------|------|
 | 1 | モノレポ初期構築（3アプリ + Docker + MySQL共有 + テスト） | DONE | - | - |
 | 2 | Laravel 依存をパッチ版へ更新し `composer audit` をクリーンに（→ Laravel 12.61.1 へアップグレードで解消） | DONE | - | - |
-| 3 | laminas スキャフォールド同梱の Dockerfile / docker-compose.yml（未使用）の整理判断 | TODO | - | - |
+| 3 | laminas スキャフォールド同梱の Dockerfile / docker-compose.yml（未使用）の整理判断 | DONE | - | - |
 | 4 | 各アプリへ認証（Sanctum 等）・追加機能を学習課題として実装 | TODO | - | - |
 
 ## 進捗メモ
