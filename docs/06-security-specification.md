@@ -20,6 +20,6 @@
 
 ## 既知の注意点（学習用の妥協）
 
-- **Laravel の依存にセキュリティアドバイザリ**: `composer create-project` 時、対象の Laravel 11 系全バージョンが Composer のセキュリティアドバイザリで弾かれたため、`--no-security-blocking` で導入した。学習用ローカル環境のための妥協であり、本番化する場合は `composer update` でパッチ版へ更新し、`composer audit` がクリーンになることを確認すること。
+- **Laravel の依存にセキュリティアドバイザリ（解消済み）**: 初期構築時は Laravel 11 系全バージョンが advisory（CVE-2026-48019: デフォルト email ルールの CRLF インジェクション）該当で、`--no-security-blocking` で暫定導入していた。本 CVE は Laravel 11 系に修正版が存在しない（修正は 12.60.0+ / 13.10.0+）ため、**Laravel 12.61.1 へアップグレードして解消**した。両 Laravel アプリで `composer audit` がクリーンであることを確認済み。今後も依存更新時は `composer audit` を実行すること。
 - **DB 認証情報の平文**: 学習用のため `.env` / Laminas `global.php` に開発用認証情報（app/secret）を記載。公開・本番では秘密情報をリポジトリ管理外（local.php・シークレットストア）へ移すこと。
 - **API 認証なし**: `laravel-api` はサンプルのため認証を設けていない。実用化時は Sanctum 等を導入する。

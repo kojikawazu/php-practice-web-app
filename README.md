@@ -8,8 +8,8 @@ PHP の学習を目的とした練習用 Web アプリケーション
 
 | アプリ | パス | フレームワーク | URL | prefix |
 |--------|------|----------------|-----|--------|
-| フルスタック | `apps/laravel-fullstack` | Laravel 11 + Blade | http://localhost:8001 | `fs_` |
-| API | `apps/laravel-api` | Laravel 11（JSON API）| http://localhost:8002 | `api_` |
+| フルスタック | `apps/laravel-fullstack` | Laravel 12 + Blade | http://localhost:8001 | `fs_` |
+| API | `apps/laravel-api` | Laravel 12（JSON API）| http://localhost:8002 | `api_` |
 | Laminas | `apps/laminas` | Laminas MVC（旧 Zend 後継）| http://localhost:8003 | `lam_` |
 
 スタック: PHP 8.3 / MySQL 8 / nginx / Docker Compose。各アプリにサンプルの「タスク CRUD」とテストを同梱。
