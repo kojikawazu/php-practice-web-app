@@ -91,6 +91,18 @@ class TaskApiTest extends TestCase
         $this->assertDatabaseHas('tasks', ['title' => '新規タスク', 'user_id' => $user->id]);
     }
 
+    public function test_duplicate_creates_a_copy(): void
+    {
+        $user = $this->actingUser();
+        $task = $user->tasks()->create(['title' => '元タスク', 'done' => true]);
+
+        $response = $this->postJson("/api/tasks/{$task->id}/duplicate");
+
+        $response->assertCreated();
+        $response->assertJsonFragment(['title' => '元タスク（コピー）', 'done' => false]);
+        $this->assertSame(2, $user->tasks()->count());
+    }
+
     public function test_update_changes_own_task_title(): void
     {
         $user = $this->actingUser();
@@ -175,6 +187,17 @@ class TaskApiTest extends TestCase
         $response = $this->getJson("/api/tasks/{$othersTask->id}");
 
         $response->assertNotFound();
+    }
+
+    public function test_cannot_duplicate_other_users_task(): void
+    {
+        $this->actingUser();
+        $othersTask = User::factory()->create()->tasks()->create(['title' => '複製できない']);
+
+        $response = $this->postJson("/api/tasks/{$othersTask->id}/duplicate");
+
+        $response->assertNotFound();
+        $this->assertDatabaseMissing('tasks', ['title' => '複製できない（コピー）']);
     }
 
     public function test_cannot_delete_other_users_task(): void

@@ -71,6 +71,18 @@ class TaskTest extends TestCase
         $response->assertSee('編集対象');
     }
 
+    public function test_user_can_duplicate_own_task(): void
+    {
+        $user = $this->user();
+        $task = $user->tasks()->create(['title' => '元タスク', 'done' => true]);
+
+        $response = $this->actingAs($user)->post(route('tasks.duplicate', $task));
+
+        $response->assertRedirect(route('tasks.index'));
+        $this->assertSame(2, $user->tasks()->count());
+        $this->assertDatabaseHas('tasks', ['title' => '元タスク（コピー）', 'done' => false, 'user_id' => $user->id]);
+    }
+
     public function test_index_paginates_at_5_per_page(): void
     {
         $user = $this->user();
@@ -180,6 +192,16 @@ class TaskTest extends TestCase
         $response = $this->actingAs($this->user())->get(route('tasks.edit', $othersTask));
 
         $response->assertNotFound();
+    }
+
+    public function test_cannot_duplicate_other_users_task(): void
+    {
+        $othersTask = $this->user()->tasks()->create(['title' => '複製できない']);
+
+        $response = $this->actingAs($this->user())->post(route('tasks.duplicate', $othersTask));
+
+        $response->assertNotFound();
+        $this->assertDatabaseMissing('tasks', ['title' => '複製できない（コピー）']);
     }
 
     public function test_search_with_no_match_shows_empty(): void

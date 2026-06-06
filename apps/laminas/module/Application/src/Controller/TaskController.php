@@ -98,6 +98,27 @@ class TaskController extends AbstractActionController
         return new ViewModel(['task' => $task, 'errors' => $errors]);
     }
 
+    public function duplicateAction()
+    {
+        if (! $this->auth->hasIdentity()) {
+            return $this->redirect()->toRoute('login');
+        }
+
+        $user = $this->auth->getIdentity();
+        $id = (int) $this->params()->fromRoute('id', 0);
+        $task = $this->table->getForUser($id, (int) $user->id);
+
+        if ($task) {
+            $copy = new Task();
+            $copy->title = mb_substr($task->title . '（コピー）', 0, 255);
+            $copy->done = false;
+            $copy->user_id = (int) $user->id;
+            $this->table->saveTask($copy);
+        }
+
+        return $this->redirect()->toRoute('tasks');
+    }
+
     public function deleteAction()
     {
         if (! $this->auth->hasIdentity()) {

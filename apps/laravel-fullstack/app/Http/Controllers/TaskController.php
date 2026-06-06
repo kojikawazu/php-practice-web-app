@@ -36,6 +36,18 @@ class TaskController extends Controller
         return redirect()->route('tasks.index');
     }
 
+    public function duplicate(Task $task): RedirectResponse
+    {
+        $this->authorizeOwnership($task);
+
+        Auth::user()->tasks()->create([
+            'title' => $this->copyTitle($task->title),
+            'done' => false,
+        ]);
+
+        return redirect()->route('tasks.index');
+    }
+
     public function edit(Task $task): View
     {
         $this->authorizeOwnership($task);
@@ -76,5 +88,11 @@ class TaskController extends Controller
     private function authorizeOwnership(Task $task): void
     {
         abort_if($task->user_id !== Auth::id(), 404);
+    }
+
+    /** 「（コピー）」を付与しつつ 255 文字以内に丸める */
+    private function copyTitle(string $title): string
+    {
+        return mb_substr($title . '（コピー）', 0, 255);
     }
 }

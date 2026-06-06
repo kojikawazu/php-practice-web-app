@@ -37,6 +37,18 @@ class TaskController extends Controller
         return response()->json($task, 201);
     }
 
+    public function duplicate(Request $request, Task $task): JsonResponse
+    {
+        $this->authorizeOwnership($request, $task);
+
+        $copy = $request->user()->tasks()->create([
+            'title' => mb_substr($task->title . '（コピー）', 0, 255),
+            'done' => false,
+        ]);
+
+        return response()->json($copy, 201);
+    }
+
     public function show(Request $request, Task $task): JsonResponse
     {
         $this->authorizeOwnership($request, $task);
