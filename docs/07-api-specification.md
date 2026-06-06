@@ -29,10 +29,11 @@ API のエンドポイント・入出力・エラー仕様を定義する。対�
 | メソッド | パス | 概要 | 認証 |
 |---------|------|------|------|
 | GET | `/api/tasks` | 自分のタスク一覧（ページネーション）| Bearer |
-| POST | `/api/tasks` | タスク作成 | Bearer |
+| POST | `/api/tasks` | タスク作成（`title` 必須、`start_date`/`end_date` 任意）| Bearer |
 | GET | `/api/tasks/{id}` | タスク取得（他人のは404）| Bearer |
 | PUT/PATCH | `/api/tasks/{id}` | タスク更新（他人のは404）| Bearer |
 | DELETE | `/api/tasks/{id}` | タスク削除（他人のは404）| Bearer |
+| POST | `/api/tasks/{id}/duplicate` | タスク複製（「（コピー）」付き・201・他人のは404）| Bearer |
 
 ## 一覧のクエリパラメータ（GET /api/tasks）
 
@@ -47,7 +48,7 @@ API のエンドポイント・入出力・エラー仕様を定義する。対�
 ## リクエスト / レスポンス形式
 
 - リクエスト: `Content-Type: application/json`、`Accept: application/json`
-- Task オブジェクト: `{ "id": int, "title": string, "done": bool, "created_at": ..., "updated_at": ... }`
+- Task オブジェクト: `{ "id": int, "title": string, "done": bool, "start_date": "Y-m-d"|null, "end_date": "Y-m-d"|null, "created_at": ..., "updated_at": ... }`
 
 作成例:
 ```
