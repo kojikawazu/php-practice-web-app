@@ -13,4 +13,8 @@ RUN docker-php-ext-configure intl \
 # Composer（公式イメージからバイナリをコピー）
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
+# アップロード用ボリュームのマウント先を php-fpm 実行ユーザー(www-data)が書けるようにする。
+# 空の名前付きボリュームは初回マウント時にこのディレクトリの所有権を引き継ぐ。
+RUN mkdir -p /var/www/uploads && chown -R www-data:www-data /var/www/uploads
+
 WORKDIR /var/www

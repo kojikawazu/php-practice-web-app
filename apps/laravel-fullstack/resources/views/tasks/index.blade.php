@@ -30,11 +30,12 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('tasks.store') }}" class="bg-white rounded-lg shadow p-4 mb-4 flex flex-wrap gap-2 items-center">
+        <form method="POST" action="{{ route('tasks.store') }}" enctype="multipart/form-data" class="bg-white rounded-lg shadow p-4 mb-4 flex flex-wrap gap-2 items-center">
             @csrf
             <input type="text" name="title" placeholder="タスク名" value="{{ old('title') }}" class="border rounded px-3 py-2 flex-1 min-w-40">
             <input type="text" class="flatpickr border rounded px-3 py-2 w-32" name="start_date" placeholder="開始日" value="{{ old('start_date') }}">
             <input type="text" class="flatpickr border rounded px-3 py-2 w-32" name="end_date" placeholder="終了日" value="{{ old('end_date') }}">
+            <input type="file" name="image" accept="image/*" class="text-sm">
             <button type="submit" class="bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700">追加</button>
         </form>
 
@@ -49,6 +50,9 @@
         <ul class="space-y-2">
             @forelse ($tasks as $task)
                 <li class="bg-white rounded-lg shadow p-3 flex flex-wrap items-center gap-3">
+                    @if ($task->image_path)
+                        <img src="{{ route('tasks.image', $task) }}" alt="" class="w-10 h-10 object-cover rounded border">
+                    @endif
                     <span class="flex-1 {{ $task->done ? 'line-through text-gray-400' : '' }}">{{ $task->title }}</span>
                     @if ($task->start_date || $task->end_date)
                         <span class="text-xs text-gray-500">[{{ $task->start_date?->format('Y-m-d') ?? '—' }} 〜 {{ $task->end_date?->format('Y-m-d') ?? '—' }}]</span>

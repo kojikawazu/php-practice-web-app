@@ -20,8 +20,11 @@ services:
   php-fs:
     build: ./docker/php
     working_dir: /var/www/laravel-fullstack
+    environment:
+      UPLOADS_ROOT: /var/www/uploads
     volumes:
       - ./apps/laravel-fullstack:/var/www/laravel-fullstack
+      - task-uploads:/var/www/uploads
     depends_on:
       mysql:
         condition: service_healthy
@@ -29,8 +32,11 @@ services:
   php-api:
     build: ./docker/php
     working_dir: /var/www/laravel-api
+    environment:
+      UPLOADS_ROOT: /var/www/uploads
     volumes:
       - ./apps/laravel-api:/var/www/laravel-api
+      - task-uploads:/var/www/uploads
     depends_on:
       mysql:
         condition: service_healthy
@@ -62,3 +68,4 @@ services:
 
 volumes:
   mysql-data:
+  task-uploads:

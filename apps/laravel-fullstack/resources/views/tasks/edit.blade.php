@@ -22,12 +22,20 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('tasks.update', $task) }}" class="bg-white rounded-lg shadow p-4 space-y-3">
+        <form method="POST" action="{{ route('tasks.update', $task) }}" enctype="multipart/form-data" class="bg-white rounded-lg shadow p-4 space-y-3">
             @csrf
             @method('PUT')
             <div>
                 <label class="block text-sm text-gray-600 mb-1">タイトル</label>
                 <input type="text" name="title" value="{{ old('title', $task->title) }}" class="border rounded px-3 py-2 w-full">
+            </div>
+            <div>
+                <label class="block text-sm text-gray-600 mb-1">画像</label>
+                @if ($task->image_path)
+                    <img src="{{ route('tasks.image', $task) }}" alt="" class="w-24 h-24 object-cover rounded border mb-2">
+                @endif
+                <input type="file" name="image" accept="image/*" class="text-sm">
+                <p class="text-xs text-gray-400 mt-1">選択すると差し替え（旧画像は削除されます）</p>
             </div>
             <div class="flex gap-3">
                 <div class="flex-1">

@@ -5,11 +5,16 @@ namespace App\Http\Controllers;
 use App\Models\Task;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class TaskController extends Controller
 {
     private const DEFAULT_PER_PAGE = 5;
     private const MAX_PER_PAGE = 50;
+    private const IMAGE_RULES = ['nullable', 'image', 'mimes:jpeg,png,webp,gif', 'max:2048'];
 
     public function index(Request $request): JsonResponse
     {
@@ -32,7 +37,13 @@ class TaskController extends Controller
             'done' => ['sometimes', 'boolean'],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+            'image' => self::IMAGE_RULES,
         ]);
+        unset($validated['image']);
+
+        if ($request->hasFile('image')) {
+            $validated['image_path'] = $this->storeImage($request->file('image'));
+        }
 
         $task = $request->user()->tasks()->create($validated);
 
@@ -48,6 +59,7 @@ class TaskController extends Controller
             'done' => false,
             'start_date' => $task->start_date?->format('Y-m-d'),
             'end_date' => $task->end_date?->format('Y-m-d'),
+            'image_path' => $this->copyImage($task->image_path),
         ]);
 
         return response()->json($copy, 201);
@@ -69,7 +81,14 @@ class TaskController extends Controller
             'done' => ['sometimes', 'boolean'],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+            'image' => self::IMAGE_RULES,
         ]);
+        unset($validated['image']);
+
+        if ($request->hasFile('image')) {
+            $this->deleteImage($task->image_path);
+            $validated['image_path'] = $this->storeImage($request->file('image'));
+        }
 
         $task->update($validated);
 
@@ -79,9 +98,43 @@ class TaskController extends Controller
     public function destroy(Request $request, Task $task): JsonResponse
     {
         $this->authorizeOwnership($request, $task);
+        $this->deleteImage($task->image_path);
         $task->delete();
 
         return response()->json(null, 204);
+    }
+
+    /** 所有者本人にのみ画像ファイルを返す */
+    public function image(Request $request, Task $task): BinaryFileResponse
+    {
+        $this->authorizeOwnership($request, $task);
+        abort_if(! $task->image_path || ! Storage::disk('uploads')->exists($task->image_path), 404);
+
+        return response()->file(Storage::disk('uploads')->path($task->image_path));
+    }
+
+    private function storeImage(UploadedFile $file): string
+    {
+        return $file->store('', 'uploads');
+    }
+
+    private function deleteImage(?string $path): void
+    {
+        if ($path && Storage::disk('uploads')->exists($path)) {
+            Storage::disk('uploads')->delete($path);
+        }
+    }
+
+    private function copyImage(?string $path): ?string
+    {
+        if (! $path || ! Storage::disk('uploads')->exists($path)) {
+            return null;
+        }
+        $ext = pathinfo($path, PATHINFO_EXTENSION);
+        $copy = (string) Str::uuid() . ($ext ? '.' . $ext : '');
+        Storage::disk('uploads')->copy($path, $copy);
+
+        return $copy;
     }
 
     /** 他人のタスクは存在を伏せて 404 にする */

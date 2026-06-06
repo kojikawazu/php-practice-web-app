@@ -38,6 +38,13 @@ return [
             'report' => false,
         ],
 
+        // タスク画像の保存先（名前付き Docker ボリューム。公開ディレクトリ外）
+        'uploads' => [
+            'driver' => 'local',
+            'root' => rtrim(env('UPLOADS_ROOT', storage_path('app/uploads')), '/') . '/api',
+            'throw' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
