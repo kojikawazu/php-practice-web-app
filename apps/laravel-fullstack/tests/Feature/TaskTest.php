@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class TaskTest extends TestCase
@@ -261,6 +263,116 @@ class TaskTest extends TestCase
             ]);
 
         $response->assertSessionHasErrors('start_date');
+    }
+
+    // ---- 画像アップロード ----
+
+    public function test_store_with_image_saves_file(): void
+    {
+        Storage::fake('uploads');
+        $user = $this->user();
+
+        $response = $this->actingAs($user)->post(route('tasks.store'), [
+            'title' => '画像付き',
+            'image' => UploadedFile::fake()->create('photo.jpg', 100, 'image/jpeg'),
+        ]);
+
+        $response->assertRedirect(route('tasks.index'));
+        $task = $user->tasks()->first();
+        $this->assertNotNull($task->image_path);
+        Storage::disk('uploads')->assertExists($task->image_path);
+    }
+
+    public function test_owner_can_view_image(): void
+    {
+        Storage::fake('uploads');
+        $user = $this->user();
+        $this->actingAs($user)->post(route('tasks.store'), [
+            'title' => '画像', 'image' => UploadedFile::fake()->create('p.png', 100, 'image/png'),
+        ]);
+        $task = $user->tasks()->first();
+
+        $response = $this->actingAs($user)->get(route('tasks.image', $task));
+
+        $response->assertOk();
+    }
+
+    public function test_update_replaces_image_and_deletes_old(): void
+    {
+        Storage::fake('uploads');
+        $user = $this->user();
+        $this->actingAs($user)->post(route('tasks.store'), [
+            'title' => '元', 'image' => UploadedFile::fake()->create('old.jpg', 100, 'image/jpeg'),
+        ]);
+        $task = $user->tasks()->first();
+        $old = $task->image_path;
+
+        $this->actingAs($user)->put(route('tasks.update', $task), [
+            'title' => '元', 'image' => UploadedFile::fake()->create('new.jpg', 100, 'image/jpeg'),
+        ]);
+
+        $new = $task->fresh()->image_path;
+        $this->assertNotSame($old, $new);
+        Storage::disk('uploads')->assertMissing($old);
+        Storage::disk('uploads')->assertExists($new);
+    }
+
+    public function test_duplicate_copies_image_to_new_file(): void
+    {
+        Storage::fake('uploads');
+        $user = $this->user();
+        $this->actingAs($user)->post(route('tasks.store'), [
+            'title' => '原本', 'image' => UploadedFile::fake()->create('o.jpg', 100, 'image/jpeg'),
+        ]);
+        $task = $user->tasks()->first();
+
+        $this->actingAs($user)->post(route('tasks.duplicate', $task));
+
+        $copy = $user->tasks()->where('title', '原本（コピー）')->first();
+        $this->assertNotNull($copy->image_path);
+        $this->assertNotSame($task->image_path, $copy->image_path);
+        Storage::disk('uploads')->assertExists($copy->image_path);
+    }
+
+    // ---- 画像（異常系）----
+
+    public function test_store_rejects_non_image_file(): void
+    {
+        Storage::fake('uploads');
+
+        $response = $this->actingAs($this->user())
+            ->from(route('tasks.index'))
+            ->post(route('tasks.store'), [
+                'title' => '不正ファイル',
+                'image' => UploadedFile::fake()->create('doc.pdf', 100, 'application/pdf'),
+            ]);
+
+        $response->assertSessionHasErrors('image');
+        $this->assertDatabaseMissing('tasks', ['title' => '不正ファイル']);
+    }
+
+    public function test_cannot_view_other_users_image(): void
+    {
+        Storage::fake('uploads');
+        $owner = $this->user();
+        $this->actingAs($owner)->post(route('tasks.store'), [
+            'title' => '他人画像', 'image' => UploadedFile::fake()->create('s.jpg', 100, 'image/jpeg'),
+        ]);
+        $task = $owner->tasks()->first();
+
+        $response = $this->actingAs($this->user())->get(route('tasks.image', $task));
+
+        $response->assertNotFound();
+    }
+
+    public function test_image_route_404_when_no_image(): void
+    {
+        $user = $this->user();
+        $task = $user->tasks()->create(['title' => '画像なし']);
+
+        $response = $this->actingAs($user)->get(route('tasks.image', $task));
+
+        $response->assertNotFound();
     }
 
     public function test_search_with_no_match_shows_empty(): void

@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -130,7 +132,63 @@ class TaskApiTest extends TestCase
         $this->assertSame('新タイトル', $task->fresh()->title);
     }
 
+    // ---- 画像アップロード ----
+
+    public function test_store_with_image_returns_image_url(): void
+    {
+        Storage::fake('uploads');
+        $user = $this->actingUser();
+
+        $response = $this->post('/api/tasks', [
+            'title' => '画像付き',
+            'image' => UploadedFile::fake()->create('p.jpg', 100, 'image/jpeg'),
+        ]);
+
+        $response->assertCreated();
+        $this->assertNotNull($response->json('image_url'));
+        $response->assertJsonMissingPath('image_path');
+        $task = $user->tasks()->first();
+        Storage::disk('uploads')->assertExists($task->image_path);
+    }
+
+    public function test_owner_can_fetch_image(): void
+    {
+        Storage::fake('uploads');
+        $user = $this->actingUser();
+        $this->post('/api/tasks', ['title' => 'x', 'image' => UploadedFile::fake()->create('p.png', 100, 'image/png')]);
+        $task = $user->tasks()->first();
+
+        $response = $this->get("/api/tasks/{$task->id}/image");
+
+        $response->assertOk();
+    }
+
     // ---- 準正常系・異常系 ----
+
+    public function test_store_rejects_non_image(): void
+    {
+        Storage::fake('uploads');
+        $this->actingUser();
+
+        $response = $this->post('/api/tasks', [
+            'title' => 'x',
+            'image' => UploadedFile::fake()->create('doc.pdf', 100, 'application/pdf'),
+        ], ['Accept' => 'application/json']);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('image');
+    }
+
+    public function test_cannot_fetch_other_users_image(): void
+    {
+        Storage::fake('uploads');
+        $this->actingUser();
+        $othersTask = User::factory()->create()->tasks()->create(['title' => 'x', 'image_path' => 'whatever.jpg']);
+
+        $response = $this->get("/api/tasks/{$othersTask->id}/image");
+
+        $response->assertNotFound();
+    }
 
     public function test_guest_cannot_list_tasks(): void
     {

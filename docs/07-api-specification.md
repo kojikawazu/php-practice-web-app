@@ -34,6 +34,9 @@ API のエンドポイント・入出力・エラー仕様を定義する。対�
 | PUT/PATCH | `/api/tasks/{id}` | タスク更新（他人のは404）| Bearer |
 | DELETE | `/api/tasks/{id}` | タスク削除（他人のは404）| Bearer |
 | POST | `/api/tasks/{id}/duplicate` | タスク複製（「（コピー）」付き・201・他人のは404）| Bearer |
+| GET | `/api/tasks/{id}/image` | 添付画像の取得（所有者のみ・他人/不在は404）| Bearer |
+
+画像付きの作成・更新は `multipart/form-data` で `image`（jpeg/png/webp/gif・最大2MB）を送る。画像は公開ディレクトリ外（名前付きボリューム）に保存され、`image_url` から所有者のみ取得できる。
 
 ## 一覧のクエリパラメータ（GET /api/tasks）
 
@@ -48,7 +51,7 @@ API のエンドポイント・入出力・エラー仕様を定義する。対�
 ## リクエスト / レスポンス形式
 
 - リクエスト: `Content-Type: application/json`、`Accept: application/json`
-- Task オブジェクト: `{ "id": int, "title": string, "done": bool, "start_date": "Y-m-d"|null, "end_date": "Y-m-d"|null, "created_at": ..., "updated_at": ... }`
+- Task オブジェクト: `{ "id": int, "title": string, "done": bool, "start_date": "Y-m-d"|null, "end_date": "Y-m-d"|null, "image_url": string|null, "created_at": ..., "updated_at": ... }`（`image_path` 生値は非公開）
 
 作成例:
 ```

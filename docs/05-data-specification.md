@@ -27,6 +27,7 @@ Laravel は `config/database.php` の接続設定で `prefix` と `migrations` �
 | done | TINYINT(1) | 完了フラグ（既定 0） |
 | start_date | DATE NULL | 開始日（任意） |
 | end_date | DATE NULL | 終了日（任意・開始日以降） |
+| image_path | VARCHAR NULL | 添付画像の保存パス（任意・名前付きボリューム内） |
 | created_at | TIMESTAMP | 作成日時 |
 | updated_at | TIMESTAMP | 更新日時 |
 

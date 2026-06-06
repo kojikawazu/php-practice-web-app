@@ -19,5 +19,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/tokens/{id}', [TokenController::class, 'destroy'])->whereNumber('id');
 
     Route::post('/tasks/{task}/duplicate', [TaskController::class, 'duplicate'])->whereNumber('task');
+    Route::get('/tasks/{task}/image', [TaskController::class, 'image'])->whereNumber('task');
     Route::apiResource('tasks', TaskController::class);
 });
