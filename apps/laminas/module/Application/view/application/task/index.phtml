@@ -37,6 +37,7 @@ $base = $this->url('tasks');
             <?= $this->escapeHtml($task->title) ?>
         </span>
         <a href="<?= $this->url('tasks', ['action' => 'edit', 'id' => $task->id]) ?>">編集</a>
+        <a href="<?= $this->url('tasks', ['action' => 'duplicate', 'id' => $task->id]) ?>">複製</a>
         <a href="<?= $this->url('tasks', ['action' => 'delete', 'id' => $task->id]) ?>">削除</a>
     </li>
 <?php endforeach; ?>
