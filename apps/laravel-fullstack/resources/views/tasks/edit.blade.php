@@ -4,29 +4,46 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>タスク編集 (laravel-fullstack)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
 </head>
-<body>
-    <h1>タスク編集 <small>laravel-fullstack / Blade</small></h1>
+<body class="bg-gray-100 text-gray-800">
+    <div class="max-w-xl mx-auto p-6">
+        <h1 class="text-2xl font-bold">タスク編集</h1>
+        <p class="text-xs text-gray-400 mb-4">laravel-fullstack / Blade</p>
 
-    @if ($errors->any())
-        <ul style="color:red">
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    @endif
+        @if ($errors->any())
+            <div class="bg-red-100 text-red-700 rounded p-3 mb-4 text-sm">
+                <ul class="list-disc list-inside">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
 
-    <form method="POST" action="{{ route('tasks.update', $task) }}">
-        @csrf
-        @method('PUT')
-        <input type="text" name="title" value="{{ old('title', $task->title) }}">
-        <input type="text" class="flatpickr" name="start_date" placeholder="開始日" value="{{ old('start_date', $task->start_date?->format('Y-m-d')) }}">
-        <input type="text" class="flatpickr" name="end_date" placeholder="終了日" value="{{ old('end_date', $task->end_date?->format('Y-m-d')) }}">
-        <button type="submit">更新</button>
-    </form>
+        <form method="POST" action="{{ route('tasks.update', $task) }}" class="bg-white rounded-lg shadow p-4 space-y-3">
+            @csrf
+            @method('PUT')
+            <div>
+                <label class="block text-sm text-gray-600 mb-1">タイトル</label>
+                <input type="text" name="title" value="{{ old('title', $task->title) }}" class="border rounded px-3 py-2 w-full">
+            </div>
+            <div class="flex gap-3">
+                <div class="flex-1">
+                    <label class="block text-sm text-gray-600 mb-1">開始日</label>
+                    <input type="text" class="flatpickr border rounded px-3 py-2 w-full" name="start_date" placeholder="開始日" value="{{ old('start_date', $task->start_date?->format('Y-m-d')) }}">
+                </div>
+                <div class="flex-1">
+                    <label class="block text-sm text-gray-600 mb-1">終了日</label>
+                    <input type="text" class="flatpickr border rounded px-3 py-2 w-full" name="end_date" placeholder="終了日" value="{{ old('end_date', $task->end_date?->format('Y-m-d')) }}">
+                </div>
+            </div>
+            <button type="submit" class="bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700">更新</button>
+        </form>
 
-    <p><a href="{{ route('tasks.index') }}">一覧に戻る</a></p>
+        <p class="mt-4"><a href="{{ route('tasks.index') }}" class="text-sm text-blue-600 hover:underline">← 一覧に戻る</a></p>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
     <script>flatpickr('.flatpickr', { dateFormat: 'Y-m-d', allowInput: true });</script>

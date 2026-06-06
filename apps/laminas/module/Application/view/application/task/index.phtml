@@ -3,65 +3,68 @@ $this->headTitle('タスク一覧 (laminas)');
 $base = $this->url('tasks');
 ?>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
-<p>
-    <?= $this->escapeHtml($username) ?> さん
-    <a href="<?= $this->url('logout') ?>">ログアウト</a>
-</p>
+<div class="max-w-3xl mx-auto">
+    <div class="flex items-center justify-between mb-4">
+        <span class="text-sm text-gray-600"><?= $this->escapeHtml($username) ?> さん</span>
+        <a href="<?= $this->url('logout') ?>" class="text-sm text-gray-500 hover:underline">ログアウト</a>
+    </div>
 
-<h1>タスク一覧 <small>laminas / TableGateway</small></h1>
+    <h1 class="text-2xl font-bold">タスク一覧</h1>
+    <p class="text-xs text-gray-400 mb-4">laminas / TableGateway</p>
 
-<?php if (! empty($errors)): ?>
-    <ul style="color:red">
-        <?php foreach ($errors as $e): ?>
-            <li><?= $this->escapeHtml($e) ?></li>
-        <?php endforeach; ?>
-    </ul>
-<?php endif; ?>
-
-<form method="post" action="<?= $base ?>">
-    <input type="text" name="title" placeholder="タスク名">
-    <input type="text" class="flatpickr" name="start_date" placeholder="開始日">
-    <input type="text" class="flatpickr" name="end_date" placeholder="終了日">
-    <button type="submit">追加</button>
-</form>
-
-<form method="get" action="<?= $base ?>">
-    <input type="text" name="q" placeholder="タイトルで検索" value="<?= $this->escapeHtmlAttr($q) ?>">
-    <button type="submit">検索</button>
-    <?php if ($q !== ''): ?>
-        <a href="<?= $base ?>">クリア</a>
+    <?php if (! empty($errors)): ?>
+        <div class="bg-red-100 text-red-700 rounded p-3 mb-4 text-sm">
+            <ul class="list-disc list-inside">
+                <?php foreach ($errors as $e): ?>
+                    <li><?= $this->escapeHtml($e) ?></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
     <?php endif; ?>
-</form>
 
-<ul>
-<?php foreach ($tasks as $task): ?>
-    <li>
-        <span<?= $task->done ? ' style="text-decoration:line-through"' : '' ?>>
-            <?= $this->escapeHtml($task->title) ?>
-        </span>
-        <?php if ($task->start_date || $task->end_date): ?>
-            <small>[<?= $this->escapeHtml($task->start_date ?? '—') ?> 〜 <?= $this->escapeHtml($task->end_date ?? '—') ?>]</small>
+    <form method="post" action="<?= $base ?>" class="bg-white rounded-lg shadow p-4 mb-4 flex flex-wrap gap-2 items-center">
+        <input type="text" name="title" placeholder="タスク名" class="border rounded px-3 py-2 flex-1 min-w-40">
+        <input type="text" class="flatpickr border rounded px-3 py-2 w-32" name="start_date" placeholder="開始日">
+        <input type="text" class="flatpickr border rounded px-3 py-2 w-32" name="end_date" placeholder="終了日">
+        <button type="submit" class="bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700">追加</button>
+    </form>
+
+    <form method="get" action="<?= $base ?>" class="flex gap-2 items-center mb-4">
+        <input type="text" name="q" placeholder="タイトルで検索" value="<?= $this->escapeHtmlAttr($q) ?>" class="border rounded px-3 py-2 flex-1">
+        <button type="submit" class="bg-gray-600 text-white rounded px-4 py-2 hover:bg-gray-700">検索</button>
+        <?php if ($q !== ''): ?>
+            <a href="<?= $base ?>" class="text-sm text-blue-600 hover:underline">クリア</a>
         <?php endif; ?>
-        <a href="<?= $this->url('tasks', ['action' => 'edit', 'id' => $task->id]) ?>">編集</a>
-        <a href="<?= $this->url('tasks', ['action' => 'duplicate', 'id' => $task->id]) ?>">複製</a>
-        <a href="<?= $this->url('tasks', ['action' => 'delete', 'id' => $task->id]) ?>">削除</a>
-    </li>
-<?php endforeach; ?>
-</ul>
+    </form>
 
-<?php if ($total === 0): ?>
-    <p>タスクはありません。</p>
-<?php endif; ?>
+    <ul class="space-y-2">
+    <?php foreach ($tasks as $task): ?>
+        <li class="bg-white rounded-lg shadow p-3 flex flex-wrap items-center gap-3">
+            <span class="flex-1<?= $task->done ? ' line-through text-gray-400' : '' ?>"><?= $this->escapeHtml($task->title) ?></span>
+            <?php if ($task->start_date || $task->end_date): ?>
+                <span class="text-xs text-gray-500">[<?= $this->escapeHtml($task->start_date ?? '—') ?> 〜 <?= $this->escapeHtml($task->end_date ?? '—') ?>]</span>
+            <?php endif; ?>
+            <a href="<?= $this->url('tasks', ['action' => 'edit', 'id' => $task->id]) ?>" class="text-sm text-blue-600 hover:underline">編集</a>
+            <a href="<?= $this->url('tasks', ['action' => 'duplicate', 'id' => $task->id]) ?>" class="text-sm text-blue-600 hover:underline">複製</a>
+            <a href="<?= $this->url('tasks', ['action' => 'delete', 'id' => $task->id]) ?>" class="text-sm text-red-600 hover:underline">削除</a>
+        </li>
+    <?php endforeach; ?>
+    </ul>
 
-<p>
-    <?php if ($page > 1): ?>
-        <a href="<?= $base ?>?q=<?= rawurlencode($q) ?>&amp;page=<?= $page - 1 ?>">前へ</a>
+    <?php if ($total === 0): ?>
+        <p class="text-gray-500">タスクはありません。</p>
     <?php endif; ?>
-    ページ <?= $page ?> / <?= $totalPages ?>（全 <?= $total ?> 件）
-    <?php if ($page < $totalPages): ?>
-        <a href="<?= $base ?>?q=<?= rawurlencode($q) ?>&amp;page=<?= $page + 1 ?>">次へ</a>
-    <?php endif; ?>
-</p>
+
+    <div class="flex items-center gap-3 mt-4 text-sm">
+        <?php if ($page > 1): ?>
+            <a href="<?= $base ?>?q=<?= rawurlencode($q) ?>&amp;page=<?= $page - 1 ?>" class="text-blue-600 hover:underline">前へ</a>
+        <?php endif; ?>
+        <span class="text-gray-600">ページ <?= $page ?> / <?= $totalPages ?>（全 <?= $total ?> 件）</span>
+        <?php if ($page < $totalPages): ?>
+            <a href="<?= $base ?>?q=<?= rawurlencode($q) ?>&amp;page=<?= $page + 1 ?>" class="text-blue-600 hover:underline">次へ</a>
+        <?php endif; ?>
+    </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
 <script>flatpickr('.flatpickr', { dateFormat: 'Y-m-d', allowInput: true });</script>

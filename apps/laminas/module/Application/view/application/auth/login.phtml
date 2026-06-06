@@ -1,20 +1,24 @@
 <?php
 $this->headTitle('ログイン (laminas)');
 ?>
-<h1>ログイン <small>laminas</small></h1>
+<div class="max-w-sm mx-auto">
+    <h1 class="text-2xl font-bold mb-4">ログイン <span class="text-xs text-gray-400">laminas</span></h1>
 
-<?php if (! empty($errors)): ?>
-    <ul style="color:red">
-        <?php foreach ($errors as $e): ?>
-            <li><?= $this->escapeHtml($e) ?></li>
-        <?php endforeach; ?>
-    </ul>
-<?php endif; ?>
+    <?php if (! empty($errors)): ?>
+        <div class="bg-red-100 text-red-700 rounded p-3 mb-4 text-sm">
+            <ul class="list-disc list-inside">
+                <?php foreach ($errors as $e): ?>
+                    <li><?= $this->escapeHtml($e) ?></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+    <?php endif; ?>
 
-<form method="post" action="<?= $this->url('login') ?>">
-    <p><input type="text" name="username" placeholder="ユーザー名"></p>
-    <p><input type="password" name="password" placeholder="パスワード"></p>
-    <button type="submit">ログイン</button>
-</form>
+    <form method="post" action="<?= $this->url('login') ?>" class="bg-white rounded-lg shadow p-4 space-y-3">
+        <input type="text" name="username" placeholder="ユーザー名" class="border rounded px-3 py-2 w-full">
+        <input type="password" name="password" placeholder="パスワード" class="border rounded px-3 py-2 w-full">
+        <button type="submit" class="bg-blue-600 text-white rounded px-4 py-2 w-full hover:bg-blue-700">ログイン</button>
+    </form>
 
-<p>アカウントがない場合は <a href="<?= $this->url('register') ?>">新規登録</a></p>
+    <p class="mt-4 text-sm text-gray-600">アカウントがない場合は <a href="<?= $this->url('register') ?>" class="text-blue-600 hover:underline">新規登録</a></p>
+</div>

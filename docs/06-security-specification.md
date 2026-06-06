@@ -38,4 +38,4 @@
 - **DB 認証情報の平文**: 学習用のため `.env` / Laminas `global.php` に開発用認証情報（app/secret）を記載。公開・本番では秘密情報をリポジトリ管理外（local.php・シークレットストア）へ移すこと。
 - **CSRF / セッション**: Laravel web・Laminas はセッション認証（フォームは CSRF 前提）。API は Sanctum のステートレストークン。
 - ~~API 認証なし~~（解消済み）: `laravel-api` に Sanctum トークン認証を導入済み。
-- **flatpickr を CDN 読み込み（SRI 未設定）**: 日付ピッカーを jsDelivr の固定バージョン（@4.6.13）から読み込んでいる。学習用のため Subresource Integrity（`integrity`）は付けていない。本番化時は SRI ハッシュ付与、または npm 取得して self-host することが望ましい。
+- **フロントを CDN 読み込み（SRI 未設定）**: 日付ピッカー flatpickr（jsDelivr 固定版 @4.6.13）と Tailwind CSS（Play CDN）をブラウザから読み込んでいる。学習用のため Subresource Integrity（`integrity`）は付けていない（Tailwind Play CDN は動的スクリプトのため SRI 非対応）。本番化時は flatpickr に SRI 付与、Tailwind は CLI/Vite でビルドして self-host することが望ましい。
