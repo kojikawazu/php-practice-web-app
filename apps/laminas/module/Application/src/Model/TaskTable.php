@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Application\Model;
 
 use Laminas\Db\TableGateway\TableGatewayInterface;
-use RuntimeException;
 
 /**
  * lam_tasks テーブルへのアクセス（Table Data Gateway パターン）。
+ * 認証導入後は user_id でスコープする。
  */
 class TaskTable
 {
@@ -16,29 +16,20 @@ class TaskTable
     {
     }
 
-    /** @return iterable<Task> */
-    public function fetchAll(): iterable
+    /** @return iterable<Task> 指定ユーザーのタスクのみ */
+    public function fetchAllByUser(int $userId): iterable
     {
-        return $this->tableGateway->select(function ($select) {
-            $select->order('id DESC');
+        return $this->tableGateway->select(function ($select) use ($userId) {
+            $select->where(['user_id' => $userId])->order('id DESC');
         });
-    }
-
-    public function getTask(int $id): Task
-    {
-        $row = $this->tableGateway->select(['id' => $id])->current();
-        if (! $row) {
-            throw new RuntimeException(sprintf('id %d のタスクは存在しません', $id));
-        }
-
-        return $row;
     }
 
     public function saveTask(Task $task): void
     {
         $data = [
-            'title' => $task->title,
-            'done'  => $task->done ? 1 : 0,
+            'title'   => $task->title,
+            'done'    => $task->done ? 1 : 0,
+            'user_id' => $task->user_id,
         ];
 
         if ($task->id === null) {
@@ -46,16 +37,12 @@ class TaskTable
             return;
         }
 
-        if ($this->tableGateway->select(['id' => $task->id])->current()) {
-            $this->tableGateway->update($data, ['id' => $task->id]);
-            return;
-        }
-
-        throw new RuntimeException(sprintf('id %d のタスクは存在しません', $task->id));
+        $this->tableGateway->update($data, ['id' => $task->id, 'user_id' => $task->user_id]);
     }
 
-    public function deleteTask(int $id): void
+    /** 所有者本人のタスクのみ削除（他人の id を指定しても何も起きない） */
+    public function deleteForUser(int $id, int $userId): void
     {
-        $this->tableGateway->delete(['id' => $id]);
+        $this->tableGateway->delete(['id' => $id, 'user_id' => $userId]);
     }
 }

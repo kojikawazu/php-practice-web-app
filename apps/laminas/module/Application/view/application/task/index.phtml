@@ -1,6 +1,11 @@
 <?php
 $this->headTitle('タスク一覧 (laminas)');
 ?>
+<p>
+    <?= $this->escapeHtml($username) ?> さん
+    <a href="<?= $this->url('logout') ?>">ログアウト</a>
+</p>
+
 <h1>タスク一覧 <small>laminas / TableGateway</small></h1>
 
 <form method="post" action="<?= $this->url('tasks') ?>">

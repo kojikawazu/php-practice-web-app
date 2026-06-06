@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Task;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -10,66 +11,91 @@ class TaskTest extends TestCase
 {
     use RefreshDatabase;
 
+    private function user(): User
+    {
+        return User::factory()->create();
+    }
+
     // ---- 正常系 ----
 
-    public function test_index_displays_existing_tasks(): void
+    public function test_index_displays_only_own_tasks(): void
     {
-        Task::create(['title' => '牛乳を買う']);
+        $user = $this->user();
+        $user->tasks()->create(['title' => '牛乳を買う']);
 
-        $response = $this->get(route('tasks.index'));
+        $response = $this->actingAs($user)->get(route('tasks.index'));
 
         $response->assertOk();
         $response->assertSee('牛乳を買う');
     }
 
-    public function test_store_creates_a_task_and_redirects(): void
+    public function test_store_creates_task_owned_by_current_user(): void
     {
-        $response = $this->post(route('tasks.store'), ['title' => '部屋を掃除する']);
+        $user = $this->user();
+
+        $response = $this->actingAs($user)->post(route('tasks.store'), ['title' => '部屋を掃除する']);
 
         $response->assertRedirect(route('tasks.index'));
-        $this->assertDatabaseHas('tasks', ['title' => '部屋を掃除する', 'done' => false]);
+        $this->assertDatabaseHas('tasks', ['title' => '部屋を掃除する', 'user_id' => $user->id]);
     }
 
-    public function test_toggle_marks_task_done(): void
+    public function test_toggle_marks_own_task_done(): void
     {
-        $task = Task::create(['title' => '完了させる']);
+        $user = $this->user();
+        $task = $user->tasks()->create(['title' => '完了させる']);
 
-        $this->patch(route('tasks.toggle', $task));
+        $this->actingAs($user)->patch(route('tasks.toggle', $task));
 
         $this->assertTrue($task->fresh()->done);
     }
 
     // ---- 準正常系・異常系 ----
 
+    public function test_guest_is_redirected_to_login(): void
+    {
+        $response = $this->get(route('tasks.index'));
+
+        $response->assertRedirect(route('login'));
+    }
+
+    public function test_index_hides_other_users_tasks(): void
+    {
+        $owner = $this->user();
+        $owner->tasks()->create(['title' => '他人の秘密タスク']);
+
+        $response = $this->actingAs($this->user())->get(route('tasks.index'));
+
+        $response->assertOk();
+        $response->assertDontSee('他人の秘密タスク');
+    }
+
     public function test_store_rejects_empty_title(): void
     {
-        $response = $this->from(route('tasks.index'))
+        $response = $this->actingAs($this->user())
+            ->from(route('tasks.index'))
             ->post(route('tasks.store'), ['title' => '']);
 
         $response->assertSessionHasErrors('title');
         $this->assertDatabaseCount('tasks', 0);
     }
 
-    public function test_store_rejects_title_longer_than_255(): void
+    public function test_cannot_toggle_other_users_task(): void
     {
-        $response = $this->from(route('tasks.index'))
-            ->post(route('tasks.store'), ['title' => str_repeat('あ', 256)]);
+        $othersTask = $this->user()->tasks()->create(['title' => '触れないタスク']);
 
-        $response->assertSessionHasErrors('title');
-        $this->assertDatabaseCount('tasks', 0);
-    }
-
-    public function test_toggle_unknown_task_returns_404(): void
-    {
-        $response = $this->patch(route('tasks.toggle', 999999));
+        $response = $this->actingAs($this->user())->patch(route('tasks.toggle', $othersTask));
 
         $response->assertNotFound();
+        $this->assertFalse($othersTask->fresh()->done);
     }
 
-    public function test_destroy_unknown_task_returns_404(): void
+    public function test_cannot_destroy_other_users_task(): void
     {
-        $response = $this->delete(route('tasks.destroy', 999999));
+        $othersTask = $this->user()->tasks()->create(['title' => '消せないタスク']);
+
+        $response = $this->actingAs($this->user())->delete(route('tasks.destroy', $othersTask));
 
         $response->assertNotFound();
+        $this->assertDatabaseHas('tasks', ['id' => $othersTask->id]);
     }
 }

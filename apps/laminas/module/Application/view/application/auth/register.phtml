@@ -1,0 +1,16 @@
+<?php
+$this->headTitle('新規登録 (laminas)');
+?>
+<h1>新規登録 <small>laminas</small></h1>
+
+<?php if ($error): ?>
+    <p style="color:red"><?= $this->escapeHtml($error) ?></p>
+<?php endif; ?>
+
+<form method="post" action="<?= $this->url('register') ?>">
+    <p><input type="text" name="username" placeholder="ユーザー名"></p>
+    <p><input type="password" name="password" placeholder="パスワード（8文字以上）"></p>
+    <button type="submit">登録</button>
+</form>
+
+<p>すでにアカウントがある場合は <a href="<?= $this->url('login') ?>">ログイン</a></p>
