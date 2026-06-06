@@ -37,6 +37,13 @@
                 <input type="file" name="image" accept="image/*" class="text-sm">
                 <p class="text-xs text-gray-400 mt-1">選択すると差し替え（旧画像は削除されます）</p>
             </div>
+            <div>
+                <label class="block text-sm text-gray-600 mb-1">URL（任意）</label>
+                <input type="url" name="url" placeholder="https://example.com" value="{{ old('url', $task->url) }}" class="border rounded px-3 py-2 w-full">
+                @if ($task->preview_title)
+                    <p class="text-xs text-gray-500 mt-1">現在のプレビュー: {{ $task->preview_title }}</p>
+                @endif
+            </div>
             <div class="flex gap-3">
                 <div class="flex-1">
                     <label class="block text-sm text-gray-600 mb-1">開始日</label>

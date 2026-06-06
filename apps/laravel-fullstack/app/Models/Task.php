@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Task extends Model
 {
-    protected $fillable = ['title', 'done', 'user_id', 'start_date', 'end_date', 'image_path'];
+    protected $fillable = ['title', 'done', 'user_id', 'start_date', 'end_date', 'image_path', 'url', 'preview_title', 'preview_image'];
 
     protected $attributes = [
         'done' => false,

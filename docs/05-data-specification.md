@@ -28,6 +28,9 @@ Laravel は `config/database.php` の接続設定で `prefix` と `migrations` �
 | start_date | DATE NULL | 開始日（任意） |
 | end_date | DATE NULL | 終了日（任意・開始日以降） |
 | image_path | VARCHAR NULL | 添付画像の保存パス（任意・名前付きボリューム内） |
+| url | VARCHAR NULL | 登録 URL（任意・fullstack）|
+| preview_title | VARCHAR NULL | サーバー取得した og:title / title（キャッシュ）|
+| preview_image | VARCHAR NULL | サーバー取得した og:image の URL（キャッシュ）|
 | created_at | TIMESTAMP | 作成日時 |
 | updated_at | TIMESTAMP | 更新日時 |
 

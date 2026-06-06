@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\Task;
+use App\Services\BlockedUrlException;
+use App\Services\LinkPreviewService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
@@ -30,13 +33,14 @@ class TaskController extends Controller
         return view('tasks.index', ['tasks' => $tasks, 'q' => $q]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, LinkPreviewService $preview): RedirectResponse
     {
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'image' => self::IMAGE_RULES,
+            'url' => ['nullable', 'url:http,https', 'max:2048'],
         ]);
 
         $data = [
@@ -47,6 +51,7 @@ class TaskController extends Controller
         if ($request->hasFile('image')) {
             $data['image_path'] = $this->storeImage($request->file('image'));
         }
+        $this->applyPreview($data, $validated['url'] ?? null, $preview);
 
         Auth::user()->tasks()->create($data);
 
@@ -75,7 +80,7 @@ class TaskController extends Controller
         return view('tasks.edit', ['task' => $task]);
     }
 
-    public function update(Request $request, Task $task): RedirectResponse
+    public function update(Request $request, Task $task, LinkPreviewService $preview): RedirectResponse
     {
         $this->authorizeOwnership($task);
 
@@ -84,6 +89,7 @@ class TaskController extends Controller
             'start_date' => ['nullable', 'date'],
             'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
             'image' => self::IMAGE_RULES,
+            'url' => ['nullable', 'url:http,https', 'max:2048'],
         ]);
 
         $data = [
@@ -95,6 +101,7 @@ class TaskController extends Controller
             $this->deleteImage($task->image_path);
             $data['image_path'] = $this->storeImage($request->file('image'));
         }
+        $this->applyPreview($data, $validated['url'] ?? null, $preview);
 
         $task->update($data);
 
@@ -125,6 +132,29 @@ class TaskController extends Controller
         abort_if(! $task->image_path || ! Storage::disk('uploads')->exists($task->image_path), 404);
 
         return response()->file(Storage::disk('uploads')->path($task->image_path));
+    }
+
+    /** URL を安全に取得してプレビュー（title/og:image）を $data に反映。空 URL はクリア。 */
+    private function applyPreview(array &$data, ?string $url, LinkPreviewService $preview): void
+    {
+        $url = $url !== null ? trim($url) : '';
+        if ($url === '') {
+            $data['url'] = null;
+            $data['preview_title'] = null;
+            $data['preview_image'] = null;
+
+            return;
+        }
+
+        try {
+            $meta = $preview->fetch($url);
+        } catch (BlockedUrlException $e) {
+            throw ValidationException::withMessages(['url' => $e->getMessage()]);
+        }
+
+        $data['url'] = $url;
+        $data['preview_title'] = $meta['title'] ?? null;
+        $data['preview_image'] = $meta['image'] ?? null;
     }
 
     private function storeImage(UploadedFile $file): string

@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Task;
 use App\Models\User;
+use App\Services\BlockedUrlException;
+use App\Services\LinkPreviewService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -373,6 +375,59 @@ class TaskTest extends TestCase
         $response = $this->actingAs($user)->get(route('tasks.image', $task));
 
         $response->assertNotFound();
+    }
+
+    // ---- URL プレビュー ----
+
+    public function test_store_with_url_saves_preview(): void
+    {
+        $this->mock(LinkPreviewService::class, function ($mock) {
+            $mock->shouldReceive('fetch')->once()
+                ->andReturn(['title' => '例のサイト', 'image' => 'https://example.com/og.png']);
+        });
+        $user = $this->user();
+
+        $response = $this->actingAs($user)->post(route('tasks.store'), [
+            'title' => 'リンク付き',
+            'url' => 'https://example.com',
+        ]);
+
+        $response->assertRedirect(route('tasks.index'));
+        $this->assertDatabaseHas('tasks', [
+            'title' => 'リンク付き',
+            'url' => 'https://example.com',
+            'preview_title' => '例のサイト',
+            'preview_image' => 'https://example.com/og.png',
+        ]);
+    }
+
+    public function test_store_blocks_internal_url(): void
+    {
+        $this->mock(LinkPreviewService::class, function ($mock) {
+            $mock->shouldReceive('fetch')->andThrow(new BlockedUrlException('内部アドレスは不可'));
+        });
+
+        $response = $this->actingAs($this->user())
+            ->from(route('tasks.index'))
+            ->post(route('tasks.store'), [
+                'title' => '内部URL',
+                'url' => 'http://169.254.169.254/latest/meta-data/',
+            ]);
+
+        $response->assertSessionHasErrors('url');
+        $this->assertDatabaseMissing('tasks', ['title' => '内部URL']);
+    }
+
+    public function test_store_rejects_non_http_url(): void
+    {
+        $response = $this->actingAs($this->user())
+            ->from(route('tasks.index'))
+            ->post(route('tasks.store'), [
+                'title' => 'ftp',
+                'url' => 'ftp://example.com/file',
+            ]);
+
+        $response->assertSessionHasErrors('url');
     }
 
     public function test_search_with_no_match_shows_empty(): void
