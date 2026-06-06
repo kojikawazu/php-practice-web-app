@@ -2,24 +2,40 @@
 $this->headTitle('タスク編集 (laminas)');
 ?>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
-<h1>タスク編集 <small>laminas</small></h1>
+<div class="max-w-xl mx-auto">
+    <h1 class="text-2xl font-bold">タスク編集</h1>
+    <p class="text-xs text-gray-400 mb-4">laminas</p>
 
-<?php if (! empty($errors)): ?>
-    <ul style="color:red">
-        <?php foreach ($errors as $e): ?>
-            <li><?= $this->escapeHtml($e) ?></li>
-        <?php endforeach; ?>
-    </ul>
-<?php endif; ?>
+    <?php if (! empty($errors)): ?>
+        <div class="bg-red-100 text-red-700 rounded p-3 mb-4 text-sm">
+            <ul class="list-disc list-inside">
+                <?php foreach ($errors as $e): ?>
+                    <li><?= $this->escapeHtml($e) ?></li>
+                <?php endforeach; ?>
+            </ul>
+        </div>
+    <?php endif; ?>
 
-<form method="post" action="<?= $this->url('tasks', ['action' => 'edit', 'id' => $task->id]) ?>">
-    <input type="text" name="title" value="<?= $this->escapeHtmlAttr($task->title) ?>">
-    <input type="text" class="flatpickr" name="start_date" placeholder="開始日" value="<?= $this->escapeHtmlAttr($task->start_date ?? '') ?>">
-    <input type="text" class="flatpickr" name="end_date" placeholder="終了日" value="<?= $this->escapeHtmlAttr($task->end_date ?? '') ?>">
-    <button type="submit">更新</button>
-</form>
+    <form method="post" action="<?= $this->url('tasks', ['action' => 'edit', 'id' => $task->id]) ?>" class="bg-white rounded-lg shadow p-4 space-y-3">
+        <div>
+            <label class="block text-sm text-gray-600 mb-1">タイトル</label>
+            <input type="text" name="title" value="<?= $this->escapeHtmlAttr($task->title) ?>" class="border rounded px-3 py-2 w-full">
+        </div>
+        <div class="flex gap-3">
+            <div class="flex-1">
+                <label class="block text-sm text-gray-600 mb-1">開始日</label>
+                <input type="text" class="flatpickr border rounded px-3 py-2 w-full" name="start_date" placeholder="開始日" value="<?= $this->escapeHtmlAttr($task->start_date ?? '') ?>">
+            </div>
+            <div class="flex-1">
+                <label class="block text-sm text-gray-600 mb-1">終了日</label>
+                <input type="text" class="flatpickr border rounded px-3 py-2 w-full" name="end_date" placeholder="終了日" value="<?= $this->escapeHtmlAttr($task->end_date ?? '') ?>">
+            </div>
+        </div>
+        <button type="submit" class="bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700">更新</button>
+    </form>
 
-<p><a href="<?= $this->url('tasks') ?>">一覧に戻る</a></p>
+    <p class="mt-4"><a href="<?= $this->url('tasks') ?>" class="text-sm text-blue-600 hover:underline">← 一覧に戻る</a></p>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
 <script>flatpickr('.flatpickr', { dateFormat: 'Y-m-d', allowInput: true });</script>

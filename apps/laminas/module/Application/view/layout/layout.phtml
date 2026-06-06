@@ -24,7 +24,7 @@
             ->prependStylesheet($this->basePath('css/bootstrap.min.css')) ?>
 
         <!-- Scripts -->
-        <?= $this->headScript() ?>
+        <?= $this->headScript()->appendFile('https://cdn.tailwindcss.com') ?>
     </head>
     <body>
         <nav class="navbar navbar-expand-md navbar-dark mb-4" role="navigation">

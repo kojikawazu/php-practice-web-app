@@ -27,6 +27,7 @@
 ## UI/UX 仕様
 
 - 画面: ログイン / 新規登録 / タスク一覧（追加・検索・ページャ）/ タスク編集（fullstack・laminas）。api は JSON のみ。
+- 画面は Tailwind CSS（Play CDN・Node不要）で簡易スタイリング（fullstack / laminas）。
 - 日付入力は flatpickr のカレンダー（`Y-m-d`）。
 - バリデーションエラーはフォーム上部に一覧表示（Laravel は `$errors`、Laminas は InputFilter メッセージ）。
 - 完了タスクは取り消し線で表示。期間がある場合は `[開始 〜 終了]` を併記。
