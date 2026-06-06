@@ -59,4 +59,48 @@ class TaskInputFilterTest extends TestCase
 
         $this->assertFalse($filter->isValid());
     }
+
+    // ---- 日付（任意） ----
+
+    public function testValidDatesPass(): void
+    {
+        $filter = $this->filter();
+        $filter->setData(['title' => 'x', 'start_date' => '2026-06-10', 'end_date' => '2026-06-20']);
+
+        $this->assertTrue($filter->isValid());
+    }
+
+    public function testEmptyDatesAreAllowed(): void
+    {
+        $filter = $this->filter();
+        $filter->setData(['title' => 'x', 'start_date' => '', 'end_date' => '']);
+
+        $this->assertTrue($filter->isValid());
+    }
+
+    public function testInvalidDateFormatIsInvalid(): void
+    {
+        $filter = $this->filter();
+        $filter->setData(['title' => 'x', 'start_date' => '2026/06/10']);
+
+        $this->assertFalse($filter->isValid());
+        $this->assertArrayHasKey('start_date', $filter->getMessages());
+    }
+
+    public function testEndDateBeforeStartDateIsInvalid(): void
+    {
+        $filter = $this->filter();
+        $filter->setData(['title' => 'x', 'start_date' => '2026-06-20', 'end_date' => '2026-06-10']);
+
+        $this->assertFalse($filter->isValid());
+        $this->assertArrayHasKey('end_date', $filter->getMessages());
+    }
+
+    public function testEndDateWithoutStartDatePasses(): void
+    {
+        $filter = $this->filter();
+        $filter->setData(['title' => 'x', 'end_date' => '2026-06-10']);
+
+        $this->assertTrue($filter->isValid());
+    }
 }

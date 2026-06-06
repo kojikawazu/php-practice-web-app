@@ -29,6 +29,8 @@ class TaskController extends Controller
     {
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
         ]);
 
         Auth::user()->tasks()->create($validated);
@@ -43,6 +45,8 @@ class TaskController extends Controller
         Auth::user()->tasks()->create([
             'title' => $this->copyTitle($task->title),
             'done' => false,
+            'start_date' => $task->start_date?->format('Y-m-d'),
+            'end_date' => $task->end_date?->format('Y-m-d'),
         ]);
 
         return redirect()->route('tasks.index');
@@ -61,6 +65,8 @@ class TaskController extends Controller
 
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
         ]);
 
         $task->update($validated);

@@ -18,14 +18,14 @@
 
 | アプリ | 主な正常系 | 主な異常系 |
 |--------|-----------|-----------|
-| fullstack Task | 一覧/作成/トグル/編集/複製/ページネーション(5件)/タイトル検索 | guest→login / 他人タスク非表示 / 空title / 他人のtoggle・destroy・update・edit・duplicate 404 / 検索ヒットなし / 検索でも他人分は出ない |
+| fullstack Task | 一覧/作成/トグル/編集/複製/日付付き作成/ページネーション(5件)/タイトル検索 | guest→login / 他人タスク非表示 / 空title / 他人のtoggle・destroy・update・edit・duplicate 404 / 検索ヒットなし / 検索でも他人分は出ない / 終了日<開始日 / 不正日付 |
 | fullstack Auth | 登録&自動ログイン / ログイン / ログアウト | 誤パスワード / メール重複 / 確認不一致 / 短パスワード |
-| api Task | 一覧/201作成/更新/複製(201)/ページネーション(meta)/per_page/検索 | guest 401 / title欠落 422 / 長すぎ 422 / 更新時空title 422 / 他人タスク view・delete・update・duplicate 404 / 検索ヒットなし |
+| api Task | 一覧/201作成/更新/複製(201)/日付付き作成/ページネーション(meta)/per_page/検索 | guest 401 / title欠落 422 / 長すぎ 422 / 更新時空title 422 / 終了日<開始日 422 / 不正日付 422 / 他人タスク view・delete・update・duplicate 404 / 検索ヒットなし |
 | api Auth | register トークン / login トークン / logout | 誤パスワード 422 / メール重複 422 / 短パスワード 422 / token無し 401 |
 | api Token | 一覧(ハッシュ非公開)/発行/期限付き発行/失効 | name必須422 / 不正expiry422 / 他人失効404 / guest401 / 期限切れトークン401 |
 | laminas Task model | exchangeArray全項目 / getArrayCopy | 空配列デフォルト / '0'→false / 数値文字列→int / false→0 |
 | laminas PasswordHasher | hash→verify / bcrypt形式 | 誤パスワード / 空 / 不正ハッシュ / ソルトで毎回異なる |
-| laminas InputFilter | Task/Register/Login の有効入力通過・StringTrim 整形 | 必須欠落 / 空 / 空白のみ / 長すぎ(255超) / 短パスワード(8未満) |
+| laminas InputFilter | Task/Register/Login の有効入力通過・StringTrim 整形・日付任意通過 | 必須欠落 / 空 / 空白のみ / 長すぎ(255超) / 短パスワード(8未満) / 不正日付 / 終了日<開始日 |
 
 > laminas のセッション認証フロー（register→login→保護→logout）は PHPUnit（CLI/セッション）でなく **ライブ smoke テスト（curl + cookie）** で検証する方針。認証ロジックの核（bcrypt）は `PasswordHasherTest` で単体保証する。
 

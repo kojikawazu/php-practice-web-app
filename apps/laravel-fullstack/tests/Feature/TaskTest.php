@@ -83,6 +83,39 @@ class TaskTest extends TestCase
         $this->assertDatabaseHas('tasks', ['title' => '元タスク（コピー）', 'done' => false, 'user_id' => $user->id]);
     }
 
+    public function test_store_with_dates(): void
+    {
+        $user = $this->user();
+
+        $response = $this->actingAs($user)->post(route('tasks.store'), [
+            'title' => '期間付きタスク',
+            'start_date' => '2026-06-10',
+            'end_date' => '2026-06-20',
+        ]);
+
+        $response->assertRedirect(route('tasks.index'));
+        $this->assertDatabaseHas('tasks', [
+            'title' => '期間付きタスク',
+            'start_date' => '2026-06-10',
+            'end_date' => '2026-06-20',
+        ]);
+    }
+
+    public function test_duplicate_copies_dates(): void
+    {
+        $user = $this->user();
+        $user->tasks()->create(['title' => '原本', 'start_date' => '2026-06-10', 'end_date' => '2026-06-20']);
+        $task = $user->tasks()->first();
+
+        $this->actingAs($user)->post(route('tasks.duplicate', $task));
+
+        $this->assertDatabaseHas('tasks', [
+            'title' => '原本（コピー）',
+            'start_date' => '2026-06-10',
+            'end_date' => '2026-06-20',
+        ]);
+    }
+
     public function test_index_paginates_at_5_per_page(): void
     {
         $user = $this->user();
@@ -202,6 +235,32 @@ class TaskTest extends TestCase
 
         $response->assertNotFound();
         $this->assertDatabaseMissing('tasks', ['title' => '複製できない（コピー）']);
+    }
+
+    public function test_store_rejects_end_date_before_start_date(): void
+    {
+        $response = $this->actingAs($this->user())
+            ->from(route('tasks.index'))
+            ->post(route('tasks.store'), [
+                'title' => '逆転期間',
+                'start_date' => '2026-06-20',
+                'end_date' => '2026-06-10',
+            ]);
+
+        $response->assertSessionHasErrors('end_date');
+        $this->assertDatabaseMissing('tasks', ['title' => '逆転期間']);
+    }
+
+    public function test_store_rejects_invalid_date_format(): void
+    {
+        $response = $this->actingAs($this->user())
+            ->from(route('tasks.index'))
+            ->post(route('tasks.store'), [
+                'title' => '不正日付',
+                'start_date' => 'not-a-date',
+            ]);
+
+        $response->assertSessionHasErrors('start_date');
     }
 
     public function test_search_with_no_match_shows_empty(): void

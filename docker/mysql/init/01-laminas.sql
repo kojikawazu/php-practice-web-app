@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS lam_tasks (
     user_id    BIGINT UNSIGNED NOT NULL,
     title      VARCHAR(255)    NOT NULL,
     done       TINYINT(1)      NOT NULL DEFAULT 0,
+    start_date DATE            NULL DEFAULT NULL,
+    end_date   DATE            NULL DEFAULT NULL,
     created_at TIMESTAMP       NULL DEFAULT NULL,
     updated_at TIMESTAMP       NULL DEFAULT NULL,
     PRIMARY KEY (id),

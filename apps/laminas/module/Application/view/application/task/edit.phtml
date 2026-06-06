@@ -1,6 +1,7 @@
 <?php
 $this->headTitle('タスク編集 (laminas)');
 ?>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
 <h1>タスク編集 <small>laminas</small></h1>
 
 <?php if (! empty($errors)): ?>
@@ -13,7 +14,12 @@ $this->headTitle('タスク編集 (laminas)');
 
 <form method="post" action="<?= $this->url('tasks', ['action' => 'edit', 'id' => $task->id]) ?>">
     <input type="text" name="title" value="<?= $this->escapeHtmlAttr($task->title) ?>">
+    <input type="text" class="flatpickr" name="start_date" placeholder="開始日" value="<?= $this->escapeHtmlAttr($task->start_date ?? '') ?>">
+    <input type="text" class="flatpickr" name="end_date" placeholder="終了日" value="<?= $this->escapeHtmlAttr($task->end_date ?? '') ?>">
     <button type="submit">更新</button>
 </form>
 
 <p><a href="<?= $this->url('tasks') ?>">一覧に戻る</a></p>
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+<script>flatpickr('.flatpickr', { dateFormat: 'Y-m-d', allowInput: true });</script>

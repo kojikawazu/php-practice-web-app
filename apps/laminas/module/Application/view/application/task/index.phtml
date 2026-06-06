@@ -2,6 +2,7 @@
 $this->headTitle('タスク一覧 (laminas)');
 $base = $this->url('tasks');
 ?>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
 <p>
     <?= $this->escapeHtml($username) ?> さん
     <a href="<?= $this->url('logout') ?>">ログアウト</a>
@@ -19,6 +20,8 @@ $base = $this->url('tasks');
 
 <form method="post" action="<?= $base ?>">
     <input type="text" name="title" placeholder="タスク名">
+    <input type="text" class="flatpickr" name="start_date" placeholder="開始日">
+    <input type="text" class="flatpickr" name="end_date" placeholder="終了日">
     <button type="submit">追加</button>
 </form>
 
@@ -36,6 +39,9 @@ $base = $this->url('tasks');
         <span<?= $task->done ? ' style="text-decoration:line-through"' : '' ?>>
             <?= $this->escapeHtml($task->title) ?>
         </span>
+        <?php if ($task->start_date || $task->end_date): ?>
+            <small>[<?= $this->escapeHtml($task->start_date ?? '—') ?> 〜 <?= $this->escapeHtml($task->end_date ?? '—') ?>]</small>
+        <?php endif; ?>
         <a href="<?= $this->url('tasks', ['action' => 'edit', 'id' => $task->id]) ?>">編集</a>
         <a href="<?= $this->url('tasks', ['action' => 'duplicate', 'id' => $task->id]) ?>">複製</a>
         <a href="<?= $this->url('tasks', ['action' => 'delete', 'id' => $task->id]) ?>">削除</a>
@@ -56,3 +62,6 @@ $base = $this->url('tasks');
         <a href="<?= $base ?>?q=<?= rawurlencode($q) ?>&amp;page=<?= $page + 1 ?>">次へ</a>
     <?php endif; ?>
 </p>
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+<script>flatpickr('.flatpickr', { dateFormat: 'Y-m-d', allowInput: true });</script>
