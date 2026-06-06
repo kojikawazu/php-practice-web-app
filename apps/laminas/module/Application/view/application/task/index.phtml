@@ -19,6 +19,7 @@ $this->headTitle('タスク一覧 (laminas)');
         <span<?= $task->done ? ' style="text-decoration:line-through"' : '' ?>>
             <?= $this->escapeHtml($task->title) ?>
         </span>
+        <a href="<?= $this->url('tasks', ['action' => 'edit', 'id' => $task->id]) ?>">編集</a>
         <a href="<?= $this->url('tasks', ['action' => 'delete', 'id' => $task->id]) ?>">削除</a>
     </li>
 <?php endforeach; ?>

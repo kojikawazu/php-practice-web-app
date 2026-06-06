@@ -36,6 +36,7 @@
                 <span style="{{ $task->done ? 'text-decoration:line-through' : '' }}">
                     {{ $task->title }}
                 </span>
+                <a href="{{ route('tasks.edit', $task) }}">編集</a>
                 <form method="POST" action="{{ route('tasks.toggle', $task) }}" style="display:inline">
                     @csrf
                     @method('PATCH')

@@ -49,6 +49,28 @@ class TaskTest extends TestCase
         $this->assertTrue($task->fresh()->done);
     }
 
+    public function test_user_can_update_own_task_title(): void
+    {
+        $user = $this->user();
+        $task = $user->tasks()->create(['title' => '旧タイトル']);
+
+        $response = $this->actingAs($user)->put(route('tasks.update', $task), ['title' => '新タイトル']);
+
+        $response->assertRedirect(route('tasks.index'));
+        $this->assertSame('新タイトル', $task->fresh()->title);
+    }
+
+    public function test_user_can_open_edit_form_of_own_task(): void
+    {
+        $user = $this->user();
+        $task = $user->tasks()->create(['title' => '編集対象']);
+
+        $response = $this->actingAs($user)->get(route('tasks.edit', $task));
+
+        $response->assertOk();
+        $response->assertSee('編集対象');
+    }
+
     // ---- 準正常系・異常系 ----
 
     public function test_guest_is_redirected_to_login(): void
@@ -97,5 +119,38 @@ class TaskTest extends TestCase
 
         $response->assertNotFound();
         $this->assertDatabaseHas('tasks', ['id' => $othersTask->id]);
+    }
+
+    public function test_update_rejects_empty_title(): void
+    {
+        $user = $this->user();
+        $task = $user->tasks()->create(['title' => '元のまま']);
+
+        $response = $this->actingAs($user)
+            ->from(route('tasks.edit', $task))
+            ->put(route('tasks.update', $task), ['title' => '']);
+
+        $response->assertSessionHasErrors('title');
+        $this->assertSame('元のまま', $task->fresh()->title);
+    }
+
+    public function test_cannot_update_other_users_task(): void
+    {
+        $othersTask = $this->user()->tasks()->create(['title' => '改ざん不可']);
+
+        $response = $this->actingAs($this->user())
+            ->put(route('tasks.update', $othersTask), ['title' => 'のっとり']);
+
+        $response->assertNotFound();
+        $this->assertSame('改ざん不可', $othersTask->fresh()->title);
+    }
+
+    public function test_cannot_open_edit_form_of_other_users_task(): void
+    {
+        $othersTask = $this->user()->tasks()->create(['title' => '覗けない']);
+
+        $response = $this->actingAs($this->user())->get(route('tasks.edit', $othersTask));
+
+        $response->assertNotFound();
     }
 }
