@@ -28,6 +28,26 @@ class TaskController extends Controller
         return redirect()->route('tasks.index');
     }
 
+    public function edit(Task $task): View
+    {
+        $this->authorizeOwnership($task);
+
+        return view('tasks.edit', ['task' => $task]);
+    }
+
+    public function update(Request $request, Task $task): RedirectResponse
+    {
+        $this->authorizeOwnership($task);
+
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+        ]);
+
+        $task->update($validated);
+
+        return redirect()->route('tasks.index');
+    }
+
     public function toggle(Task $task): RedirectResponse
     {
         $this->authorizeOwnership($task);

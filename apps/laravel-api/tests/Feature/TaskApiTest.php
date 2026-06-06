@@ -47,6 +47,18 @@ class TaskApiTest extends TestCase
         $this->assertDatabaseHas('tasks', ['title' => '新規タスク', 'user_id' => $user->id]);
     }
 
+    public function test_update_changes_own_task_title(): void
+    {
+        $user = $this->actingUser();
+        $task = $user->tasks()->create(['title' => '旧タイトル']);
+
+        $response = $this->putJson("/api/tasks/{$task->id}", ['title' => '新タイトル']);
+
+        $response->assertOk();
+        $response->assertJsonFragment(['title' => '新タイトル']);
+        $this->assertSame('新タイトル', $task->fresh()->title);
+    }
+
     // ---- 準正常系・異常系 ----
 
     public function test_guest_cannot_list_tasks(): void
@@ -74,6 +86,29 @@ class TaskApiTest extends TestCase
 
         $response->assertStatus(422);
         $response->assertJsonValidationErrors('title');
+    }
+
+    public function test_update_with_empty_title_returns_422(): void
+    {
+        $user = $this->actingUser();
+        $task = $user->tasks()->create(['title' => '元のまま']);
+
+        $response = $this->putJson("/api/tasks/{$task->id}", ['title' => '']);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('title');
+        $this->assertSame('元のまま', $task->fresh()->title);
+    }
+
+    public function test_cannot_update_other_users_task(): void
+    {
+        $this->actingUser();
+        $othersTask = User::factory()->create()->tasks()->create(['title' => '改ざん不可']);
+
+        $response = $this->putJson("/api/tasks/{$othersTask->id}", ['title' => 'のっとり']);
+
+        $response->assertNotFound();
+        $this->assertSame('改ざん不可', $othersTask->fresh()->title);
     }
 
     public function test_cannot_view_other_users_task(): void

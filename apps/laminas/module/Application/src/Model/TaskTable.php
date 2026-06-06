@@ -24,6 +24,14 @@ class TaskTable
         });
     }
 
+    /** 所有者本人のタスクを1件取得。他人/不在なら null */
+    public function getForUser(int $id, int $userId): ?Task
+    {
+        $row = $this->tableGateway->select(['id' => $id, 'user_id' => $userId])->current();
+
+        return $row ?: null;
+    }
+
     public function saveTask(Task $task): void
     {
         $data = [

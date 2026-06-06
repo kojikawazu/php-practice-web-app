@@ -1,0 +1,15 @@
+<?php
+$this->headTitle('タスク編集 (laminas)');
+?>
+<h1>タスク編集 <small>laminas</small></h1>
+
+<?php if ($error): ?>
+    <p style="color:red"><?= $this->escapeHtml($error) ?></p>
+<?php endif; ?>
+
+<form method="post" action="<?= $this->url('tasks', ['action' => 'edit', 'id' => $task->id]) ?>">
+    <input type="text" name="title" value="<?= $this->escapeHtmlAttr($task->title) ?>">
+    <button type="submit">更新</button>
+</form>
+
+<p><a href="<?= $this->url('tasks') ?>">一覧に戻る</a></p>

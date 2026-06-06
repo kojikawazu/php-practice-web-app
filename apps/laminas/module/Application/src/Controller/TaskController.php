@@ -45,6 +45,37 @@ class TaskController extends AbstractActionController
         ]);
     }
 
+    public function editAction()
+    {
+        if (! $this->auth->hasIdentity()) {
+            return $this->redirect()->toRoute('login');
+        }
+
+        $user = $this->auth->getIdentity();
+        $id = (int) $this->params()->fromRoute('id', 0);
+        $task = $this->table->getForUser($id, (int) $user->id);
+
+        // 他人のタスク・存在しない場合は一覧へ戻す
+        if (! $task) {
+            return $this->redirect()->toRoute('tasks');
+        }
+
+        $request = $this->getRequest();
+        if ($request->isPost()) {
+            $title = trim((string) $this->params()->fromPost('title', ''));
+            if ($title === '') {
+                return new ViewModel(['task' => $task, 'error' => 'タイトルは必須です。']);
+            }
+
+            $task->title = $title;
+            $this->table->saveTask($task);
+
+            return $this->redirect()->toRoute('tasks');
+        }
+
+        return new ViewModel(['task' => $task, 'error' => null]);
+    }
+
     public function deleteAction()
     {
         if (! $this->auth->hasIdentity()) {
