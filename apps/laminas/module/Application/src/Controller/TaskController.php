@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Application\Controller;
 
+use Application\InputFilter\ErrorFormatter;
+use Application\InputFilter\TaskInputFilter;
 use Application\Model\Task;
 use Application\Model\TaskTable;
 use Laminas\Authentication\AuthenticationService;
@@ -27,16 +29,19 @@ class TaskController extends AbstractActionController
         $user = $this->auth->getIdentity();
         $request = $this->getRequest();
 
+        $errors = [];
         if ($request->isPost()) {
-            $title = trim((string) $this->params()->fromPost('title', ''));
-            if ($title !== '') {
+            $filter = new TaskInputFilter();
+            $filter->setData($request->getPost()->toArray());
+            if ($filter->isValid()) {
                 $task = new Task();
-                $task->title = $title;
+                $task->title = $filter->getValues()['title'];
                 $task->user_id = (int) $user->id;
                 $this->table->saveTask($task);
-            }
 
-            return $this->redirect()->toRoute('tasks');
+                return $this->redirect()->toRoute('tasks');
+            }
+            $errors = ErrorFormatter::flatten($filter);
         }
 
         $perPage = 5;
@@ -57,6 +62,7 @@ class TaskController extends AbstractActionController
             'page'       => $page,
             'totalPages' => $totalPages,
             'total'      => $total,
+            'errors'     => $errors,
         ]);
     }
 
@@ -76,19 +82,20 @@ class TaskController extends AbstractActionController
         }
 
         $request = $this->getRequest();
+        $errors = [];
         if ($request->isPost()) {
-            $title = trim((string) $this->params()->fromPost('title', ''));
-            if ($title === '') {
-                return new ViewModel(['task' => $task, 'error' => 'タイトルは必須です。']);
+            $filter = new TaskInputFilter();
+            $filter->setData($request->getPost()->toArray());
+            if ($filter->isValid()) {
+                $task->title = $filter->getValues()['title'];
+                $this->table->saveTask($task);
+
+                return $this->redirect()->toRoute('tasks');
             }
-
-            $task->title = $title;
-            $this->table->saveTask($task);
-
-            return $this->redirect()->toRoute('tasks');
+            $errors = ErrorFormatter::flatten($filter);
         }
 
-        return new ViewModel(['task' => $task, 'error' => null]);
+        return new ViewModel(['task' => $task, 'errors' => $errors]);
     }
 
     public function deleteAction()

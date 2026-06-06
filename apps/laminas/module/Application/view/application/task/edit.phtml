@@ -3,8 +3,12 @@ $this->headTitle('タスク編集 (laminas)');
 ?>
 <h1>タスク編集 <small>laminas</small></h1>
 
-<?php if ($error): ?>
-    <p style="color:red"><?= $this->escapeHtml($error) ?></p>
+<?php if (! empty($errors)): ?>
+    <ul style="color:red">
+        <?php foreach ($errors as $e): ?>
+            <li><?= $this->escapeHtml($e) ?></li>
+        <?php endforeach; ?>
+    </ul>
 <?php endif; ?>
 
 <form method="post" action="<?= $this->url('tasks', ['action' => 'edit', 'id' => $task->id]) ?>">

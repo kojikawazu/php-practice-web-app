@@ -8,7 +8,7 @@
 |--------|--------|----|------|
 | laravel-fullstack | PHPUnit（`php artisan test`） | SQLite in-memory | Feature（HTTP）|
 | laravel-api | PHPUnit（`php artisan test`） | SQLite in-memory | Feature（JSON API）|
-| laminas | PHPUnit（`vendor/bin/phpunit`） | なし（モデル/サービス単体）| Unit（Task / PasswordHasher）+ 既存 Controller。認証フローはライブ smoke |
+| laminas | PHPUnit（`vendor/bin/phpunit`） | なし（モデル/サービス/InputFilter 単体）| Unit（Task / PasswordHasher / InputFilter×3）+ 既存 Controller。認証・CRUD フローはライブ smoke |
 
 > テストを SQLite in-memory にしている理由: `RefreshDatabase` は `migrate:fresh`（全テーブル DROP）を行うため、共有 MySQL に対して実行すると他アプリのテーブルを巻き込む。テストは隔離された in-memory DB で実行し、prefix 動作は実 DB へのマイグレーションで確認する。
 
@@ -25,6 +25,7 @@
 | api Token | 一覧(ハッシュ非公開)/発行/期限付き発行/失効 | name必須422 / 不正expiry422 / 他人失効404 / guest401 / 期限切れトークン401 |
 | laminas Task model | exchangeArray全項目 / getArrayCopy | 空配列デフォルト / '0'→false / 数値文字列→int / false→0 |
 | laminas PasswordHasher | hash→verify / bcrypt形式 | 誤パスワード / 空 / 不正ハッシュ / ソルトで毎回異なる |
+| laminas InputFilter | Task/Register/Login の有効入力通過・StringTrim 整形 | 必須欠落 / 空 / 空白のみ / 長すぎ(255超) / 短パスワード(8未満) |
 
 > laminas のセッション認証フロー（register→login→保護→logout）は PHPUnit（CLI/セッション）でなく **ライブ smoke テスト（curl + cookie）** で検証する方針。認証ロジックの核（bcrypt）は `PasswordHasherTest` で単体保証する。
 

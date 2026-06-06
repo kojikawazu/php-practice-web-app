@@ -9,6 +9,14 @@ $base = $this->url('tasks');
 
 <h1>タスク一覧 <small>laminas / TableGateway</small></h1>
 
+<?php if (! empty($errors)): ?>
+    <ul style="color:red">
+        <?php foreach ($errors as $e): ?>
+            <li><?= $this->escapeHtml($e) ?></li>
+        <?php endforeach; ?>
+    </ul>
+<?php endif; ?>
+
 <form method="post" action="<?= $base ?>">
     <input type="text" name="title" placeholder="タスク名">
     <button type="submit">追加</button>
