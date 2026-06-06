@@ -30,6 +30,14 @@
         <button type="submit">追加</button>
     </form>
 
+    <form method="GET" action="{{ route('tasks.index') }}">
+        <input type="text" name="q" placeholder="タイトルで検索" value="{{ $q }}">
+        <button type="submit">検索</button>
+        @if ($q !== '')
+            <a href="{{ route('tasks.index') }}">クリア</a>
+        @endif
+    </form>
+
     <ul>
         @forelse ($tasks as $task)
             <li>
@@ -52,5 +60,7 @@
             <li>タスクはありません。</li>
         @endforelse
     </ul>
+
+    {{ $tasks->links() }}
 </body>
 </html>

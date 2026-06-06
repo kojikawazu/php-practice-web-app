@@ -71,6 +71,34 @@ class TaskTest extends TestCase
         $response->assertSee('編集対象');
     }
 
+    public function test_index_paginates_at_5_per_page(): void
+    {
+        $user = $this->user();
+        foreach (range(1, 7) as $n) {
+            $user->tasks()->create(['title' => "タスク{$n}"]);
+        }
+
+        $page1 = $this->actingAs($user)->get(route('tasks.index'));
+        $page1->assertOk();
+        $this->assertCount(5, $page1->viewData('tasks'));
+
+        $page2 = $this->actingAs($user)->get(route('tasks.index', ['page' => 2]));
+        $this->assertCount(2, $page2->viewData('tasks'));
+    }
+
+    public function test_search_filters_by_title(): void
+    {
+        $user = $this->user();
+        $user->tasks()->create(['title' => '買い物に行く']);
+        $user->tasks()->create(['title' => '掃除をする']);
+
+        $response = $this->actingAs($user)->get(route('tasks.index', ['q' => '買い物']));
+
+        $response->assertOk();
+        $response->assertSee('買い物に行く');
+        $response->assertDontSee('掃除をする');
+    }
+
     // ---- 準正常系・異常系 ----
 
     public function test_guest_is_redirected_to_login(): void
@@ -152,5 +180,28 @@ class TaskTest extends TestCase
         $response = $this->actingAs($this->user())->get(route('tasks.edit', $othersTask));
 
         $response->assertNotFound();
+    }
+
+    public function test_search_with_no_match_shows_empty(): void
+    {
+        $user = $this->user();
+        $user->tasks()->create(['title' => '買い物']);
+
+        $response = $this->actingAs($user)->get(route('tasks.index', ['q' => '存在しないキーワード']));
+
+        $response->assertOk();
+        $response->assertSee('タスクはありません');
+        $this->assertCount(0, $response->viewData('tasks'));
+    }
+
+    public function test_search_does_not_leak_other_users_matching_tasks(): void
+    {
+        $this->user()->tasks()->create(['title' => '秘密の買い物']);
+
+        $response = $this->actingAs($this->user())->get(route('tasks.index', ['q' => '買い物']));
+
+        $response->assertOk();
+        $response->assertDontSee('秘密の買い物');
+        $this->assertCount(0, $response->viewData('tasks'));
     }
 }

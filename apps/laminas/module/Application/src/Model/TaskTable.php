@@ -32,6 +32,31 @@ class TaskTable
         return $row ?: null;
     }
 
+    /** ページ単位で取得（任意のタイトル検索付き） */
+    public function fetchPageByUser(int $userId, int $perPage, int $offset, string $search = ''): iterable
+    {
+        return $this->tableGateway->select(function ($select) use ($userId, $perPage, $offset, $search) {
+            $select->where(['user_id' => $userId]);
+            if ($search !== '') {
+                $select->where->like('title', '%' . $search . '%');
+            }
+            $select->order('id DESC')->limit($perPage)->offset($offset);
+        });
+    }
+
+    /** 検索条件に一致する件数（ページ数計算用） */
+    public function countByUser(int $userId, string $search = ''): int
+    {
+        $result = $this->tableGateway->select(function ($select) use ($userId, $search) {
+            $select->where(['user_id' => $userId]);
+            if ($search !== '') {
+                $select->where->like('title', '%' . $search . '%');
+            }
+        });
+
+        return $result->count();
+    }
+
     public function saveTask(Task $task): void
     {
         $data = [
