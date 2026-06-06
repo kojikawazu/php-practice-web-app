@@ -20,6 +20,22 @@ class TaskTest extends TestCase
         return User::factory()->create();
     }
 
+    /** 2ステップ（確認→確定）で作成 */
+    private function createTask(User $user, array $data)
+    {
+        $this->actingAs($user)->post(route('tasks.store.confirm'), $data);
+
+        return $this->actingAs($user)->post(route('tasks.store'));
+    }
+
+    /** 2ステップ（確認→確定）で更新 */
+    private function updateTask(User $user, Task $task, array $data)
+    {
+        $this->actingAs($user)->post(route('tasks.update.confirm', $task), $data);
+
+        return $this->actingAs($user)->put(route('tasks.update', $task));
+    }
+
     // ---- 正常系 ----
 
     public function test_index_displays_only_own_tasks(): void
@@ -37,10 +53,33 @@ class TaskTest extends TestCase
     {
         $user = $this->user();
 
-        $response = $this->actingAs($user)->post(route('tasks.store'), ['title' => '部屋を掃除する']);
+        $response = $this->createTask($user, ['title' => '部屋を掃除する']);
 
         $response->assertRedirect(route('tasks.index'));
         $this->assertDatabaseHas('tasks', ['title' => '部屋を掃除する', 'user_id' => $user->id]);
+    }
+
+    public function test_store_confirm_shows_review_without_creating(): void
+    {
+        $user = $this->user();
+
+        $response = $this->actingAs($user)->post(route('tasks.store.confirm'), ['title' => '確認するタスク']);
+
+        $response->assertOk();
+        $response->assertSee('確認するタスク');
+        $this->assertDatabaseCount('tasks', 0); // 確定するまで作成されない
+    }
+
+    public function test_duplicate_confirm_shows_source_without_duplicating(): void
+    {
+        $user = $this->user();
+        $task = $user->tasks()->create(['title' => '複製元タスク']);
+
+        $response = $this->actingAs($user)->get(route('tasks.duplicate.confirm', $task));
+
+        $response->assertOk();
+        $response->assertSee('複製元タスク');
+        $this->assertSame(1, $user->tasks()->count()); // まだ複製されない
     }
 
     public function test_toggle_marks_own_task_done(): void
@@ -58,7 +97,7 @@ class TaskTest extends TestCase
         $user = $this->user();
         $task = $user->tasks()->create(['title' => '旧タイトル']);
 
-        $response = $this->actingAs($user)->put(route('tasks.update', $task), ['title' => '新タイトル']);
+        $response = $this->updateTask($user, $task, ['title' => '新タイトル']);
 
         $response->assertRedirect(route('tasks.index'));
         $this->assertSame('新タイトル', $task->fresh()->title);
@@ -91,7 +130,7 @@ class TaskTest extends TestCase
     {
         $user = $this->user();
 
-        $response = $this->actingAs($user)->post(route('tasks.store'), [
+        $response = $this->createTask($user, [
             'title' => '期間付きタスク',
             'start_date' => '2026-06-10',
             'end_date' => '2026-06-20',
@@ -172,7 +211,7 @@ class TaskTest extends TestCase
     {
         $response = $this->actingAs($this->user())
             ->from(route('tasks.index'))
-            ->post(route('tasks.store'), ['title' => '']);
+            ->post(route('tasks.store.confirm'), ['title' => '']);
 
         $response->assertSessionHasErrors('title');
         $this->assertDatabaseCount('tasks', 0);
@@ -205,7 +244,7 @@ class TaskTest extends TestCase
 
         $response = $this->actingAs($user)
             ->from(route('tasks.edit', $task))
-            ->put(route('tasks.update', $task), ['title' => '']);
+            ->post(route('tasks.update.confirm', $task), ['title' => '']);
 
         $response->assertSessionHasErrors('title');
         $this->assertSame('元のまま', $task->fresh()->title);
@@ -216,7 +255,7 @@ class TaskTest extends TestCase
         $othersTask = $this->user()->tasks()->create(['title' => '改ざん不可']);
 
         $response = $this->actingAs($this->user())
-            ->put(route('tasks.update', $othersTask), ['title' => 'のっとり']);
+            ->post(route('tasks.update.confirm', $othersTask), ['title' => 'のっとり']);
 
         $response->assertNotFound();
         $this->assertSame('改ざん不可', $othersTask->fresh()->title);
@@ -245,7 +284,7 @@ class TaskTest extends TestCase
     {
         $response = $this->actingAs($this->user())
             ->from(route('tasks.index'))
-            ->post(route('tasks.store'), [
+            ->post(route('tasks.store.confirm'), [
                 'title' => '逆転期間',
                 'start_date' => '2026-06-20',
                 'end_date' => '2026-06-10',
@@ -259,7 +298,7 @@ class TaskTest extends TestCase
     {
         $response = $this->actingAs($this->user())
             ->from(route('tasks.index'))
-            ->post(route('tasks.store'), [
+            ->post(route('tasks.store.confirm'), [
                 'title' => '不正日付',
                 'start_date' => 'not-a-date',
             ]);
@@ -274,7 +313,7 @@ class TaskTest extends TestCase
         Storage::fake('uploads');
         $user = $this->user();
 
-        $response = $this->actingAs($user)->post(route('tasks.store'), [
+        $response = $this->createTask($user, [
             'title' => '画像付き',
             'image' => UploadedFile::fake()->create('photo.jpg', 100, 'image/jpeg'),
         ]);
@@ -289,7 +328,7 @@ class TaskTest extends TestCase
     {
         Storage::fake('uploads');
         $user = $this->user();
-        $this->actingAs($user)->post(route('tasks.store'), [
+        $this->createTask($user, [
             'title' => '画像', 'image' => UploadedFile::fake()->create('p.png', 100, 'image/png'),
         ]);
         $task = $user->tasks()->first();
@@ -303,13 +342,13 @@ class TaskTest extends TestCase
     {
         Storage::fake('uploads');
         $user = $this->user();
-        $this->actingAs($user)->post(route('tasks.store'), [
+        $this->createTask($user, [
             'title' => '元', 'image' => UploadedFile::fake()->create('old.jpg', 100, 'image/jpeg'),
         ]);
         $task = $user->tasks()->first();
         $old = $task->image_path;
 
-        $this->actingAs($user)->put(route('tasks.update', $task), [
+        $this->updateTask($user, $task, [
             'title' => '元', 'image' => UploadedFile::fake()->create('new.jpg', 100, 'image/jpeg'),
         ]);
 
@@ -323,7 +362,7 @@ class TaskTest extends TestCase
     {
         Storage::fake('uploads');
         $user = $this->user();
-        $this->actingAs($user)->post(route('tasks.store'), [
+        $this->createTask($user, [
             'title' => '原本', 'image' => UploadedFile::fake()->create('o.jpg', 100, 'image/jpeg'),
         ]);
         $task = $user->tasks()->first();
@@ -344,7 +383,7 @@ class TaskTest extends TestCase
 
         $response = $this->actingAs($this->user())
             ->from(route('tasks.index'))
-            ->post(route('tasks.store'), [
+            ->post(route('tasks.store.confirm'), [
                 'title' => '不正ファイル',
                 'image' => UploadedFile::fake()->create('doc.pdf', 100, 'application/pdf'),
             ]);
@@ -357,7 +396,7 @@ class TaskTest extends TestCase
     {
         Storage::fake('uploads');
         $owner = $this->user();
-        $this->actingAs($owner)->post(route('tasks.store'), [
+        $this->createTask($owner, [
             'title' => '他人画像', 'image' => UploadedFile::fake()->create('s.jpg', 100, 'image/jpeg'),
         ]);
         $task = $owner->tasks()->first();
@@ -387,7 +426,7 @@ class TaskTest extends TestCase
         });
         $user = $this->user();
 
-        $response = $this->actingAs($user)->post(route('tasks.store'), [
+        $response = $this->createTask($user, [
             'title' => 'リンク付き',
             'url' => 'https://example.com',
         ]);
@@ -409,7 +448,7 @@ class TaskTest extends TestCase
 
         $response = $this->actingAs($this->user())
             ->from(route('tasks.index'))
-            ->post(route('tasks.store'), [
+            ->post(route('tasks.store.confirm'), [
                 'title' => '内部URL',
                 'url' => 'http://169.254.169.254/latest/meta-data/',
             ]);
@@ -422,7 +461,7 @@ class TaskTest extends TestCase
     {
         $response = $this->actingAs($this->user())
             ->from(route('tasks.index'))
-            ->post(route('tasks.store'), [
+            ->post(route('tasks.store.confirm'), [
                 'title' => 'ftp',
                 'url' => 'ftp://example.com/file',
             ]);
