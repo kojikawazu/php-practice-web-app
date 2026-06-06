@@ -30,7 +30,7 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('tasks.store') }}" enctype="multipart/form-data" class="bg-white rounded-lg shadow p-4 mb-4 flex flex-wrap gap-2 items-center">
+        <form method="POST" action="{{ route('tasks.store.confirm') }}" enctype="multipart/form-data" class="bg-white rounded-lg shadow p-4 mb-4 flex flex-wrap gap-2 items-center">
             @csrf
             <input type="text" name="title" placeholder="タスク名" value="{{ old('title') }}" class="border rounded px-3 py-2 flex-1 min-w-40">
             <input type="text" class="flatpickr border rounded px-3 py-2 w-32" name="start_date" placeholder="開始日" value="{{ old('start_date') }}">
@@ -65,10 +65,7 @@
                         <a href="{{ $task->url }}" target="_blank" rel="noopener noreferrer nofollow" title="{{ $task->url }}" class="text-xs text-indigo-600 hover:underline">🔗 {{ $task->preview_title ?? $task->url }}</a>
                     @endif
                     <a href="{{ route('tasks.edit', $task) }}" class="text-sm text-blue-600 hover:underline">編集</a>
-                    <form method="POST" action="{{ route('tasks.duplicate', $task) }}">
-                        @csrf
-                        <button type="submit" class="text-sm text-blue-600 hover:underline">複製</button>
-                    </form>
+                    <a href="{{ route('tasks.duplicate.confirm', $task) }}" class="text-sm text-blue-600 hover:underline">複製</a>
                     <form method="POST" action="{{ route('tasks.toggle', $task) }}">
                         @csrf
                         @method('PATCH')

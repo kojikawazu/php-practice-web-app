@@ -19,6 +19,7 @@ class TaskController extends Controller
 {
     private const PER_PAGE = 5;
     private const IMAGE_RULES = ['nullable', 'image', 'mimes:jpeg,png,webp,gif', 'max:2048'];
+    private const CONFIRM_KEY = 'task_confirm';
 
     public function index(Request $request): View
     {
@@ -33,29 +34,78 @@ class TaskController extends Controller
         return view('tasks.index', ['tasks' => $tasks, 'q' => $q]);
     }
 
-    public function store(Request $request, LinkPreviewService $preview): RedirectResponse
-    {
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'start_date' => ['nullable', 'date'],
-            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
-            'image' => self::IMAGE_RULES,
-            'url' => ['nullable', 'url:http,https', 'max:2048'],
-        ]);
+    // ---- 新規登録（2ステップ: 確認 → 確定）----
 
-        $data = [
-            'title' => $validated['title'],
-            'start_date' => $validated['start_date'] ?? null,
-            'end_date' => $validated['end_date'] ?? null,
-        ];
-        if ($request->hasFile('image')) {
-            $data['image_path'] = $this->storeImage($request->file('image'));
+    public function storeConfirm(Request $request, LinkPreviewService $preview): View
+    {
+        $payload = $this->validateAndStash($request, $preview, 'create', null);
+
+        return view('tasks.confirm', ['mode' => 'create', 'payload' => $payload, 'task' => null]);
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        $payload = session(self::CONFIRM_KEY);
+        if (! $payload || ($payload['mode'] ?? null) !== 'create') {
+            return redirect()->route('tasks.index');
         }
-        $this->applyPreview($data, $validated['url'] ?? null, $preview);
+
+        $data = $this->dataFromPayload($payload);
+        if (! empty($payload['image_tmp'])) {
+            $data['image_path'] = $this->moveTemp($payload['image_tmp']);
+        }
 
         Auth::user()->tasks()->create($data);
+        session()->forget(self::CONFIRM_KEY);
 
         return redirect()->route('tasks.index');
+    }
+
+    // ---- 編集（2ステップ）----
+
+    public function edit(Task $task): View
+    {
+        $this->authorizeOwnership($task);
+
+        return view('tasks.edit', ['task' => $task]);
+    }
+
+    public function updateConfirm(Request $request, Task $task, LinkPreviewService $preview): View
+    {
+        $this->authorizeOwnership($task);
+        $payload = $this->validateAndStash($request, $preview, 'edit', $task);
+
+        return view('tasks.confirm', ['mode' => 'edit', 'payload' => $payload, 'task' => $task]);
+    }
+
+    public function update(Request $request, Task $task): RedirectResponse
+    {
+        $this->authorizeOwnership($task);
+
+        $payload = session(self::CONFIRM_KEY);
+        if (! $payload || ($payload['mode'] ?? null) !== 'edit' || ($payload['task_id'] ?? null) !== $task->id) {
+            return redirect()->route('tasks.index');
+        }
+
+        $data = $this->dataFromPayload($payload);
+        if (! empty($payload['image_tmp'])) {
+            $this->deleteImage($task->image_path);
+            $data['image_path'] = $this->moveTemp($payload['image_tmp']);
+        }
+
+        $task->update($data);
+        session()->forget(self::CONFIRM_KEY);
+
+        return redirect()->route('tasks.index');
+    }
+
+    // ---- 複製（確認 → 実行）----
+
+    public function duplicateConfirm(Task $task): View
+    {
+        $this->authorizeOwnership($task);
+
+        return view('tasks.confirm', ['mode' => 'duplicate', 'payload' => null, 'task' => $task]);
     }
 
     public function duplicate(Task $task): RedirectResponse
@@ -68,42 +118,10 @@ class TaskController extends Controller
             'start_date' => $task->start_date?->format('Y-m-d'),
             'end_date' => $task->end_date?->format('Y-m-d'),
             'image_path' => $this->copyImage($task->image_path),
+            'url' => $task->url,
+            'preview_title' => $task->preview_title,
+            'preview_image' => $task->preview_image,
         ]);
-
-        return redirect()->route('tasks.index');
-    }
-
-    public function edit(Task $task): View
-    {
-        $this->authorizeOwnership($task);
-
-        return view('tasks.edit', ['task' => $task]);
-    }
-
-    public function update(Request $request, Task $task, LinkPreviewService $preview): RedirectResponse
-    {
-        $this->authorizeOwnership($task);
-
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'start_date' => ['nullable', 'date'],
-            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
-            'image' => self::IMAGE_RULES,
-            'url' => ['nullable', 'url:http,https', 'max:2048'],
-        ]);
-
-        $data = [
-            'title' => $validated['title'],
-            'start_date' => $validated['start_date'] ?? null,
-            'end_date' => $validated['end_date'] ?? null,
-        ];
-        if ($request->hasFile('image')) {
-            $this->deleteImage($task->image_path);
-            $data['image_path'] = $this->storeImage($request->file('image'));
-        }
-        $this->applyPreview($data, $validated['url'] ?? null, $preview);
-
-        $task->update($data);
 
         return redirect()->route('tasks.index');
     }
@@ -134,32 +152,88 @@ class TaskController extends Controller
         return response()->file(Storage::disk('uploads')->path($task->image_path));
     }
 
-    /** URL を安全に取得してプレビュー（title/og:image）を $data に反映。空 URL はクリア。 */
-    private function applyPreview(array &$data, ?string $url, LinkPreviewService $preview): void
+    /**
+     * 入力を検証し、確認ステップ用にセッション＋一時ファイルへ退避する。
+     * 画像は uploads ディスクの tmp/ に一時保存、URL はこの時点で安全に取得する。
+     */
+    private function validateAndStash(Request $request, LinkPreviewService $preview, string $mode, ?Task $task): array
     {
-        $url = $url !== null ? trim($url) : '';
-        if ($url === '') {
-            $data['url'] = null;
-            $data['preview_title'] = null;
-            $data['preview_image'] = null;
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+            'image' => self::IMAGE_RULES,
+            'url' => ['nullable', 'url:http,https', 'max:2048'],
+        ]);
 
-            return;
+        // 前回の未確定 tmp が残っていれば掃除
+        $this->clearPendingTemp();
+
+        $payload = [
+            'mode' => $mode,
+            'task_id' => $task?->id,
+            'title' => $validated['title'],
+            'start_date' => $validated['start_date'] ?? null,
+            'end_date' => $validated['end_date'] ?? null,
+            'image_tmp' => null,
+            'image_name' => null,
+            'url' => null,
+            'preview_title' => null,
+            'preview_image' => null,
+        ];
+
+        if ($request->hasFile('image')) {
+            $payload['image_tmp'] = $request->file('image')->store('tmp', 'uploads');
+            $payload['image_name'] = $request->file('image')->getClientOriginalName();
         }
 
-        try {
-            $meta = $preview->fetch($url);
-        } catch (BlockedUrlException $e) {
-            throw ValidationException::withMessages(['url' => $e->getMessage()]);
+        $url = trim((string) ($validated['url'] ?? ''));
+        if ($url !== '') {
+            try {
+                $meta = $preview->fetch($url);
+            } catch (BlockedUrlException $e) {
+                $this->deleteImage($payload['image_tmp']); // 取得失敗時は一時画像も破棄
+                throw ValidationException::withMessages(['url' => $e->getMessage()]);
+            }
+            $payload['url'] = $url;
+            $payload['preview_title'] = $meta['title'] ?? null;
+            $payload['preview_image'] = $meta['image'] ?? null;
         }
 
-        $data['url'] = $url;
-        $data['preview_title'] = $meta['title'] ?? null;
-        $data['preview_image'] = $meta['image'] ?? null;
+        session([self::CONFIRM_KEY => $payload]);
+
+        return $payload;
     }
 
-    private function storeImage(UploadedFile $file): string
+    private function dataFromPayload(array $p): array
     {
-        return $file->store('', 'uploads');
+        return [
+            'title' => $p['title'],
+            'start_date' => $p['start_date'] ?? null,
+            'end_date' => $p['end_date'] ?? null,
+            'url' => $p['url'] ?? null,
+            'preview_title' => $p['preview_title'] ?? null,
+            'preview_image' => $p['preview_image'] ?? null,
+        ];
+    }
+
+    /** 未確定で残っているセッションの一時画像を削除する */
+    private function clearPendingTemp(): void
+    {
+        $prev = session(self::CONFIRM_KEY);
+        if ($prev && ! empty($prev['image_tmp'])) {
+            $this->deleteImage($prev['image_tmp']);
+        }
+    }
+
+    /** tmp/ の一時画像を本保存（ランダム名）へ移動し、保存パスを返す */
+    private function moveTemp(string $tmp): string
+    {
+        $ext = pathinfo($tmp, PATHINFO_EXTENSION);
+        $final = (string) Str::uuid() . ($ext ? '.' . $ext : '');
+        Storage::disk('uploads')->move($tmp, $final);
+
+        return $final;
     }
 
     private function deleteImage(?string $path): void

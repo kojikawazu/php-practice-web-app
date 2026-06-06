@@ -22,9 +22,8 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('tasks.update', $task) }}" enctype="multipart/form-data" class="bg-white rounded-lg shadow p-4 space-y-3">
+        <form method="POST" action="{{ route('tasks.update.confirm', $task) }}" enctype="multipart/form-data" class="bg-white rounded-lg shadow p-4 space-y-3">
             @csrf
-            @method('PUT')
             <div>
                 <label class="block text-sm text-gray-600 mb-1">タイトル</label>
                 <input type="text" name="title" value="{{ old('title', $task->title) }}" class="border rounded px-3 py-2 w-full">
