@@ -47,6 +47,14 @@ Docker Compose のサービス構成:
 
 PHP 拡張: `pdo_mysql` ほか各 FW が要求するもの。`docker/php/Dockerfile` で導入。
 
+## CI（継続的インテグレーション）
+
+`.github/workflows/ci.yml` が push（main）/ Pull Request 時に実行される。
+
+- `shivammathur/setup-php`（PHP 8.3）で各アプリをセットアップ（Docker 不使用）
+- matrix で 3 アプリを並行ジョブ実行（`fail-fast: false`）
+- Laravel ×2 は `php artisan test`（テスト DB は SQLite in-memory のため MySQL サービス不要）、Laminas は `vendor/bin/phpunit`
+
 ## デプロイ
 
 学習用のためローカル `docker compose up` のみ。環境変数は `.env`（`.env.example` を雛形）。
