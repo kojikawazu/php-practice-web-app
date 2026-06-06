@@ -34,9 +34,11 @@ class TaskController extends AbstractActionController
             $filter = new TaskInputFilter();
             $filter->setData($request->getPost()->toArray());
             if ($filter->isValid()) {
+                $values = $filter->getValues();
                 $task = new Task();
-                $task->title = $filter->getValues()['title'];
+                $task->title = $values['title'];
                 $task->user_id = (int) $user->id;
+                $this->applyDates($task, $values);
                 $this->table->saveTask($task);
 
                 return $this->redirect()->toRoute('tasks');
@@ -87,7 +89,9 @@ class TaskController extends AbstractActionController
             $filter = new TaskInputFilter();
             $filter->setData($request->getPost()->toArray());
             if ($filter->isValid()) {
-                $task->title = $filter->getValues()['title'];
+                $values = $filter->getValues();
+                $task->title = $values['title'];
+                $this->applyDates($task, $values);
                 $this->table->saveTask($task);
 
                 return $this->redirect()->toRoute('tasks');
@@ -113,10 +117,19 @@ class TaskController extends AbstractActionController
             $copy->title = mb_substr($task->title . '（コピー）', 0, 255);
             $copy->done = false;
             $copy->user_id = (int) $user->id;
+            $copy->start_date = $task->start_date;
+            $copy->end_date = $task->end_date;
             $this->table->saveTask($copy);
         }
 
         return $this->redirect()->toRoute('tasks');
+    }
+
+    /** InputFilter の値から日付（空文字は null）を Task に反映する */
+    private function applyDates(Task $task, array $values): void
+    {
+        $task->start_date = ($values['start_date'] ?? '') !== '' ? $values['start_date'] : null;
+        $task->end_date = ($values['end_date'] ?? '') !== '' ? $values['end_date'] : null;
     }
 
     public function deleteAction()

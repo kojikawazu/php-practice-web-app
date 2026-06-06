@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>タスク一覧 (laravel-fullstack)</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
 </head>
 <body>
     <p>
@@ -27,6 +28,8 @@
     <form method="POST" action="{{ route('tasks.store') }}">
         @csrf
         <input type="text" name="title" placeholder="タスク名" value="{{ old('title') }}">
+        <input type="text" class="flatpickr" name="start_date" placeholder="開始日" value="{{ old('start_date') }}">
+        <input type="text" class="flatpickr" name="end_date" placeholder="終了日" value="{{ old('end_date') }}">
         <button type="submit">追加</button>
     </form>
 
@@ -44,6 +47,9 @@
                 <span style="{{ $task->done ? 'text-decoration:line-through' : '' }}">
                     {{ $task->title }}
                 </span>
+                @if ($task->start_date || $task->end_date)
+                    <small>[{{ $task->start_date?->format('Y-m-d') ?? '—' }} 〜 {{ $task->end_date?->format('Y-m-d') ?? '—' }}]</small>
+                @endif
                 <a href="{{ route('tasks.edit', $task) }}">編集</a>
                 <form method="POST" action="{{ route('tasks.duplicate', $task) }}" style="display:inline">
                     @csrf
@@ -66,5 +72,8 @@
     </ul>
 
     {{ $tasks->links() }}
+
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+    <script>flatpickr('.flatpickr', { dateFormat: 'Y-m-d', allowInput: true });</script>
 </body>
 </html>

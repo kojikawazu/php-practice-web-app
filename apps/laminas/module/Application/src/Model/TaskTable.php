@@ -60,9 +60,11 @@ class TaskTable
     public function saveTask(Task $task): void
     {
         $data = [
-            'title'   => $task->title,
-            'done'    => $task->done ? 1 : 0,
-            'user_id' => $task->user_id,
+            'title'      => $task->title,
+            'done'       => $task->done ? 1 : 0,
+            'user_id'    => $task->user_id,
+            'start_date' => $task->start_date,
+            'end_date'   => $task->end_date,
         ];
 
         if ($task->id === null) {

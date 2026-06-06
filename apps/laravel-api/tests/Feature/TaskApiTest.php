@@ -91,6 +91,21 @@ class TaskApiTest extends TestCase
         $this->assertDatabaseHas('tasks', ['title' => '新規タスク', 'user_id' => $user->id]);
     }
 
+    public function test_store_with_dates(): void
+    {
+        $user = $this->actingUser();
+
+        $response = $this->postJson('/api/tasks', [
+            'title' => '期間付き',
+            'start_date' => '2026-06-10',
+            'end_date' => '2026-06-20',
+        ]);
+
+        $response->assertCreated();
+        $response->assertJsonFragment(['start_date' => '2026-06-10', 'end_date' => '2026-06-20']);
+        $this->assertDatabaseHas('tasks', ['title' => '期間付き', 'start_date' => '2026-06-10', 'end_date' => '2026-06-20']);
+    }
+
     public function test_duplicate_creates_a_copy(): void
     {
         $user = $this->actingUser();
@@ -154,6 +169,30 @@ class TaskApiTest extends TestCase
 
         $response->assertStatus(422);
         $response->assertJsonValidationErrors('title');
+    }
+
+    public function test_store_rejects_end_date_before_start_date(): void
+    {
+        $this->actingUser();
+
+        $response = $this->postJson('/api/tasks', [
+            'title' => '逆転',
+            'start_date' => '2026-06-20',
+            'end_date' => '2026-06-10',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('end_date');
+    }
+
+    public function test_store_rejects_invalid_date(): void
+    {
+        $this->actingUser();
+
+        $response = $this->postJson('/api/tasks', ['title' => 'x', 'start_date' => 'not-a-date']);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('start_date');
     }
 
     public function test_update_with_empty_title_returns_422(): void

@@ -30,6 +30,8 @@ class TaskController extends Controller
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'done' => ['sometimes', 'boolean'],
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
         ]);
 
         $task = $request->user()->tasks()->create($validated);
@@ -44,6 +46,8 @@ class TaskController extends Controller
         $copy = $request->user()->tasks()->create([
             'title' => mb_substr($task->title . '（コピー）', 0, 255),
             'done' => false,
+            'start_date' => $task->start_date?->format('Y-m-d'),
+            'end_date' => $task->end_date?->format('Y-m-d'),
         ]);
 
         return response()->json($copy, 201);
@@ -63,6 +67,8 @@ class TaskController extends Controller
         $validated = $request->validate([
             'title' => ['sometimes', 'required', 'string', 'max:255'],
             'done' => ['sometimes', 'boolean'],
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
         ]);
 
         $task->update($validated);

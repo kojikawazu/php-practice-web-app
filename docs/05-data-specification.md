@@ -22,8 +22,11 @@ Laravel は `config/database.php` の接続設定で `prefix` と `migrations` �
 | 属性 | 型 | 説明 |
 |------|----|------|
 | id | BIGINT (PK, AI) | 識別子 |
+| user_id | BIGINT (FK) | 所有ユーザー（認証導入で追加） |
 | title | VARCHAR(255) | タスク名（必須） |
 | done | TINYINT(1) | 完了フラグ（既定 0） |
+| start_date | DATE NULL | 開始日（任意） |
+| end_date | DATE NULL | 終了日（任意・開始日以降） |
 | created_at | TIMESTAMP | 作成日時 |
 | updated_at | TIMESTAMP | 更新日時 |
 
