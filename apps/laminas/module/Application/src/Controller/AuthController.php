@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Application\Controller;
 
+use Application\InputFilter\ErrorFormatter;
+use Application\InputFilter\LoginInputFilter;
+use Application\InputFilter\RegisterInputFilter;
 use Application\Model\UserTable;
 use Application\Service\PasswordHasher;
 use Laminas\Authentication\AuthenticationService;
@@ -25,26 +28,31 @@ class AuthController extends AbstractActionController
             return $this->redirect()->toRoute('tasks');
         }
 
-        $error = null;
+        $errors = [];
         $request = $this->getRequest();
 
         if ($request->isPost()) {
-            $username = trim((string) $this->params()->fromPost('username', ''));
-            $password = (string) $this->params()->fromPost('password', '');
+            $filter = new LoginInputFilter();
+            $filter->setData($request->getPost()->toArray());
 
-            $user = $this->users->findByUsername($username);
-            if ($user && $this->hasher->verify($password, (string) $user->password)) {
-                $this->auth->getStorage()->write(
-                    (object) ['id' => (int) $user->id, 'username' => $user->username]
-                );
+            if (! $filter->isValid()) {
+                $errors = ErrorFormatter::flatten($filter);
+            } else {
+                $values = $filter->getValues();
+                $user = $this->users->findByUsername($values['username']);
+                if ($user && $this->hasher->verify($values['password'], (string) $user->password)) {
+                    $this->auth->getStorage()->write(
+                        (object) ['id' => (int) $user->id, 'username' => $user->username]
+                    );
 
-                return $this->redirect()->toRoute('tasks');
+                    return $this->redirect()->toRoute('tasks');
+                }
+
+                $errors = ['ユーザー名またはパスワードが正しくありません。'];
             }
-
-            $error = 'ユーザー名またはパスワードが正しくありません。';
         }
 
-        return new ViewModel(['error' => $error]);
+        return new ViewModel(['errors' => $errors]);
     }
 
     public function registerAction()
@@ -53,29 +61,32 @@ class AuthController extends AbstractActionController
             return $this->redirect()->toRoute('tasks');
         }
 
-        $error = null;
+        $errors = [];
         $request = $this->getRequest();
 
         if ($request->isPost()) {
-            $username = trim((string) $this->params()->fromPost('username', ''));
-            $password = (string) $this->params()->fromPost('password', '');
+            $filter = new RegisterInputFilter();
+            $filter->setData($request->getPost()->toArray());
 
-            if ($username === '' || mb_strlen($password) < 8) {
-                $error = 'ユーザー名は必須、パスワードは8文字以上にしてください。';
-            } elseif ($this->users->findByUsername($username)) {
-                $error = 'そのユーザー名は既に使われています。';
+            if (! $filter->isValid()) {
+                $errors = ErrorFormatter::flatten($filter);
             } else {
-                $this->users->create($username, $this->hasher->hash($password));
-                $user = $this->users->findByUsername($username);
-                $this->auth->getStorage()->write(
-                    (object) ['id' => (int) $user->id, 'username' => $user->username]
-                );
+                $values = $filter->getValues();
+                if ($this->users->findByUsername($values['username'])) {
+                    $errors = ['そのユーザー名は既に使われています。'];
+                } else {
+                    $this->users->create($values['username'], $this->hasher->hash($values['password']));
+                    $user = $this->users->findByUsername($values['username']);
+                    $this->auth->getStorage()->write(
+                        (object) ['id' => (int) $user->id, 'username' => $user->username]
+                    );
 
-                return $this->redirect()->toRoute('tasks');
+                    return $this->redirect()->toRoute('tasks');
+                }
             }
         }
 
-        return new ViewModel(['error' => $error]);
+        return new ViewModel(['errors' => $errors]);
     }
 
     public function logoutAction()
