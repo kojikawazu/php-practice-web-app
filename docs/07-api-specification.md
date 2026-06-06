@@ -12,6 +12,16 @@ API のエンドポイント・入出力・エラー仕様を定義する。対�
 
 取得した token を `Authorization: Bearer <token>` ヘッダで送ると保護エンドポイントにアクセスできる。
 
+## トークン管理（要 Bearer）
+
+| メソッド | パス | 概要 |
+|---------|------|------|
+| GET | `/api/tokens` | 自分のトークン一覧（`id`/`name`/`abilities`/`last_used_at`/`expires_at`/`created_at`。ハッシュ値は非公開）|
+| POST | `/api/tokens` | 名前付きトークン発行。平文は発行時のみ返却。`expires_in_days`(1〜365) で個別有効期限 |
+| DELETE | `/api/tokens/{id}` | 自分のトークンを失効（他人/不在は 404）|
+
+- 有効期限切れのトークンは Sanctum ガードが自動的に拒否（401）する。
+
 ## エンドポイント一覧
 
 ベース URL: `http://localhost:8002`（nginx 経由）。`apiResource('tasks')` による標準 CRUD。**すべて `auth:sanctum` で保護**され、ログインユーザー本人のタスクのみ操作可能。
