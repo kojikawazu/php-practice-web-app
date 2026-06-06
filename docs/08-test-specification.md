@@ -8,19 +8,24 @@
 |--------|--------|----|------|
 | laravel-fullstack | PHPUnit（`php artisan test`） | SQLite in-memory | Feature（HTTP）|
 | laravel-api | PHPUnit（`php artisan test`） | SQLite in-memory | Feature（JSON API）|
-| laminas | PHPUnit（`vendor/bin/phpunit`） | なし（モデル単体）| Unit + 既存 Controller |
+| laminas | PHPUnit（`vendor/bin/phpunit`） | なし（モデル/サービス単体）| Unit（Task / PasswordHasher）+ 既存 Controller。認証フローはライブ smoke |
 
 > テストを SQLite in-memory にしている理由: `RefreshDatabase` は `migrate:fresh`（全テーブル DROP）を行うため、共有 MySQL に対して実行すると他アプリのテーブルを巻き込む。テストは隔離された in-memory DB で実行し、prefix 動作は実 DB へのマイグレーションで確認する。
 
-## テストケース（サンプル CRUD）
+## テストケース（CRUD + 認証）
 
 正常系 : 異常系（準正常系含む）= 1 : 2 以上を目安に配置。
 
-| アプリ | 正常系 | 異常系 |
-|--------|--------|--------|
-| fullstack | 一覧表示 / 作成 / 完了トグル | 空title 422 / 256字 422 / toggle 404 / destroy 404 |
-| api | JSON一覧 / 201作成 | title欠落 422 / 長すぎ 422 / done非bool 422 / show 404 |
-| laminas (Task model) | exchangeArray全項目 / getArrayCopy | 空配列デフォルト / '0'→false / 数値文字列→int / false→0 |
+| アプリ | 主な正常系 | 主な異常系 |
+|--------|-----------|-----------|
+| fullstack Task | 自分のタスク一覧/作成/トグル | guest→login / 他人タスク非表示 / 空title / 他人のtoggle・destroy 404 |
+| fullstack Auth | 登録&自動ログイン / ログイン / ログアウト | 誤パスワード / メール重複 / 確認不一致 / 短パスワード |
+| api Task | 自分のタスク一覧/201作成 | guest 401 / title欠落 422 / 長すぎ 422 / 他人タスク view・delete 404 |
+| api Auth | register トークン / login トークン / logout | 誤パスワード 422 / メール重複 422 / 短パスワード 422 / token無し 401 |
+| laminas Task model | exchangeArray全項目 / getArrayCopy | 空配列デフォルト / '0'→false / 数値文字列→int / false→0 |
+| laminas PasswordHasher | hash→verify / bcrypt形式 | 誤パスワード / 空 / 不正ハッシュ / ソルトで毎回異なる |
+
+> laminas のセッション認証フロー（register→login→保護→logout）は PHPUnit（CLI/セッション）でなく **ライブ smoke テスト（curl + cookie）** で検証する方針。認証ロジックの核（bcrypt）は `PasswordHasherTest` で単体保証する。
 
 ## 実行方法
 

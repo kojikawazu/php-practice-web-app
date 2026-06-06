@@ -14,6 +14,8 @@ PHP の学習を目的とした練習用 Web アプリケーション
 
 スタック: PHP 8.3 / MySQL 8 / nginx / Docker Compose。各アプリにサンプルの「タスク CRUD」とテストを同梱。
 
+認証付き: 各アプリにログイン機能を実装し、タスクはユーザー毎に保護される（fullstack/laminas はセッション認証、api は Sanctum トークン認証）。`/register` から登録できる。
+
 ## セットアップ
 
 前提: Docker / Docker Compose（ホストに PHP・Composer は不要）。

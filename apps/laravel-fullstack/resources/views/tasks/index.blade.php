@@ -6,6 +6,14 @@
     <title>タスク一覧 (laravel-fullstack)</title>
 </head>
 <body>
+    <p>
+        {{ Auth::user()->name }} さん
+        <form method="POST" action="{{ route('logout') }}" style="display:inline">
+            @csrf
+            <button type="submit">ログアウト</button>
+        </form>
+    </p>
+
     <h1>タスク一覧 <small>laravel-fullstack / Blade</small></h1>
 
     @if ($errors->any())

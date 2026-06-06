@@ -14,11 +14,12 @@ class TaskTest extends TestCase
     public function testExchangeArrayPopulatesAllFields(): void
     {
         $task = new Task();
-        $task->exchangeArray(['id' => 5, 'title' => '買い物', 'done' => 1]);
+        $task->exchangeArray(['id' => 5, 'title' => '買い物', 'done' => 1, 'user_id' => 7]);
 
         $this->assertSame(5, $task->id);
         $this->assertSame('買い物', $task->title);
         $this->assertTrue($task->done);
+        $this->assertSame(7, $task->user_id);
     }
 
     public function testGetArrayCopyReturnsNormalizedShape(): void
@@ -27,9 +28,10 @@ class TaskTest extends TestCase
         $task->id = 3;
         $task->title = '掃除';
         $task->done = true;
+        $task->user_id = 2;
 
         $this->assertSame(
-            ['id' => 3, 'title' => '掃除', 'done' => 1],
+            ['id' => 3, 'title' => '掃除', 'done' => 1, 'user_id' => 2],
             $task->getArrayCopy()
         );
     }
@@ -44,6 +46,7 @@ class TaskTest extends TestCase
         $this->assertNull($task->id);
         $this->assertSame('', $task->title);
         $this->assertFalse($task->done);
+        $this->assertNull($task->user_id);
     }
 
     public function testDoneStringZeroIsCoercedToFalse(): void
@@ -54,12 +57,12 @@ class TaskTest extends TestCase
         $this->assertFalse($task->done);
     }
 
-    public function testNumericStringIdIsCoercedToInt(): void
+    public function testNumericStringUserIdIsCoercedToInt(): void
     {
         $task = new Task();
-        $task->exchangeArray(['id' => '42', 'title' => 'x']);
+        $task->exchangeArray(['title' => 'x', 'user_id' => '42']);
 
-        $this->assertSame(42, $task->id);
+        $this->assertSame(42, $task->user_id);
     }
 
     public function testGetArrayCopyEncodesDoneFalseAsZero(): void
