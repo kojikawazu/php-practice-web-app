@@ -18,11 +18,21 @@ API のエンドポイント・入出力・エラー仕様を定義する。対�
 
 | メソッド | パス | 概要 | 認証 |
 |---------|------|------|------|
-| GET | `/api/tasks` | 自分のタスク一覧 | Bearer |
+| GET | `/api/tasks` | 自分のタスク一覧（ページネーション）| Bearer |
 | POST | `/api/tasks` | タスク作成 | Bearer |
 | GET | `/api/tasks/{id}` | タスク取得（他人のは404）| Bearer |
 | PUT/PATCH | `/api/tasks/{id}` | タスク更新（他人のは404）| Bearer |
 | DELETE | `/api/tasks/{id}` | タスク削除（他人のは404）| Bearer |
+
+## 一覧のクエリパラメータ（GET /api/tasks）
+
+| パラメータ | 既定 | 説明 |
+|-----------|------|------|
+| `q` | （なし）| タイトル部分一致検索 |
+| `per_page` | 5 | 1ページ件数（1〜50 にクランプ）|
+| `page` | 1 | ページ番号 |
+
+レスポンスは Laravel の LengthAwarePaginator 形式（`data` 配列 + `total` / `per_page` / `current_page` / `last_page` 等のメタ）。
 
 ## リクエスト / レスポンス形式
 

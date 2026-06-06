@@ -31,9 +31,53 @@ class TaskApiTest extends TestCase
         $response = $this->getJson('/api/tasks');
 
         $response->assertOk();
-        $response->assertJsonCount(1);
+        $response->assertJsonCount(1, 'data');
         $response->assertJsonFragment(['title' => 'API タスク']);
         $response->assertJsonMissing(['title' => '他人のタスク']);
+    }
+
+    public function test_index_paginates_with_meta(): void
+    {
+        $user = $this->actingUser();
+        foreach (range(1, 7) as $n) {
+            $user->tasks()->create(['title' => "タスク{$n}"]);
+        }
+
+        $page1 = $this->getJson('/api/tasks');
+        $page1->assertOk();
+        $page1->assertJsonCount(5, 'data');
+        $page1->assertJsonFragment(['total' => 7, 'per_page' => 5, 'current_page' => 1]);
+
+        $page2 = $this->getJson('/api/tasks?page=2');
+        $page2->assertJsonCount(2, 'data');
+    }
+
+    public function test_index_respects_per_page(): void
+    {
+        $user = $this->actingUser();
+        foreach (range(1, 4) as $n) {
+            $user->tasks()->create(['title' => "タスク{$n}"]);
+        }
+
+        $response = $this->getJson('/api/tasks?per_page=2');
+
+        $response->assertOk();
+        $response->assertJsonCount(2, 'data');
+        $response->assertJsonFragment(['per_page' => 2, 'total' => 4]);
+    }
+
+    public function test_index_search_filters_by_title(): void
+    {
+        $user = $this->actingUser();
+        $user->tasks()->create(['title' => '買い物に行く']);
+        $user->tasks()->create(['title' => '掃除をする']);
+
+        $response = $this->getJson('/api/tasks?q=' . urlencode('買い物'));
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'data');
+        $response->assertJsonFragment(['title' => '買い物に行く']);
+        $response->assertJsonMissing(['title' => '掃除をする']);
     }
 
     public function test_store_creates_task_for_current_user(): void
@@ -66,6 +110,18 @@ class TaskApiTest extends TestCase
         $response = $this->getJson('/api/tasks');
 
         $response->assertUnauthorized();
+    }
+
+    public function test_search_with_no_match_returns_empty(): void
+    {
+        $user = $this->actingUser();
+        $user->tasks()->create(['title' => '買い物']);
+
+        $response = $this->getJson('/api/tasks?q=' . urlencode('存在しない'));
+
+        $response->assertOk();
+        $response->assertJsonCount(0, 'data');
+        $response->assertJsonFragment(['total' => 0]);
     }
 
     public function test_store_without_title_returns_422(): void

@@ -39,9 +39,24 @@ class TaskController extends AbstractActionController
             return $this->redirect()->toRoute('tasks');
         }
 
+        $perPage = 5;
+        $q = trim((string) $this->params()->fromQuery('q', ''));
+        $page = max(1, (int) $this->params()->fromQuery('page', 1));
+
+        $total = $this->table->countByUser((int) $user->id, $q);
+        $totalPages = max(1, (int) ceil($total / $perPage));
+        if ($page > $totalPages) {
+            $page = $totalPages;
+        }
+        $offset = ($page - 1) * $perPage;
+
         return new ViewModel([
-            'tasks'    => $this->table->fetchAllByUser((int) $user->id),
-            'username' => $user->username,
+            'tasks'      => $this->table->fetchPageByUser((int) $user->id, $perPage, $offset, $q),
+            'username'   => $user->username,
+            'q'          => $q,
+            'page'       => $page,
+            'totalPages' => $totalPages,
+            'total'      => $total,
         ]);
     }
 

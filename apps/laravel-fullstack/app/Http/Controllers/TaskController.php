@@ -10,11 +10,19 @@ use Illuminate\View\View;
 
 class TaskController extends Controller
 {
-    public function index(): View
-    {
-        $tasks = Task::where('user_id', Auth::id())->orderByDesc('id')->get();
+    private const PER_PAGE = 5;
 
-        return view('tasks.index', ['tasks' => $tasks]);
+    public function index(Request $request): View
+    {
+        $q = trim((string) $request->query('q', ''));
+
+        $tasks = Task::where('user_id', Auth::id())
+            ->when($q !== '', fn ($query) => $query->where('title', 'like', '%' . $q . '%'))
+            ->orderByDesc('id')
+            ->paginate(self::PER_PAGE)
+            ->withQueryString();
+
+        return view('tasks.index', ['tasks' => $tasks, 'q' => $q]);
     }
 
     public function store(Request $request): RedirectResponse

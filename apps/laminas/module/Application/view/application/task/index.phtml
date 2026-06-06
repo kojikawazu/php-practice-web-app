@@ -1,5 +1,6 @@
 <?php
 $this->headTitle('タスク一覧 (laminas)');
+$base = $this->url('tasks');
 ?>
 <p>
     <?= $this->escapeHtml($username) ?> さん
@@ -8,9 +9,17 @@ $this->headTitle('タスク一覧 (laminas)');
 
 <h1>タスク一覧 <small>laminas / TableGateway</small></h1>
 
-<form method="post" action="<?= $this->url('tasks') ?>">
+<form method="post" action="<?= $base ?>">
     <input type="text" name="title" placeholder="タスク名">
     <button type="submit">追加</button>
+</form>
+
+<form method="get" action="<?= $base ?>">
+    <input type="text" name="q" placeholder="タイトルで検索" value="<?= $this->escapeHtmlAttr($q) ?>">
+    <button type="submit">検索</button>
+    <?php if ($q !== ''): ?>
+        <a href="<?= $base ?>">クリア</a>
+    <?php endif; ?>
 </form>
 
 <ul>
@@ -24,3 +33,17 @@ $this->headTitle('タスク一覧 (laminas)');
     </li>
 <?php endforeach; ?>
 </ul>
+
+<?php if ($total === 0): ?>
+    <p>タスクはありません。</p>
+<?php endif; ?>
+
+<p>
+    <?php if ($page > 1): ?>
+        <a href="<?= $base ?>?q=<?= rawurlencode($q) ?>&amp;page=<?= $page - 1 ?>">前へ</a>
+    <?php endif; ?>
+    ページ <?= $page ?> / <?= $totalPages ?>（全 <?= $total ?> 件）
+    <?php if ($page < $totalPages): ?>
+        <a href="<?= $base ?>?q=<?= rawurlencode($q) ?>&amp;page=<?= $page + 1 ?>">次へ</a>
+    <?php endif; ?>
+</p>

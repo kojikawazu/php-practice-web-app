@@ -8,9 +8,21 @@ use Illuminate\Http\Request;
 
 class TaskController extends Controller
 {
+    private const DEFAULT_PER_PAGE = 5;
+    private const MAX_PER_PAGE = 50;
+
     public function index(Request $request): JsonResponse
     {
-        return response()->json($request->user()->tasks()->orderByDesc('id')->get());
+        $q = trim((string) $request->query('q', ''));
+        $perPage = (int) $request->query('per_page', self::DEFAULT_PER_PAGE);
+        $perPage = max(1, min($perPage, self::MAX_PER_PAGE));
+
+        $tasks = $request->user()->tasks()
+            ->when($q !== '', fn ($query) => $query->where('title', 'like', '%' . $q . '%'))
+            ->orderByDesc('id')
+            ->paginate($perPage);
+
+        return response()->json($tasks);
     }
 
     public function store(Request $request): JsonResponse
