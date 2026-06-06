@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: test (${{ matrix.app }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { app: laravel-fullstack, laravel: true }
+          - { app: laravel-api, laravel: true }
+          - { app: laminas, laravel: false }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, intl, bcmath, pdo_sqlite, dom, xml, curl, zip, fileinfo, tokenizer
+          coverage: none
+
+      - name: Install dependencies
+        uses: ramsey/composer-install@v3
+        with:
+          working-directory: apps/${{ matrix.app }}
+
+      # Laravel はテスト起動に APP_KEY が必要（テスト DB は phpunit.xml で sqlite in-memory）
+      - name: Prepare Laravel env
+        if: ${{ matrix.laravel }}
+        working-directory: apps/${{ matrix.app }}
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Run tests (Laravel)
+        if: ${{ matrix.laravel }}
+        working-directory: apps/${{ matrix.app }}
+        run: php artisan test
+
+      - name: Run tests (Laminas)
+        if: ${{ !matrix.laravel }}
+        working-directory: apps/${{ matrix.app }}
+        run: ./vendor/bin/phpunit

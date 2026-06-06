@@ -1,5 +1,7 @@
 # PHP Practice Web App
 
+[![CI](https://github.com/kojikawazu/php-practice-web-app/actions/workflows/ci.yml/badge.svg)](https://github.com/kojikawazu/php-practice-web-app/actions/workflows/ci.yml)
+
 PHP の学習を目的とした練習用 Web アプリケーション
 
 ## 概要
@@ -33,10 +35,12 @@ make migrate            # 2つの Laravel アプリのマイグレーション�
 - Laminas: http://localhost:8003/tasks
 
 ```bash
-make test               # 3アプリのテストを一括実行
+make test               # 3アプリのテストを一括実行（ローカル / Docker）
 make logs               # ログ追従
 make down               # 停止
 ```
+
+CI: push / Pull Request 時に GitHub Actions（`.github/workflows/ci.yml`）が 3 アプリのテストを自動実行する。
 
 各アプリ内で artisan / composer を使う例:
 
