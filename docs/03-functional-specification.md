@@ -28,6 +28,7 @@
 
 - 画面: ログイン / 新規登録 / タスク一覧（追加・検索・ページャ）/ タスク編集（fullstack・laminas）。api は JSON のみ。
 - タスクに画像を 1 枚添付できる（任意・fullstack/api）。画像は公開ディレクトリ外に保存し、**所有者のみ**アプリ経由で閲覧可。
+- タスクに URL を登録すると、サーバーが**安全に**（SSRF 対策付き）取得して OGP プレビュー（タイトル/画像）をカード表示する（任意・fullstack）。
 - 画面は Tailwind CSS（Play CDN・Node不要）で簡易スタイリング（fullstack / laminas）。
 - 日付入力は flatpickr のカレンダー（`Y-m-d`）。
 - バリデーションエラーはフォーム上部に一覧表示（Laravel は `$errors`、Laminas は InputFilter メッセージ）。

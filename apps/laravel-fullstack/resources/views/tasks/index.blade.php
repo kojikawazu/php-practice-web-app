@@ -36,6 +36,7 @@
             <input type="text" class="flatpickr border rounded px-3 py-2 w-32" name="start_date" placeholder="開始日" value="{{ old('start_date') }}">
             <input type="text" class="flatpickr border rounded px-3 py-2 w-32" name="end_date" placeholder="終了日" value="{{ old('end_date') }}">
             <input type="file" name="image" accept="image/*" class="text-sm">
+            <input type="url" name="url" placeholder="URL（任意）" value="{{ old('url') }}" class="border rounded px-3 py-2 flex-1 min-w-40">
             <button type="submit" class="bg-blue-600 text-white rounded px-4 py-2 hover:bg-blue-700">追加</button>
         </form>
 
@@ -56,6 +57,12 @@
                     <span class="flex-1 {{ $task->done ? 'line-through text-gray-400' : '' }}">{{ $task->title }}</span>
                     @if ($task->start_date || $task->end_date)
                         <span class="text-xs text-gray-500">[{{ $task->start_date?->format('Y-m-d') ?? '—' }} 〜 {{ $task->end_date?->format('Y-m-d') ?? '—' }}]</span>
+                    @endif
+                    @if ($task->url)
+                        @if ($task->preview_image && \Illuminate\Support\Str::startsWith($task->preview_image, ['http://', 'https://']))
+                            <img src="{{ $task->preview_image }}" alt="" referrerpolicy="no-referrer" class="w-10 h-10 object-cover rounded border">
+                        @endif
+                        <a href="{{ $task->url }}" target="_blank" rel="noopener noreferrer nofollow" title="{{ $task->url }}" class="text-xs text-indigo-600 hover:underline">🔗 {{ $task->preview_title ?? $task->url }}</a>
                     @endif
                     <a href="{{ route('tasks.edit', $task) }}" class="text-sm text-blue-600 hover:underline">編集</a>
                     <form method="POST" action="{{ route('tasks.duplicate', $task) }}">
