@@ -40,18 +40,32 @@ Laravel は `config/database.php` の接続設定で `prefix` と `migrations` �
 erDiagram
     fs_tasks {
         bigint id PK
+        bigint user_id FK
         varchar title
         boolean done
+        date start_date "NULL"
+        date end_date "NULL"
+        varchar image_path "NULL"
+        varchar url "NULL"
+        varchar preview_title "NULL"
+        varchar preview_image "NULL"
     }
     api_tasks {
         bigint id PK
+        bigint user_id FK
         varchar title
         boolean done
+        date start_date "NULL"
+        date end_date "NULL"
+        varchar image_path "NULL"
     }
     lam_tasks {
         bigint id PK
+        bigint user_id FK
         varchar title
         boolean done
+        date start_date "NULL"
+        date end_date "NULL"
     }
 ```
 
