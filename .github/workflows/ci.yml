@@ -5,9 +5,34 @@ on:
     branches: [main]
   pull_request:
 
+# dorny/paths-filter は pull_request 時に変更ファイルを GitHub API で取得するため
+# pull-requests: read が必要。最小権限を明示する（contents: read は checkout 用）。
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
+  # 差分パスを 1 か所で判定する軽量ジョブ。
+  # code が変わっていない（= doc-only）なら、重い test ジョブをスキップする。
+  changes:
+    name: detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - 'apps/**'
+              - '.github/workflows/**'
+
   test:
     name: test (${{ matrix.app }})
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

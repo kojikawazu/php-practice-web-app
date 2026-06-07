@@ -51,11 +51,12 @@ PHP 拡張: `pdo_mysql` ほか各 FW が要求するもの。`docker/php/Dockerf
 
 ## CI（継続的インテグレーション）
 
-`.github/workflows/ci.yml` が push（main）/ Pull Request 時に実行される。
+`.github/workflows/ci.yml` が push（main）/ Pull Request 時に実行される。2 ジョブ構成。`GITHUB_TOKEN` は最小権限（`contents: read` / `pull-requests: read`）を明示する（`pull-requests: read` は `dorny/paths-filter` が PR の変更ファイルを GitHub API で取得するために必要）。
 
-- `shivammathur/setup-php`（PHP 8.3）で各アプリをセットアップ（Docker 不使用）
-- matrix で 3 アプリを並行ジョブ実行（`fail-fast: false`）
-- Laravel ×2 は `php artisan test`（テスト DB は SQLite in-memory のため MySQL サービス不要）、Laminas は `vendor/bin/phpunit`
+- **changes**: `dorny/paths-filter` で差分パスを判定する軽量ジョブ。`apps/**` または `.github/workflows/**` が変わった場合のみ `code=true` を出力する。
+- **test**: `needs: changes` + `if: code == 'true'` で、コード変更時のみ実行（doc-only 変更ではスキップ）。`shivammathur/setup-php`（PHP 8.3）で各アプリをセットアップ（Docker 不使用）、matrix で 3 アプリを並行ジョブ実行（`fail-fast: false`）。Laravel ×2 は `php artisan test`（テスト DB は SQLite in-memory のため MySQL サービス不要）、Laminas は `vendor/bin/phpunit`。
+
+> 補足: branch protection（必須チェック）導入時は、マトリクスを `if` でスキップすると `test (app)` 個別の check run が生成されない点に注意。その際は `if: always()` の集約ゲートジョブを追加し、それ 1 つを必須チェックに指定する設計が必要になる。現状このリポジトリは private 無料プランで branch protection を利用できないため、集約ゲートは導入していない。
 
 ## デプロイ
 
