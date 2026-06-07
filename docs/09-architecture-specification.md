@@ -51,11 +51,13 @@ PHP 拡張: `pdo_mysql` ほか各 FW が要求するもの。`docker/php/Dockerf
 
 ## CI（継続的インテグレーション）
 
-`.github/workflows/ci.yml` が push（main）/ Pull Request 時に実行される。
+`.github/workflows/ci.yml` が push（main）/ Pull Request 時に実行される。3 ジョブ構成。
 
-- `shivammathur/setup-php`（PHP 8.3）で各アプリをセットアップ（Docker 不使用）
-- matrix で 3 アプリを並行ジョブ実行（`fail-fast: false`）
-- Laravel ×2 は `php artisan test`（テスト DB は SQLite in-memory のため MySQL サービス不要）、Laminas は `vendor/bin/phpunit`
+- **changes**: `dorny/paths-filter` で差分パスを判定する軽量ジョブ。`apps/**` または `.github/workflows/**` が変わった場合のみ `code=true` を出力する。
+- **test**: `needs: changes` + `if: code == 'true'` で、コード変更時のみ実行（doc-only 変更ではスキップ）。`shivammathur/setup-php`（PHP 8.3）で各アプリをセットアップ（Docker 不使用）、matrix で 3 アプリを並行ジョブ実行（`fail-fast: false`）。Laravel ×2 は `php artisan test`（テスト DB は SQLite in-memory のため MySQL サービス不要）、Laminas は `vendor/bin/phpunit`。
+- **ci-ok**: `if: always()` で必ず実行する集約ゲート。`test` が `failure`/`cancelled` のときのみ失敗し、`success`・`skipped`（doc-only）は通す。マトリクスを `if` でスキップすると `test (app)` 個別の check run が生成されないため、将来 branch protection を導入する場合は **この `ci-ok` 1 つだけを必須チェックに指定する**（doc-only PR でも詰まらない）。
+
+> 補足: 現状このリポジトリは private 無料プランで branch protection（必須チェック）を利用できない。`ci-ok` ゲートは public/Pro 化で必須チェックを導入した際にそのまま機能させるための前方互換措置。
 
 ## デプロイ
 

@@ -6,8 +6,27 @@ on:
   pull_request:
 
 jobs:
+  # 差分パスを 1 か所で判定する軽量ジョブ。
+  # code が変わっていない（= doc-only）なら、重い test ジョブをスキップする。
+  changes:
+    name: detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - 'apps/**'
+              - '.github/workflows/**'
+
   test:
     name: test (${{ matrix.app }})
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -49,3 +68,22 @@ jobs:
         if: ${{ !matrix.laravel }}
         working-directory: apps/${{ matrix.app }}
         run: ./vendor/bin/phpunit
+
+  # 集約ゲート。マトリクスを if でスキップすると "test (app)" の check run は
+  # 生成されないため、将来 branch protection を入れる場合はこの ci-ok 1 つだけを
+  # 必須チェックに指定する。doc-only（test=skipped）と全成功は通し、
+  # 失敗/キャンセル時のみ落とす。
+  ci-ok:
+    name: ci-ok
+    needs: [changes, test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify test result
+        run: |
+          result='${{ needs.test.result }}'
+          echo "test job result: ${result}"
+          if [ "${result}" = "failure" ] || [ "${result}" = "cancelled" ]; then
+            echo "::error::test job did not pass"
+            exit 1
+          fi
