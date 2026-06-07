@@ -65,6 +65,9 @@ POST /api/tasks  {"title": "牛乳を買う"}
 |-----------|--------|
 | title | required / string / max:255 |
 | done | sometimes / boolean |
+| start_date | nullable / date（`Y-m-d`）|
+| end_date | nullable / date / `after_or_equal:start_date` |
+| image | nullable / image / mimes:jpeg,png,webp,gif / max:2048（KB）|
 
 ## エラーハンドリング
 
