@@ -7,7 +7,7 @@
 | アプリ | ツール | DB | 種別 |
 |--------|--------|----|------|
 | laravel-fullstack | PHPUnit（`php artisan test`） | SQLite in-memory | Feature（HTTP）|
-| laravel-api | PHPUnit（`php artisan test`） | SQLite in-memory | Feature（JSON API）|
+| laravel-api | PHPUnit（`php artisan test`） | SQLite in-memory（Unit は DB 不要） | Feature（JSON API）+ Unit（Task モデル）|
 | laminas | PHPUnit（`vendor/bin/phpunit`） | 認可テストのみ SQLite in-memory（他はモデル/サービス/InputFilter 単体で DB 不要）| Unit（Task / PasswordHasher / InputFilter×3 / **TaskTable 所有者スコープ**）+ 既存 Controller。セッション認証フローはライブ smoke |
 
 > テストを SQLite in-memory にしている理由: `RefreshDatabase` は `migrate:fresh`（全テーブル DROP）を行うため、共有 MySQL に対して実行すると他アプリのテーブルを巻き込む。テストは隔離された in-memory DB で実行し、prefix 動作は実 DB へのマイグレーションで確認する。
@@ -21,6 +21,7 @@
 | fullstack Task | 一覧/作成/トグル/編集/複製/日付付き作成/画像アップロード・所有者閲覧・差替・複製コピー/2ステップ確認(確認表示・確定まで未作成)/ページネーション(5件)/タイトル検索 | guest→login / 他人タスク非表示 / 空title / 他人のtoggle・destroy・update(確認)・edit・duplicate・image 404 / 非画像422 / 検索ヒットなし / 終了日<開始日 / 不正日付 |
 | fullstack Auth | 登録&自動ログイン / ログイン / ログアウト | 誤パスワード / メール重複 / 確認不一致 / 短パスワード |
 | api Task | 一覧/201作成/更新/複製(201)/日付付き作成/画像アップロード(image_url返却)・所有者取得/ページネーション(meta)/per_page/検索 | guest 401 / title欠落 422 / 長すぎ 422 / 更新時空title 422 / 終了日<開始日 422 / 不正日付 422 / 非画像 422 / 他人タスク view・delete・update・duplicate・image 404 / 検索ヒットなし |
+| api Task model（単体・DB/アプリ不要） | title mass assign / done bool化 / 日付 Carbon 化(Y-m-d) / hidden・appends 設定 | done 既定false / '0'→false / 画像なしで image_url=null / toArray が user_id・image_path を隠す / 非fillable id は無視 |
 | api Auth | register トークン / login トークン / logout | 誤パスワード 422 / メール重複 422 / 短パスワード 422 / token無し 401 |
 | api Token | 一覧(ハッシュ非公開)/発行/期限付き発行/失効 | name必須422 / 不正expiry422 / 他人失効404 / guest401 / 期限切れトークン401 |
 | laminas Task model | exchangeArray全項目 / getArrayCopy | 空配列デフォルト / '0'→false / 数値文字列→int / false→0 |
