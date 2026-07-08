@@ -8,6 +8,18 @@
 - **コーディング標準**: **PSR-12** を土台とする。ファイル冒頭で `declare(strict_types=1);` を宣言し、引数・戻り値の型宣言を付ける。
 - **命名**: クラスは PascalCase、メソッド・変数は camelCase、定数は UPPER_SNAKE_CASE。名前空間は PSR-4 に従う（Laravel=`App\`、Laminas=`Application\`）。
 
+## PHPDoc（DocBlock）
+
+PHP 8 の型宣言を第一とし、PHPDoc は**言語の型システムで表現できない情報の補完**として使う（型の二重記述はしない）。
+
+- **型注釈が必須なケース**: 引数・戻り値・戻り値の型宣言だけでは要素型が伝わらないもの。
+  - コレクション/イテレータの要素型: `@return iterable<Task>` / `@param array<string, mixed> $data`
+  - `mixed`・`object`・配列の中身を具体化したいとき。
+  - Laminas は Psalm を `errorLevel="1"`（最厳格）で回すため、上記の型注釈 PHPDoc は**必須**（欠けると解析エラー）。
+- **説明 DocBlock を推奨するケース**: クラス・非自明なメソッドの「意図・責務・前提」。型からは読み取れない背景を 1〜2 行で書く（例: `TaskTable` の「認証導入後は user_id でスコープする」）。
+- **書かないもの**: 型宣言と重複するだけの `@param string $name`、getter/setter 等の自明なメソッド、フレームワーク雛形が生成した定型 DocBlock（削除も追記も不要・現状維持）。
+- **フォーマット**: 要約は日本語可。`@param`/`@return` を書く場合は実際の型・引数名と一致させ、Pint / phpcs のフォーマットに従う。
+
 ## Lint / Format（アプリ別）
 
 | アプリ | ツール | 実行 |
