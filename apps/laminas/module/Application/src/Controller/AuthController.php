@@ -13,6 +13,10 @@ use Laminas\Authentication\AuthenticationService;
 use Laminas\Mvc\Controller\AbstractActionController;
 use Laminas\View\Model\ViewModel;
 
+/**
+ * ログイン・新規登録・ログアウト。認証成功時は identity をセッション（AuthenticationService の
+ * Storage）に保存し、パスワード照合は PasswordHasher（bcrypt）へ委譲する。
+ */
 class AuthController extends AbstractActionController
 {
     public function __construct(
