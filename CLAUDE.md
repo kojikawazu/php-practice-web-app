@@ -14,3 +14,6 @@ PHP の学習を目的とした練習用 Web アプリケーション
 | documentation.md | 全体 | ドキュメント更新ルール |
 | git.md | 全体 | GitHub Flow・ブランチ命名・push 禁止物 |
 | testing.md | 全体 | テスト分類・原則 |
+| coding-standards.md | apps/**（PHPコード） | PHP 8.3 / PSR-12 / Pint・phpcs・Psalm / Composer |
+| error-handling.md | apps/**（PHPコード） | バリデーション・HTTP ステータス・所有者スコープ・ログ |
+| php.md | apps/**（PHPコード） | Laravel / Laminas のスタック別作法（所有者スコープ・DB・認証・DI） |
