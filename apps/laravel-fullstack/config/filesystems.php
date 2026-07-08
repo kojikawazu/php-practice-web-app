@@ -41,7 +41,7 @@ return [
         // タスク画像の保存先（名前付き Docker ボリューム。公開ディレクトリ外）
         'uploads' => [
             'driver' => 'local',
-            'root' => rtrim(env('UPLOADS_ROOT', storage_path('app/uploads')), '/') . '/fs',
+            'root' => rtrim(env('UPLOADS_ROOT', storage_path('app/uploads')), '/').'/fs',
             'throw' => false,
         ],
 

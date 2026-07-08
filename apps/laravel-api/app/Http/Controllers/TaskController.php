@@ -17,7 +17,9 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class TaskController extends Controller
 {
     private const DEFAULT_PER_PAGE = 5;
+
     private const MAX_PER_PAGE = 50;
+
     private const IMAGE_RULES = ['nullable', 'image', 'mimes:jpeg,png,webp,gif', 'max:2048'];
 
     public function index(Request $request): JsonResponse
@@ -27,7 +29,7 @@ class TaskController extends Controller
         $perPage = max(1, min($perPage, self::MAX_PER_PAGE));
 
         $tasks = $request->user()->tasks()
-            ->when($q !== '', fn ($query) => $query->where('title', 'like', '%' . $q . '%'))
+            ->when($q !== '', fn ($query) => $query->where('title', 'like', '%'.$q.'%'))
             ->orderByDesc('id')
             ->paginate($perPage);
 
@@ -59,7 +61,7 @@ class TaskController extends Controller
         $this->authorizeOwnership($request, $task);
 
         $copy = $request->user()->tasks()->create([
-            'title' => mb_substr($task->title . '（コピー）', 0, 255),
+            'title' => mb_substr($task->title.'（コピー）', 0, 255),
             'done' => false,
             'start_date' => $task->start_date?->format('Y-m-d'),
             'end_date' => $task->end_date?->format('Y-m-d'),
@@ -135,7 +137,7 @@ class TaskController extends Controller
             return null;
         }
         $ext = pathinfo($path, PATHINFO_EXTENSION);
-        $copy = (string) Str::uuid() . ($ext ? '.' . $ext : '');
+        $copy = (string) Str::uuid().($ext ? '.'.$ext : '');
         Storage::disk('uploads')->copy($path, $copy);
 
         return $copy;

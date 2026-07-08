@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<files psalm-version="5.26.1@d747f6500b38ac4f7dfc5edbcae6e4b637d7add0">
+  <file src="config/autoload/global.php">
+    <RiskyTruthyFalsyComparison>
+      <code><![CDATA[getenv('DB_DATABASE')]]></code>
+      <code><![CDATA[getenv('DB_HOST')]]></code>
+      <code><![CDATA[getenv('DB_PASSWORD')]]></code>
+      <code><![CDATA[getenv('DB_PORT')]]></code>
+      <code><![CDATA[getenv('DB_USERNAME')]]></code>
+    </RiskyTruthyFalsyComparison>
+  </file>
+  <file src="module/Application/src/Controller/AuthController.php">
+    <MissingReturnType>
+      <code><![CDATA[loginAction]]></code>
+      <code><![CDATA[logoutAction]]></code>
+      <code><![CDATA[registerAction]]></code>
+    </MissingReturnType>
+    <MixedArgument>
+      <code><![CDATA[$request->getPost()->toArray()]]></code>
+      <code><![CDATA[$request->getPost()->toArray()]]></code>
+      <code><![CDATA[$values['password']]]></code>
+      <code><![CDATA[$values['password']]]></code>
+      <code><![CDATA[$values['username']]]></code>
+      <code><![CDATA[$values['username']]]></code>
+      <code><![CDATA[$values['username']]]></code>
+      <code><![CDATA[$values['username']]]></code>
+    </MixedArgument>
+    <MixedArrayAccess>
+      <code><![CDATA[$values['password']]]></code>
+      <code><![CDATA[$values['password']]]></code>
+      <code><![CDATA[$values['username']]]></code>
+      <code><![CDATA[$values['username']]]></code>
+      <code><![CDATA[$values['username']]]></code>
+      <code><![CDATA[$values['username']]]></code>
+    </MixedArrayAccess>
+    <MixedAssignment>
+      <code><![CDATA[$values]]></code>
+      <code><![CDATA[$values]]></code>
+    </MixedAssignment>
+    <MixedMethodCall>
+      <code><![CDATA[toArray]]></code>
+      <code><![CDATA[toArray]]></code>
+    </MixedMethodCall>
+    <PossiblyNullPropertyFetch>
+      <code><![CDATA[$user->id]]></code>
+      <code><![CDATA[$user->username]]></code>
+    </PossiblyNullPropertyFetch>
+    <PossiblyUnusedMethod>
+      <code><![CDATA[loginAction]]></code>
+      <code><![CDATA[logoutAction]]></code>
+      <code><![CDATA[registerAction]]></code>
+    </PossiblyUnusedMethod>
+    <PropertyNotSetInConstructor>
+      <code><![CDATA[AuthController]]></code>
+      <code><![CDATA[AuthController]]></code>
+      <code><![CDATA[AuthController]]></code>
+      <code><![CDATA[AuthController]]></code>
+      <code><![CDATA[AuthController]]></code>
+    </PropertyNotSetInConstructor>
+    <UndefinedInterfaceMethod>
+      <code><![CDATA[getPost]]></code>
+      <code><![CDATA[getPost]]></code>
+      <code><![CDATA[isPost]]></code>
+      <code><![CDATA[isPost]]></code>
+    </UndefinedInterfaceMethod>
+  </file>
+  <file src="module/Application/src/Controller/TaskController.php">
+    <InvalidReturnStatement>
+      <code><![CDATA[$this->redirect()->toRoute('login')]]></code>
+      <code><![CDATA[$this->redirect()->toRoute('tasks')]]></code>
+    </InvalidReturnStatement>
+    <InvalidReturnType>
+      <code><![CDATA[indexAction]]></code>
+    </InvalidReturnType>
+    <MissingReturnType>
+      <code><![CDATA[deleteAction]]></code>
+      <code><![CDATA[duplicateAction]]></code>
+      <code><![CDATA[editAction]]></code>
+    </MissingReturnType>
+    <MixedArgument>
+      <code><![CDATA[$request->getPost()->toArray()]]></code>
+      <code><![CDATA[$request->getPost()->toArray()]]></code>
+      <code><![CDATA[$values]]></code>
+      <code><![CDATA[$values]]></code>
+    </MixedArgument>
+    <MixedArrayAccess>
+      <code><![CDATA[$values['title']]]></code>
+      <code><![CDATA[$values['title']]]></code>
+    </MixedArrayAccess>
+    <MixedAssignment>
+      <code><![CDATA[$task->end_date]]></code>
+      <code><![CDATA[$task->start_date]]></code>
+      <code><![CDATA[$task->title]]></code>
+      <code><![CDATA[$task->title]]></code>
+      <code><![CDATA[$user]]></code>
+      <code><![CDATA[$user]]></code>
+      <code><![CDATA[$user]]></code>
+      <code><![CDATA[$user]]></code>
+      <code><![CDATA[$values]]></code>
+      <code><![CDATA[$values]]></code>
+    </MixedAssignment>
+    <MixedMethodCall>
+      <code><![CDATA[fromQuery]]></code>
+      <code><![CDATA[fromQuery]]></code>
+      <code><![CDATA[fromRoute]]></code>
+      <code><![CDATA[fromRoute]]></code>
+      <code><![CDATA[fromRoute]]></code>
+      <code><![CDATA[toArray]]></code>
+      <code><![CDATA[toArray]]></code>
+    </MixedMethodCall>
+    <MixedPropertyFetch>
+      <code><![CDATA[$user->id]]></code>
+      <code><![CDATA[$user->id]]></code>
+      <code><![CDATA[$user->id]]></code>
+      <code><![CDATA[$user->id]]></code>
+      <code><![CDATA[$user->id]]></code>
+      <code><![CDATA[$user->username]]></code>
+    </MixedPropertyFetch>
+    <PossiblyUnusedMethod>
+      <code><![CDATA[deleteAction]]></code>
+      <code><![CDATA[duplicateAction]]></code>
+      <code><![CDATA[editAction]]></code>
+    </PossiblyUnusedMethod>
+    <PropertyNotSetInConstructor>
+      <code><![CDATA[TaskController]]></code>
+      <code><![CDATA[TaskController]]></code>
+      <code><![CDATA[TaskController]]></code>
+      <code><![CDATA[TaskController]]></code>
+      <code><![CDATA[TaskController]]></code>
+    </PropertyNotSetInConstructor>
+    <UndefinedInterfaceMethod>
+      <code><![CDATA[getPost]]></code>
+      <code><![CDATA[getPost]]></code>
+      <code><![CDATA[isPost]]></code>
+      <code><![CDATA[isPost]]></code>
+    </UndefinedInterfaceMethod>
+  </file>
+  <file src="module/Application/src/InputFilter/ErrorFormatter.php">
+    <PossiblyInvalidCast>
+      <code><![CDATA[$message]]></code>
+    </PossiblyInvalidCast>
+  </file>
+  <file src="module/Application/src/InputFilter/LoginInputFilter.php">
+    <MissingTemplateParam>
+      <code><![CDATA[LoginInputFilter]]></code>
+    </MissingTemplateParam>
+  </file>
+  <file src="module/Application/src/InputFilter/RegisterInputFilter.php">
+    <MissingTemplateParam>
+      <code><![CDATA[RegisterInputFilter]]></code>
+    </MissingTemplateParam>
+  </file>
+  <file src="module/Application/src/InputFilter/TaskInputFilter.php">
+    <MissingClosureParamType>
+      <code><![CDATA[$context]]></code>
+      <code><![CDATA[$value]]></code>
+    </MissingClosureParamType>
+    <MissingTemplateParam>
+      <code><![CDATA[TaskInputFilter]]></code>
+    </MissingTemplateParam>
+    <MixedArrayAccess>
+      <code><![CDATA[$context['start_date']]]></code>
+    </MixedArrayAccess>
+    <MixedAssignment>
+      <code><![CDATA[$start]]></code>
+    </MixedAssignment>
+  </file>
+  <file src="module/Application/src/Model/TaskTable.php">
+    <MissingClosureParamType>
+      <code><![CDATA[$select]]></code>
+      <code><![CDATA[$select]]></code>
+      <code><![CDATA[$select]]></code>
+    </MissingClosureParamType>
+    <MixedAssignment>
+      <code><![CDATA[$row]]></code>
+    </MixedAssignment>
+    <MixedInferredReturnType>
+      <code><![CDATA[?Task]]></code>
+    </MixedInferredReturnType>
+    <MixedMethodCall>
+      <code><![CDATA[like]]></code>
+      <code><![CDATA[like]]></code>
+      <code><![CDATA[limit]]></code>
+      <code><![CDATA[offset]]></code>
+      <code><![CDATA[order]]></code>
+      <code><![CDATA[order]]></code>
+      <code><![CDATA[where]]></code>
+      <code><![CDATA[where]]></code>
+      <code><![CDATA[where]]></code>
+    </MixedMethodCall>
+    <MixedPropertyFetch>
+      <code><![CDATA[$select->where]]></code>
+      <code><![CDATA[$select->where]]></code>
+    </MixedPropertyFetch>
+    <MixedReturnStatement>
+      <code><![CDATA[$row ?: null]]></code>
+      <code><![CDATA[$row ?: null]]></code>
+    </MixedReturnStatement>
+    <MixedReturnTypeCoercion>
+      <code><![CDATA[$this->tableGateway->select(function ($select) use ($userId) {
+            $select->where(['user_id' => $userId])->order('id DESC');
+        })]]></code>
+      <code><![CDATA[$this->tableGateway->select(function ($select) use ($userId, $perPage, $offset, $search) {
+            $select->where(['user_id' => $userId]);
+            if ($search !== '') {
+                $select->where->like('title', '%' . $search . '%');
+            }
+            $select->order('id DESC')->limit($perPage)->offset($offset);
+        })]]></code>
+      <code><![CDATA[iterable<Task>]]></code>
+      <code><![CDATA[iterable<Task>]]></code>
+    </MixedReturnTypeCoercion>
+    <PossiblyUnusedMethod>
+      <code><![CDATA[fetchAllByUser]]></code>
+    </PossiblyUnusedMethod>
+    <UndefinedInterfaceMethod>
+      <code><![CDATA[current]]></code>
+    </UndefinedInterfaceMethod>
+  </file>
+  <file src="module/Application/src/Model/TaskTableFactory.php">
+    <InvalidArgument>
+      <code><![CDATA[new Task()]]></code>
+    </InvalidArgument>
+  </file>
+  <file src="module/Application/src/Model/UserTable.php">
+    <MixedAssignment>
+      <code><![CDATA[$row]]></code>
+    </MixedAssignment>
+    <MixedInferredReturnType>
+      <code><![CDATA[?object]]></code>
+    </MixedInferredReturnType>
+    <MixedReturnStatement>
+      <code><![CDATA[$row ?: null]]></code>
+      <code><![CDATA[$row ?: null]]></code>
+    </MixedReturnStatement>
+    <UndefinedInterfaceMethod>
+      <code><![CDATA[current]]></code>
+    </UndefinedInterfaceMethod>
+  </file>
+  <file src="module/Application/test/InputFilter/RegisterInputFilterTest.php">
+    <MixedArrayAccess>
+      <code><![CDATA[$filter->getValues()['password']]]></code>
+      <code><![CDATA[$filter->getValues()['username']]]></code>
+    </MixedArrayAccess>
+  </file>
+  <file src="module/Application/test/InputFilter/TaskInputFilterTest.php">
+    <MixedArrayAccess>
+      <code><![CDATA[$filter->getValues()['title']]]></code>
+    </MixedArrayAccess>
+  </file>
+</files>

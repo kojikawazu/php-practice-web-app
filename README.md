@@ -42,7 +42,7 @@ make logs               # ログ追従
 make down               # 停止
 ```
 
-CI: push / Pull Request 時に GitHub Actions（`.github/workflows/ci.yml`）が 3 アプリのテストを自動実行する。
+CI: push / Pull Request 時に GitHub Actions（`.github/workflows/ci.yml`）が 3 アプリの **テスト**（PHPUnit）と **静的チェック**（Laravel=Pint / Laminas=phpcs + Psalm）を自動実行する。ローカルでの自動修正は Laravel=`vendor/bin/pint`、Laminas=`composer cs-fix`。
 
 各アプリ内で artisan / composer を使う例:
 

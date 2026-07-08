@@ -12,7 +12,7 @@ class LinkPreviewServiceTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->service = new LinkPreviewService();
+        $this->service = new LinkPreviewService;
     }
 
     // ---- 正常系 ----

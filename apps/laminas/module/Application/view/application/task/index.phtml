@@ -12,10 +12,10 @@ $base = $this->url('tasks');
     <h1 class="text-2xl font-bold">タスク一覧</h1>
     <p class="text-xs text-gray-400 mb-4">laminas / TableGateway</p>
 
-    <?php if (! empty($errors)): ?>
+    <?php if (! empty($errors)) : ?>
         <div class="bg-red-100 text-red-700 rounded p-3 mb-4 text-sm">
             <ul class="list-disc list-inside">
-                <?php foreach ($errors as $e): ?>
+                <?php foreach ($errors as $e) : ?>
                     <li><?= $this->escapeHtml($e) ?></li>
                 <?php endforeach; ?>
             </ul>
@@ -32,16 +32,16 @@ $base = $this->url('tasks');
     <form method="get" action="<?= $base ?>" class="flex gap-2 items-center mb-4">
         <input type="text" name="q" placeholder="タイトルで検索" value="<?= $this->escapeHtmlAttr($q) ?>" class="border rounded px-3 py-2 flex-1">
         <button type="submit" class="bg-gray-600 text-white rounded px-4 py-2 hover:bg-gray-700">検索</button>
-        <?php if ($q !== ''): ?>
+        <?php if ($q !== '') : ?>
             <a href="<?= $base ?>" class="text-sm text-blue-600 hover:underline">クリア</a>
         <?php endif; ?>
     </form>
 
     <ul class="space-y-2">
-    <?php foreach ($tasks as $task): ?>
+    <?php foreach ($tasks as $task) : ?>
         <li class="bg-white rounded-lg shadow p-3 flex flex-wrap items-center gap-3">
             <span class="flex-1<?= $task->done ? ' line-through text-gray-400' : '' ?>"><?= $this->escapeHtml($task->title) ?></span>
-            <?php if ($task->start_date || $task->end_date): ?>
+            <?php if ($task->start_date || $task->end_date) : ?>
                 <span class="text-xs text-gray-500">[<?= $this->escapeHtml($task->start_date ?? '—') ?> 〜 <?= $this->escapeHtml($task->end_date ?? '—') ?>]</span>
             <?php endif; ?>
             <a href="<?= $this->url('tasks', ['action' => 'edit', 'id' => $task->id]) ?>" class="text-sm text-blue-600 hover:underline">編集</a>
@@ -51,16 +51,16 @@ $base = $this->url('tasks');
     <?php endforeach; ?>
     </ul>
 
-    <?php if ($total === 0): ?>
+    <?php if ($total === 0) : ?>
         <p class="text-gray-500">タスクはありません。</p>
     <?php endif; ?>
 
     <div class="flex items-center gap-3 mt-4 text-sm">
-        <?php if ($page > 1): ?>
+        <?php if ($page > 1) : ?>
             <a href="<?= $base ?>?q=<?= rawurlencode($q) ?>&amp;page=<?= $page - 1 ?>" class="text-blue-600 hover:underline">前へ</a>
         <?php endif; ?>
         <span class="text-gray-600">ページ <?= $page ?> / <?= $totalPages ?>（全 <?= $total ?> 件）</span>
-        <?php if ($page < $totalPages): ?>
+        <?php if ($page < $totalPages) : ?>
             <a href="<?= $base ?>?q=<?= rawurlencode($q) ?>&amp;page=<?= $page + 1 ?>" class="text-blue-600 hover:underline">次へ</a>
         <?php endif; ?>
     </div>

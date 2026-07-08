@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -74,7 +73,7 @@ class TaskApiTest extends TestCase
         $user->tasks()->create(['title' => '買い物に行く']);
         $user->tasks()->create(['title' => '掃除をする']);
 
-        $response = $this->getJson('/api/tasks?q=' . urlencode('買い物'));
+        $response = $this->getJson('/api/tasks?q='.urlencode('買い物'));
 
         $response->assertOk();
         $response->assertJsonCount(1, 'data');
@@ -202,7 +201,7 @@ class TaskApiTest extends TestCase
         $user = $this->actingUser();
         $user->tasks()->create(['title' => '買い物']);
 
-        $response = $this->getJson('/api/tasks?q=' . urlencode('存在しない'));
+        $response = $this->getJson('/api/tasks?q='.urlencode('存在しない'));
 
         $response->assertOk();
         $response->assertJsonCount(0, 'data');
