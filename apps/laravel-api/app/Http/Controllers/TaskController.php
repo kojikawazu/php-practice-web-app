@@ -10,6 +10,10 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
+/**
+ * タスクの JSON CRUD・複製・画像配信（すべて auth:sanctum 保護）。
+ * 本人のタスクに限定し、他人のリソースは存在を伏せて 404 にする。
+ */
 class TaskController extends Controller
 {
     private const DEFAULT_PER_PAGE = 5;
