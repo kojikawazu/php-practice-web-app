@@ -24,4 +24,4 @@
 - **テスト**: 各アプリにユニット/Feature テストを用意し、CI（GitHub Actions）で push/PR ごとに自動実行。
 - **再現性**: Docker により環境を固定（PHP 8.3）。依存は `composer.lock` で固定し、`composer audit` クリーンを維持。
 - **保守性**: フレームワーク標準構成・規約に従い、検証は仕組み化（Laravel: FormRequest 相当の `validate`、Laminas: InputFilter）。
-- **既知の限界**: laminas の認可（所有者スコープ）はライブ smoke 中心で PHPUnit 化は未了（`docs/11 #7`）。カバレッジ未計測。
+- **既知の限界**: laminas の認可（所有者スコープ）は `TaskTable` の SQL を SQLite in-memory で PHPUnit 化済み（`docs/11 #8a`）。セッション認証フローはライブ smoke 中心のまま。カバレッジは未計測（`docs/11 #8b`）。
