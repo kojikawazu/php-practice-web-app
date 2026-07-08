@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * Sanctum の個人アクセストークン管理（一覧・発行・失効）。すべて本人のトークンのみ対象。
+ */
 class TokenController extends Controller
 {
     /** 自分のトークン一覧（ハッシュ値 token カラムは Sanctum 側で $hidden のため漏れない） */

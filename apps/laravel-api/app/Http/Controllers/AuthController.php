@@ -8,6 +8,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
+/**
+ * Sanctum トークン認証。登録・ログインで平文トークンを発行し、ログアウトは現在のトークンのみ失効する。
+ */
 class AuthController extends Controller
 {
     public function register(Request $request): JsonResponse
