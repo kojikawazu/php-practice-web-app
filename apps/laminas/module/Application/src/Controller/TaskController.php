@@ -12,6 +12,10 @@ use Laminas\Authentication\AuthenticationService;
 use Laminas\Mvc\Controller\AbstractActionController;
 use Laminas\View\Model\ViewModel;
 
+/**
+ * タスクの一覧・作成・編集・複製・削除。すべてログインユーザー本人のタスクに限定する
+ * （所有者スコープは TaskTable のメソッド側で担保）。
+ */
 class TaskController extends AbstractActionController
 {
     public function __construct(
@@ -125,7 +129,11 @@ class TaskController extends AbstractActionController
         return $this->redirect()->toRoute('tasks');
     }
 
-    /** InputFilter の値から日付（空文字は null）を Task に反映する */
+    /**
+     * InputFilter の値から日付（空文字は null）を Task に反映する。
+     *
+     * @param array<string, mixed> $values
+     */
     private function applyDates(Task $task, array $values): void
     {
         $task->start_date = ($values['start_date'] ?? '') !== '' ? $values['start_date'] : null;

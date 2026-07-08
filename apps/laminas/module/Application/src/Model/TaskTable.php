@@ -32,7 +32,11 @@ class TaskTable
         return $row ?: null;
     }
 
-    /** ページ単位で取得（任意のタイトル検索付き） */
+    /**
+     * ページ単位で取得（任意のタイトル検索付き）。
+     *
+     * @return iterable<Task>
+     */
     public function fetchPageByUser(int $userId, int $perPage, int $offset, string $search = ''): iterable
     {
         return $this->tableGateway->select(function ($select) use ($userId, $perPage, $offset, $search) {
@@ -57,6 +61,7 @@ class TaskTable
         return $result->count();
     }
 
+    /** 新規（id が null）は insert、既存は所有者スコープ付きで update する */
     public function saveTask(Task $task): void
     {
         $data = [

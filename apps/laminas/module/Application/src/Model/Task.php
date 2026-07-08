@@ -17,6 +17,7 @@ class Task
     public ?string $start_date = null;
     public ?string $end_date = null;
 
+    /** @param array<string, mixed> $data DB 行（連想配列） */
     public function exchangeArray(array $data): void
     {
         $this->id         = isset($data['id']) ? (int) $data['id'] : null;
@@ -27,6 +28,7 @@ class Task
         $this->end_date   = ! empty($data['end_date']) ? (string) $data['end_date'] : null;
     }
 
+    /** @return array<string, mixed> DB 保存用の連想配列 */
     public function getArrayCopy(): array
     {
         return [
