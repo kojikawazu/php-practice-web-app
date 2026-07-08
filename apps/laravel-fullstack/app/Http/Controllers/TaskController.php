@@ -15,6 +15,10 @@ use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
+/**
+ * タスクの CRUD・完了切替・複製・画像配信。すべて本人のタスクに限定する（他人のは 404）。
+ * 新規・編集・複製は確認画面を挟む 2 ステップ（入力→セッション退避→確定）で処理する。
+ */
 class TaskController extends Controller
 {
     private const PER_PAGE = 5;
@@ -155,6 +159,8 @@ class TaskController extends Controller
     /**
      * 入力を検証し、確認ステップ用にセッション＋一時ファイルへ退避する。
      * 画像は uploads ディスクの tmp/ に一時保存、URL はこの時点で安全に取得する。
+     *
+     * @return array<string, mixed> 確認画面・確定処理で使う退避ペイロード
      */
     private function validateAndStash(Request $request, LinkPreviewService $preview, string $mode, ?Task $task): array
     {
@@ -205,6 +211,12 @@ class TaskController extends Controller
         return $payload;
     }
 
+    /**
+     * 退避ペイロードから Task の保存用データ（画像を除く）を組み立てる。
+     *
+     * @param  array<string, mixed> $p
+     * @return array<string, mixed>
+     */
     private function dataFromPayload(array $p): array
     {
         return [
