@@ -67,6 +67,28 @@ class TaskApiTest extends TestCase
         $response->assertJsonFragment(['per_page' => 2, 'total' => 4]);
     }
 
+    public function test_index_clamps_per_page_over_max(): void
+    {
+        $this->actingUser();
+
+        // per_page は max(1, min($n, 50)) でクランプ。上限 50 を超える指定は 50 に丸まる
+        $response = $this->getJson('/api/tasks?per_page=999');
+
+        $response->assertOk();
+        $response->assertJsonFragment(['per_page' => 50]);
+    }
+
+    public function test_index_clamps_per_page_below_one(): void
+    {
+        $this->actingUser();
+
+        // 0 以下の指定は最低 1 に丸まる
+        $response = $this->getJson('/api/tasks?per_page=0');
+
+        $response->assertOk();
+        $response->assertJsonFragment(['per_page' => 1]);
+    }
+
     public function test_index_search_filters_by_title(): void
     {
         $user = $this->actingUser();
