@@ -210,9 +210,6 @@
       <code><![CDATA[iterable<Task>]]></code>
       <code><![CDATA[iterable<Task>]]></code>
     </MixedReturnTypeCoercion>
-    <PossiblyUnusedMethod>
-      <code><![CDATA[fetchAllByUser]]></code>
-    </PossiblyUnusedMethod>
     <UndefinedInterfaceMethod>
       <code><![CDATA[current]]></code>
     </UndefinedInterfaceMethod>

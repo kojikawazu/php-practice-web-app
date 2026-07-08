@@ -8,7 +8,7 @@
 |--------|--------|----|------|
 | laravel-fullstack | PHPUnit（`php artisan test`） | SQLite in-memory | Feature（HTTP）|
 | laravel-api | PHPUnit（`php artisan test`） | SQLite in-memory | Feature（JSON API）|
-| laminas | PHPUnit（`vendor/bin/phpunit`） | なし（モデル/サービス/InputFilter 単体）| Unit（Task / PasswordHasher / InputFilter×3）+ 既存 Controller。認証・CRUD フローはライブ smoke |
+| laminas | PHPUnit（`vendor/bin/phpunit`） | 認可テストのみ SQLite in-memory（他はモデル/サービス/InputFilter 単体で DB 不要）| Unit（Task / PasswordHasher / InputFilter×3 / **TaskTable 所有者スコープ**）+ 既存 Controller。セッション認証フローはライブ smoke |
 
 > テストを SQLite in-memory にしている理由: `RefreshDatabase` は `migrate:fresh`（全テーブル DROP）を行うため、共有 MySQL に対して実行すると他アプリのテーブルを巻き込む。テストは隔離された in-memory DB で実行し、prefix 動作は実 DB へのマイグレーションで確認する。
 
@@ -24,11 +24,13 @@
 | api Auth | register トークン / login トークン / logout | 誤パスワード 422 / メール重複 422 / 短パスワード 422 / token無し 401 |
 | api Token | 一覧(ハッシュ非公開)/発行/期限付き発行/失効 | name必須422 / 不正expiry422 / 他人失効404 / guest401 / 期限切れトークン401 |
 | laminas Task model | exchangeArray全項目 / getArrayCopy | 空配列デフォルト / '0'→false / 数値文字列→int / false→0 |
+| laminas TaskTable（所有者スコープ・SQLite） | 本人タスクの取得/一覧/検索/作成/更新/削除 | 他人タスクの取得null / 他人タスクを削除しても消えない / user_id偽装updateが他人に及ばない / countが他人を除外 / 一覧が他人を除外 / 検索ヒットなし |
 | fullstack LinkPreview(SSRF) | public IP 許可 / title・og:image 抽出 | private・loopback・link-local・予約IP 拒否 / 非http拒否 / 内部ホスト拒否 / og:image非http除外 |
 | laminas PasswordHasher | hash→verify / bcrypt形式 | 誤パスワード / 空 / 不正ハッシュ / ソルトで毎回異なる |
 | laminas InputFilter | Task/Register/Login の有効入力通過・StringTrim 整形・日付任意通過 | 必須欠落 / 空 / 空白のみ / 長すぎ(255超) / 短パスワード(8未満) / 不正日付 / 終了日<開始日 |
 
 > laminas のセッション認証フロー（register→login→保護→logout）は PHPUnit（CLI/セッション）でなく **ライブ smoke テスト（curl + cookie）** で検証する方針。認証ロジックの核（bcrypt）は `PasswordHasherTest` で単体保証する。
+> 一方、**認可（所有者スコープ）の実体である `TaskTable` の SQL** は、SQLite in-memory アダプタを差した `TaskTableTest` で PHPUnit 化済み（他人タスクの取得・更新・削除が SQL レベルで弾かれることを実データで検証）。
 
 ## 実行方法
 
