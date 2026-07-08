@@ -18,10 +18,12 @@ use Illuminate\Support\Facades\Http;
 class LinkPreviewService
 {
     private const MAX_REDIRECTS = 3;
+
     private const MAX_BYTES = 524288; // 512KB
 
     /**
-     * @return array{title: ?string, image: ?string}|null  取得失敗時は null
+     * @return array{title: ?string, image: ?string}|null 取得失敗時は null
+     *
      * @throws BlockedUrlException 取得を禁止すべき URL の場合
      */
     public function fetch(string $url, int $depth = 0): ?array
@@ -136,6 +138,6 @@ class LinkPreviewService
             return "{$scheme}://{$host}{$location}";
         }
 
-        return "{$scheme}://{$host}/" . ltrim($location, '/');
+        return "{$scheme}://{$host}/".ltrim($location, '/');
     }
 }

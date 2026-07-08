@@ -33,7 +33,14 @@ class TaskTest extends TestCase
         $task->end_date = '2026-06-20';
 
         $this->assertSame(
-            ['id' => 3, 'title' => '掃除', 'done' => 1, 'user_id' => 2, 'start_date' => '2026-06-10', 'end_date' => '2026-06-20'],
+            [
+                'id'         => 3,
+                'title'      => '掃除',
+                'done'       => 1,
+                'user_id'    => 2,
+                'start_date' => '2026-06-10',
+                'end_date'   => '2026-06-20',
+            ],
             $task->getArrayCopy()
         );
     }

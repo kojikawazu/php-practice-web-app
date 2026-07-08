@@ -74,3 +74,51 @@ jobs:
         if: ${{ !matrix.laravel }}
         working-directory: apps/${{ matrix.app }}
         run: ./vendor/bin/phpunit
+
+  # 静的チェック（整形・コーディング標準・型解析）。test と同じく code 変更時のみ実行する。
+  # Laravel: Pint（整形の差分検査）／ Laminas: phpcs（コーディング標準）+ Psalm（型解析・baseline 運用）。
+  lint:
+    name: lint (${{ matrix.app }})
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { app: laravel-fullstack, laravel: true }
+          - { app: laravel-api, laravel: true }
+          - { app: laminas, laravel: false }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP 8.3
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, intl, bcmath, pdo_sqlite, dom, xml, curl, zip, fileinfo, tokenizer
+          coverage: none
+
+      - name: Install dependencies
+        uses: ramsey/composer-install@v3
+        with:
+          working-directory: apps/${{ matrix.app }}
+
+      # Laravel: Pint の差分検査（整形崩れがあれば失敗。修正は `vendor/bin/pint`）
+      - name: Format check (Pint)
+        if: ${{ matrix.laravel }}
+        working-directory: apps/${{ matrix.app }}
+        run: ./vendor/bin/pint --test
+
+      # Laminas: コーディング標準（修正は `composer cs-fix`）
+      - name: Coding standard (phpcs)
+        if: ${{ !matrix.laravel }}
+        working-directory: apps/laminas
+        run: composer cs-check
+
+      # Laminas: 静的型解析（既存の指摘は psalm-baseline.xml に記録済み。新規の指摘のみ失敗）
+      - name: Static analysis (Psalm)
+        if: ${{ !matrix.laravel }}
+        working-directory: apps/laminas
+        run: ./vendor/bin/psalm --no-progress

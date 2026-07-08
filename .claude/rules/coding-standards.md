@@ -29,6 +29,7 @@ PHP 8 の型宣言を第一とし、PHPDoc は**言語の型システムで表�
 
 - コミット前に該当アプリのフォーマッタを通し、差分ゼロにする。
 - Laminas は配列を短縮構文 `[]` で書く（`array()` 禁止・phpcs で強制）。
+- **CI で強制**: `lint` ジョブが Pint（`--test`）・phpcs・Psalm を実行する。Psalm の既存指摘は `apps/laminas/psalm-baseline.xml` に記録済みで、新規に増えた指摘のみ CI を失敗させる（baseline は段階的に減らす運用）。
 
 ## 依存・設定
 

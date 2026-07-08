@@ -4,10 +4,10 @@ $this->headTitle('新規登録 (laminas)');
 <div class="max-w-sm mx-auto">
     <h1 class="text-2xl font-bold mb-4">新規登録 <span class="text-xs text-gray-400">laminas</span></h1>
 
-    <?php if (! empty($errors)): ?>
+    <?php if (! empty($errors)) : ?>
         <div class="bg-red-100 text-red-700 rounded p-3 mb-4 text-sm">
             <ul class="list-disc list-inside">
-                <?php foreach ($errors as $e): ?>
+                <?php foreach ($errors as $e) : ?>
                     <li><?= $this->escapeHtml($e) ?></li>
                 <?php endforeach; ?>
             </ul>

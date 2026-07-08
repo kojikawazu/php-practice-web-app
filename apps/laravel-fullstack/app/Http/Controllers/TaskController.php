@@ -7,7 +7,6 @@ use App\Services\BlockedUrlException;
 use App\Services\LinkPreviewService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -22,7 +21,9 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class TaskController extends Controller
 {
     private const PER_PAGE = 5;
+
     private const IMAGE_RULES = ['nullable', 'image', 'mimes:jpeg,png,webp,gif', 'max:2048'];
+
     private const CONFIRM_KEY = 'task_confirm';
 
     public function index(Request $request): View
@@ -30,7 +31,7 @@ class TaskController extends Controller
         $q = trim((string) $request->query('q', ''));
 
         $tasks = Task::where('user_id', Auth::id())
-            ->when($q !== '', fn ($query) => $query->where('title', 'like', '%' . $q . '%'))
+            ->when($q !== '', fn ($query) => $query->where('title', 'like', '%'.$q.'%'))
             ->orderByDesc('id')
             ->paginate(self::PER_PAGE)
             ->withQueryString();
@@ -214,7 +215,7 @@ class TaskController extends Controller
     /**
      * 退避ペイロードから Task の保存用データ（画像を除く）を組み立てる。
      *
-     * @param  array<string, mixed> $p
+     * @param  array<string, mixed>  $p
      * @return array<string, mixed>
      */
     private function dataFromPayload(array $p): array
@@ -242,7 +243,7 @@ class TaskController extends Controller
     private function moveTemp(string $tmp): string
     {
         $ext = pathinfo($tmp, PATHINFO_EXTENSION);
-        $final = (string) Str::uuid() . ($ext ? '.' . $ext : '');
+        $final = (string) Str::uuid().($ext ? '.'.$ext : '');
         Storage::disk('uploads')->move($tmp, $final);
 
         return $final;
@@ -262,7 +263,7 @@ class TaskController extends Controller
             return null;
         }
         $ext = pathinfo($path, PATHINFO_EXTENSION);
-        $copy = (string) Str::uuid() . ($ext ? '.' . $ext : '');
+        $copy = (string) Str::uuid().($ext ? '.'.$ext : '');
         Storage::disk('uploads')->copy($path, $copy);
 
         return $copy;
@@ -277,6 +278,6 @@ class TaskController extends Controller
     /** 「（コピー）」を付与しつつ 255 文字以内に丸める */
     private function copyTitle(string $title): string
     {
-        return mb_substr($title . '（コピー）', 0, 255);
+        return mb_substr($title.'（コピー）', 0, 255);
     }
 }
