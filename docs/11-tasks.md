@@ -32,6 +32,6 @@
 ## 進捗メモ
 
 - PR #1〜#16 すべてマージ済み。main は CI green を維持。
-- 自動テスト規模: fullstack 53 / api 41 / laminas 48。
+- 自動テスト規模: fullstack 53 / api 50 / laminas 48。
 - 未了フォロー（#8b）: カバレッジ計測（CI は現状 `coverage: none`）。#8a（所有者スコープの PHPUnit 化）は `TaskTableTest`（SQLite in-memory）で完了。
 - 既知の妥協は `docs/06`（DB平文・flatpickr CDN の SRI 未設定）と `docs/10`（決定事項）に記録。
