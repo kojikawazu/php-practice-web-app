@@ -217,6 +217,16 @@ class TaskTest extends TestCase
         $this->assertDatabaseCount('tasks', 0);
     }
 
+    public function test_store_rejects_too_long_title(): void
+    {
+        $response = $this->actingAs($this->user())
+            ->from(route('tasks.index'))
+            ->post(route('tasks.store.confirm'), ['title' => str_repeat('あ', 256)]);
+
+        $response->assertSessionHasErrors('title');
+        $this->assertDatabaseCount('tasks', 0);
+    }
+
     public function test_cannot_toggle_other_users_task(): void
     {
         $othersTask = $this->user()->tasks()->create(['title' => '触れないタスク']);
