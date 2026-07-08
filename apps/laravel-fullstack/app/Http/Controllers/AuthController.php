@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
+/**
+ * セッション認証。登録（自動ログイン）・ログイン（セッション再生成）・ログアウト（セッション無効化）。
+ */
 class AuthController extends Controller
 {
     public function showRegister(): View
