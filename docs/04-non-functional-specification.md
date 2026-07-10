@@ -24,4 +24,5 @@
 - **テスト**: 各アプリにユニット/Feature テストを用意し、CI（GitHub Actions）で push/PR ごとに自動実行。
 - **再現性**: Docker により環境を固定（PHP 8.3）。依存は `composer.lock` で固定し、`composer audit` クリーンを維持。
 - **保守性**: フレームワーク標準構成・規約に従い、検証は仕組み化（Laravel: FormRequest 相当の `validate`、Laminas: InputFilter）。
-- **既知の限界**: laminas の認可（所有者スコープ）は `TaskTable` の SQL を SQLite in-memory で PHPUnit 化済み（`docs/11 #8a`）。セッション認証フローはライブ smoke 中心のまま。カバレッジは未計測（`docs/11 #8b`）。
+- **統合テスト（IT）**: レイヤ横断フローは Laravel の Feature テスト、および laminas の `*IntegrationTest`（`dispatch` + SQLite in-memory + 認証識別子注入）で担保する（`docs/08` / `docs/11 #12`）。laminas の認可（所有者スコープ）は SQL レベル（`TaskTableTest`）とコントローラ横断（`TaskControllerIntegrationTest`）の 2 段で検証する。
+- **既知の限界**: laminas の実セッション永続（Cookie を跨いだ保護維持）のみライブ smoke 補完（認証ロジック自体は IT で検証済み）。カバレッジは未計測（`docs/11 #8b`）。
