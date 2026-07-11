@@ -34,7 +34,7 @@
 | 11 | テスト拡充: laminas 認可 PHPUnit 化 / api ユニット新設 / 異常系（境界値・per_page クランプ）追加 | DONE | - | - |
 | 12 | **IT（統合テスト）の導入**: レイヤ横断の結合テスト方針を定義。特に laminas のコントローラ↔認証↔`TaskTable` フローを PHPUnit 化（Laravel の Feature は IT として整理） | DONE | - | - |
 | 13 | **E2E テストの導入**: Playwright（`e2e/`）で 3 アプリ（fullstack/laminas=ブラウザ, api=HTTP/Bearer）の主要フロー（登録→ログイン→CRUD→ログアウト）と認可・境界値・不正入力を実環境（実 MySQL）で検証。CI に専用 `e2e` ジョブを追加 | DONE | - | - |
-| 14 | Larastan 導入: Laravel 2 アプリにも型解析を追加し Psalm 相当のゲート化（`BelongsTo<>` 等のジェネリクスを活用） | TODO | - | - |
+| 14 | Larastan 導入: Laravel 2 アプリにも型解析を追加し Psalm 相当のゲート化（`BelongsTo<>` 等のジェネリクスを活用） | DONE | - | - |
 
 ## 進捗メモ
 
@@ -44,5 +44,6 @@
 - #12（IT 導入）DONE: 粒度軸（単体/IT/E2E）を `docs/08` に定義。laminas に `TaskControllerIntegrationTest` / `AuthControllerIntegrationTest` を追加（`AbstractHttpControllerTestCase` で dispatch し、SQLite in-memory + 認証識別子注入）。Laravel の Feature は IT として分類明記（コード変更なし）。
 - 未了フォロー（#8b）: カバレッジ計測（CI は現状 `coverage: none`）。#8a（所有者スコープの PHPUnit 化）は `TaskTableTest`（SQLite in-memory）で完了。
 - #13（E2E 導入）DONE: `e2e/`（Playwright / TypeScript）を新設。実環境（compose・実 MySQL）に対し fullstack/laminas はブラウザ、api は HTTP(Bearer) で計 55 ケース（正常/準正常/異常）を実行し全 green を確認。`make e2e` / CI 専用 `e2e` ジョブ（compose 起動→migrate→playwright）を追加。実行毎ユニークユーザー + 所有者スコープでテストを独立させ、DB 全リセットはしない。laminas の実セッション永続はこの層でカバー（IT の穴を解消）。
-- テスト改善バックログ: #8b カバレッジ計測 / #14 Larastan 導入。
+- #14（Larastan 導入）DONE: 両 Laravel アプリに `larastan/larastan ^3` を追加し `phpstan.neon`（`level: max`）で型解析をゲート化（Laminas の Psalm 最厳格 + baseline と対をなす）。既存指摘は `phpstan-baseline.neon`（fullstack 23 / api 25）に記録し新規のみ CI 失敗。`composer analyse`（`--memory-limit=1G`）を追加し、CI の `lint` ジョブへ組み込み。付随して依存更新時の `composer audit` で検出された guzzle/psr7 の CVE を patch 更新で解消（`docs/06`）。モデルのリレーションは既に `BelongsTo<User, Task>` 等で注釈済み（max のテンプレート不変性由来の指摘は baseline 化）。
+- テスト改善バックログ: #8b カバレッジ計測。
 - 既知の妥協は `docs/06`（DB平文・flatpickr CDN の SRI 未設定）と `docs/10`（決定事項）に記録。
