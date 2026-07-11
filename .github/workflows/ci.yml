@@ -157,6 +157,24 @@ jobs:
           done
           echo "mysql did not become healthy"; docker compose ps; exit 1
 
+      # compose のバインドマウントがビルド時の vendor を隠すため、各コンテナで composer install する。
+      # （ローカルは開発中に導入済みの vendor が使われるが、CI のチェックアウトには存在しない）
+      - name: Prepare Laravel env (fs / api)
+        run: |
+          docker compose exec -T php-fs sh -c "cp -n .env.example .env || true"
+          docker compose exec -T php-api sh -c "cp -n .env.example .env || true"
+
+      - name: Install PHP dependencies (3 apps)
+        run: |
+          docker compose exec -T php-fs composer install --no-interaction --prefer-dist --no-progress
+          docker compose exec -T php-api composer install --no-interaction --prefer-dist --no-progress
+          docker compose exec -T php-laminas composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Generate Laravel app key (fs / api)
+        run: |
+          docker compose exec -T php-fs php artisan key:generate --force
+          docker compose exec -T php-api php artisan key:generate --force
+
       - name: Migrate (Laravel ×2)
         run: |
           docker compose exec -T php-fs php artisan migrate --force
