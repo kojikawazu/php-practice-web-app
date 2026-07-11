@@ -1,4 +1,4 @@
-.PHONY: up down build logs ps migrate test test-fs test-api test-laminas
+.PHONY: up down build logs ps migrate test test-fs test-api test-laminas e2e
 
 # コンテナ起動 / 停止
 up:
@@ -32,3 +32,8 @@ test-api:
 
 test-laminas:
 	docker compose exec php-laminas ./vendor/bin/phpunit
+
+# E2E（Playwright）。事前に `make up && make migrate` で実環境を起動しておくこと。
+# 3アプリ（fullstack/laminas=ブラウザ, api=HTTP）を 1 ランナーで実行する。
+e2e:
+	cd e2e && npm ci && npx playwright install chromium && npx playwright test

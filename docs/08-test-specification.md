@@ -10,9 +10,11 @@
 |------|------|----------------------|
 | 単体（Unit） | 1 レイヤ/クラスの契約を隔離して検証 | Task モデル・PasswordHasher・InputFilter・**TaskTable（SQL 所有者スコープ）** |
 | IT（統合／結合） | ルーティング → コントローラ → 認証 → データアクセス層 → 実 DB を横断で検証 | **Laravel の Feature テスト全般**（ミドルウェア認証→Eloquent→SQLite）／**laminas の `*IntegrationTest`**（`AbstractHttpControllerTestCase` で dispatch し、SQLite in-memory + 認証識別子を注入）|
-| E2E | ブラウザ自動化で UI から通しで検証 | 未導入（`docs/11 #13` のバックログ）|
+| E2E | ブラウザ自動化で UI から通しで検証 | **`e2e/`（Playwright / TypeScript）**。compose で起動した実環境（実 MySQL・prefix 分離）に対し、fullstack / laminas は実ブラウザ、api は HTTP（Bearer）で 3 アプリ横断に検証（`docs/11 #13` で導入）|
 
 > laminas の IT は、bootstrap 後に ServiceManager の `AdapterInterface` を SQLite in-memory へ、`AuthenticationService` を NonPersistent ストレージ（識別子を直接注入）へ差し替えて実現する。MySQL・実セッションに依存せず、コントローラの認可分岐・リダイレクト・DB 反映という「配線」を検証する。
+
+> **E2E（Playwright）の位置づけ**: IT が SQLite in-memory で「配線」を検証するのに対し、E2E は `docker compose up` した**実環境・実 MySQL**に対してブラウザ/HTTP で通す唯一のレイヤ。`RefreshDatabase` は使わず、**実行毎ユニークなユーザー**を作り所有者スコープでテストを独立させる（共有 DB を全リセットしない方針を踏襲）。1 つの Playwright ランナーに 3 projects（fullstack / laminas / api）を同居させ、baseURL（`E2E_FS_URL` / `E2E_LAMINAS_URL` / `E2E_API_URL`）で切り替える。実行は `make e2e`（事前に `make up && make migrate`）。CI では専用 `e2e` ジョブが compose 起動 → migrate → Playwright を実行する。
 
 ## テスト戦略
 
@@ -20,7 +22,8 @@
 |--------|--------|----|------|
 | laravel-fullstack | PHPUnit（`php artisan test`） | SQLite in-memory | Feature（HTTP）=**IT** |
 | laravel-api | PHPUnit（`php artisan test`） | SQLite in-memory（Unit は DB 不要） | Feature（JSON API）=**IT** + Unit（Task モデル）|
-| laminas | PHPUnit（`vendor/bin/phpunit`） | IT・認可テストは SQLite in-memory（他はモデル/サービス/InputFilter 単体で DB 不要）| Unit（Task / PasswordHasher / InputFilter×3 / **TaskTable 所有者スコープ**）+ **IT（TaskController / AuthController を dispatch）**。実セッション永続のみライブ smoke 補完 |
+| laminas | PHPUnit（`vendor/bin/phpunit`） | IT・認可テストは SQLite in-memory（他はモデル/サービス/InputFilter 単体で DB 不要）| Unit（Task / PasswordHasher / InputFilter×3 / **TaskTable 所有者スコープ**）+ **IT（TaskController / AuthController を dispatch）**。実セッション永続は E2E がカバー |
+| 3アプリ横断（E2E） | Playwright（`make e2e` / `npx playwright test`） | 実 MySQL（compose）| **E2E**: fullstack / laminas（ブラウザ）+ api（HTTP/Bearer）。登録→ログイン→CRUD→ログアウトの実フローと認可・境界値・不正入力を実環境で検証 |
 
 > テストを SQLite in-memory にしている理由: `RefreshDatabase` は `migrate:fresh`（全テーブル DROP）を行うため、共有 MySQL に対して実行すると他アプリのテーブルを巻き込む。テストは隔離された in-memory DB で実行し、prefix 動作は実 DB へのマイグレーションで確認する。
 
@@ -43,8 +46,11 @@
 | fullstack LinkPreview(SSRF) | public IP 許可 / title・og:image 抽出 | private・loopback・link-local・予約IP 拒否 / 非http拒否 / 内部ホスト拒否 / og:image非http除外 |
 | laminas PasswordHasher | hash→verify / bcrypt形式 | 誤パスワード / 空 / 不正ハッシュ / ソルトで毎回異なる |
 | laminas InputFilter | Task/Register/Login の有効入力通過・StringTrim 整形・日付任意通過 | 必須欠落 / 空 / 空白のみ / 長すぎ(255超) / 短パスワード(8未満) / 不正日付 / 終了日<開始日 |
+| fullstack E2E（**Playwright**・実ブラウザ・実MySQL） | 登録→自動ログイン→一覧 / ログアウト→再ログイン / 作成(確認画面→確定) / 編集 / 複製 / 完了トグル / 削除 / 検索 / ページネーション / 日付付き作成 / 画像添付→所有者閲覧(200) | guest→/login誘導 / 誤パスワード / メール重複 / 確認不一致 / 短PW / 空title(確認へ進まず) / 終了日<開始日 / 確認画面キャンセルで未作成 / 他人タスクedit・image 404 |
+| laminas E2E（**Playwright**・実ブラウザ・実MySQL） | 登録→自動ログイン→一覧 / ログアウト→再ログイン / 作成 / 編集 / 複製(「（コピー）」) / 削除 / 検索 / ページネーション | guest→/login誘導 / 誤パスワード / username重複 / 短PW / 空title / 検索ヒットなし / 他人タスクは編集画面に入れず一覧へ / 他人タスク削除は無効 |
+| api E2E（**Playwright**・HTTP/Bearer・実MySQL） | register(201) / login(200) / logout(204→401) / CRUD / 複製(201) / 日付Y-m-d / per_pageクランプ / 検索 / 画像image_url→所有者取得(200) | 誤PW422 / メール重複422 / 短PW422 / token無し401 / 無効token401 / title欠落422 / title長すぎ422 / 終了日<開始日422 / 他人タスクview・update・delete・duplicate・image 404 |
 
-> laminas の認証フロー（register→login→logout）は、`AuthControllerIntegrationTest` で **IT として PHPUnit 化済み**（コントローラ→InputFilter→UserTable→DB→bcrypt 照合を通しで検証）。**実セッションの永続**（Cookie を跨いだ保護ページ維持）のみ CLI では再現しないため、その部分だけライブ smoke（curl + cookie）で補完する。認証ロジックの核（bcrypt）は `PasswordHasherTest` でも単体保証する。
+> laminas の認証フロー（register→login→logout）は、`AuthControllerIntegrationTest` で **IT として PHPUnit 化済み**（コントローラ→InputFilter→UserTable→DB→bcrypt 照合を通しで検証）。**実セッションの永続**（Cookie を跨いだ保護ページ維持）は **E2E（Playwright）が実ブラウザでカバー**（ログアウト→再ログイン等）。認証ロジックの核（bcrypt）は `PasswordHasherTest` でも単体保証する。
 > **認可（所有者スコープ）**は 2 段で担保する: SQL レベルは `TaskTableTest`（単体）、コントローラを通した横断フローは `TaskControllerIntegrationTest`（IT）で、他人タスクの編集・削除・複製が弾かれることを実データで検証する。
 
 ## 実行方法
@@ -54,6 +60,14 @@ make test          # 3アプリ一括
 make test-fs       # laravel-fullstack
 make test-api      # laravel-api
 make test-laminas  # laminas
+```
+
+E2E（Playwright・実環境に対して実行）:
+
+```bash
+make up && make migrate   # compose 起動 + Laravel マイグレーション
+make e2e                  # e2e/ で npm ci → chromium 導入 → playwright test（3 projects）
+# 個別実行例: cd e2e && npx playwright test --project=api
 ```
 
 ## カバレッジ目標

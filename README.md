@@ -42,6 +42,18 @@ make logs               # ログ追従
 make down               # 停止
 ```
 
+### E2E テスト（Playwright）
+
+3 アプリ横断の E2E は `e2e/`（Playwright / TypeScript）にあり、**`docker compose` で起動した実環境（実 MySQL）** に対して実行する（fullstack/laminas はブラウザ、api は HTTP/Bearer）。
+
+```bash
+make up && make migrate  # 実環境を起動
+make e2e                 # e2e/ で npm ci → chromium 導入 → playwright test（3 projects 計55ケース）
+# 個別: cd e2e && npx playwright test --project=api
+```
+
+対象 URL は既定で compose のポート（8001/8002/8003）。`E2E_FS_URL` / `E2E_LAMINAS_URL` / `E2E_API_URL` で上書きできる。CI では push/PR 時に専用 `e2e` ジョブが compose 起動 → migrate → Playwright を実行する。
+
 CI: push / Pull Request 時に GitHub Actions（`.github/workflows/ci.yml`）が 3 アプリの **テスト**（PHPUnit）と **静的チェック**（Laravel=Pint / Laminas=phpcs + Psalm）を自動実行する。ローカルでの自動修正は Laravel=`vendor/bin/pint`、Laminas=`composer cs-fix`。
 
 各アプリ内で artisan / composer を使う例:
