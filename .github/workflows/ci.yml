@@ -170,6 +170,15 @@ jobs:
           docker compose exec -T php-api composer install --no-interaction --prefer-dist --no-progress
           docker compose exec -T php-laminas composer install --no-interaction --prefer-dist --no-progress
 
+      # php-fpm は www-data で動くが、CI のチェックアウトは runner UID 所有のためフレームワークの
+      # 書き込み先（Laravel=storage/bootstrap-cache のビュー compile、laminas=data/cache の設定キャッシュ）に
+      # 書けず 500 になる。macOS の bind mount は寛容だが Linux は厳格なため CI でのみ顕在化する。
+      - name: Make framework write dirs writable (php-fpm=www-data)
+        run: |
+          docker compose exec -T --user root php-fs sh -c "mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache bootstrap/cache && chmod -R 777 storage bootstrap/cache"
+          docker compose exec -T --user root php-api sh -c "mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache bootstrap/cache && chmod -R 777 storage bootstrap/cache"
+          docker compose exec -T --user root php-laminas sh -c "mkdir -p data/cache && chmod -R 777 data"
+
       - name: Generate Laravel app key (fs / api)
         run: |
           docker compose exec -T php-fs php artisan key:generate --force
@@ -180,19 +189,25 @@ jobs:
           docker compose exec -T php-fs php artisan migrate --force
           docker compose exec -T php-api php artisan migrate --force
 
+      # 200/302/401 を「正常起動」とみなす。500 等が続く場合はここで早期に失敗させ、
+      # 30秒×リトライでテストが長時間ハングするのを防ぐ（api は Accept で 401 を期待）。
       - name: Wait for apps to respond
         run: |
-          for url in http://localhost:8001/login http://localhost:8002/api/tasks http://localhost:8003/login; do
-            ok=""
+          check() {
+            url="$1"; shift; last=""
             for i in $(seq 1 40); do
-              code=$(curl -s -o /dev/null -w "%{http_code}" "$url" || true)
-              if [ "$code" != "000" ] && [ -n "$code" ]; then
-                echo "$url -> $code"; ok="1"; break
-              fi
+              code=$(curl -s -o /dev/null -w "%{http_code}" "$@" "$url" || true)
+              last="$code"
+              case "$code" in
+                200|302|401) echo "$url -> $code"; return 0 ;;
+              esac
               sleep 3
             done
-            if [ -z "$ok" ]; then echo "no response from $url"; exit 1; fi
-          done
+            echo "app not healthy: $url (last status: $last)"; return 1
+          }
+          check http://localhost:8001/login
+          check http://localhost:8003/login
+          check http://localhost:8002/api/tasks -H "Accept: application/json"
 
       - name: Setup Node
         uses: actions/setup-node@v4
