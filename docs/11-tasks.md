@@ -12,6 +12,7 @@
 | M4 CI | GitHub Actions 自動テスト（PR #10）| 完了 |
 | M5 日付 | 開始日・終了日（カレンダー）（PR #11）| 完了 |
 | M6 UI/UX拡充 | 仕様同期 / Tailwind / 画像アップロード / URL プレビュー(SSRF対策) / 2ステップ確認画面（PR #12〜16）| 完了 |
+| M7 テスト拡充 | IT 導入（PR #28）/ E2E 導入（Playwright・3アプリ横断・CI）| 進行中 |
 
 ## タスク一覧
 
@@ -32,14 +33,16 @@
 | 10 | PHPDoc 規約整備（`coding-standards.md`）と 3 アプリへの付与 | DONE | - | - |
 | 11 | テスト拡充: laminas 認可 PHPUnit 化 / api ユニット新設 / 異常系（境界値・per_page クランプ）追加 | DONE | - | - |
 | 12 | **IT（統合テスト）の導入**: レイヤ横断の結合テスト方針を定義。特に laminas のコントローラ↔認証↔`TaskTable` フローを PHPUnit 化（Laravel の Feature は IT として整理） | DONE | - | - |
-| 13 | **E2E テストの導入**: ブラウザ自動化（Playwright 等）で 3 アプリの主要フロー（登録→ログイン→CRUD）を検証。※`docs/01` では現状スコープ外。将来導入候補として格上げ | TODO | - | - |
+| 13 | **E2E テストの導入**: Playwright（`e2e/`）で 3 アプリ（fullstack/laminas=ブラウザ, api=HTTP/Bearer）の主要フロー（登録→ログイン→CRUD→ログアウト）と認可・境界値・不正入力を実環境（実 MySQL）で検証。CI に専用 `e2e` ジョブを追加 | DONE | - | - |
 | 14 | Larastan 導入: Laravel 2 アプリにも型解析を追加し Psalm 相当のゲート化（`BelongsTo<>` 等のジェネリクスを活用） | TODO | - | - |
 
 ## 進捗メモ
 
 - PR #1〜#16 すべてマージ済み。main は CI green を維持。
-- 自動テスト規模: fullstack 54 / api 52 / laminas 68（IT 20 件を追加）。異常系（準正常系含む）が正常系を上回る配分（実測 約 1:1.3）。
+- 自動テスト規模（PHPUnit）: fullstack 54 / api 52 / laminas 68（IT 20 件を追加）。異常系（準正常系含む）が正常系を上回る配分（実測 約 1:1.3）。
+- E2E 規模（Playwright）: fullstack 21 / laminas 16 / api 18 = 計 55 ケース（実環境に対して全 green を確認）。E2E は主要フローの通し確認が主眼のため正常系がやや多め（約 1:1）で、境界値・不正入力・所有者スコープの異常系は各アプリでカバー。
 - #12（IT 導入）DONE: 粒度軸（単体/IT/E2E）を `docs/08` に定義。laminas に `TaskControllerIntegrationTest` / `AuthControllerIntegrationTest` を追加（`AbstractHttpControllerTestCase` で dispatch し、SQLite in-memory + 認証識別子注入）。Laravel の Feature は IT として分類明記（コード変更なし）。
 - 未了フォロー（#8b）: カバレッジ計測（CI は現状 `coverage: none`）。#8a（所有者スコープの PHPUnit 化）は `TaskTableTest`（SQLite in-memory）で完了。
-- テスト改善バックログ: #13 E2E 導入 / #14 Larastan 導入。
+- #13（E2E 導入）DONE: `e2e/`（Playwright / TypeScript）を新設。実環境（compose・実 MySQL）に対し fullstack/laminas はブラウザ、api は HTTP(Bearer) で計 55 ケース（正常/準正常/異常）を実行し全 green を確認。`make e2e` / CI 専用 `e2e` ジョブ（compose 起動→migrate→playwright）を追加。実行毎ユニークユーザー + 所有者スコープでテストを独立させ、DB 全リセットはしない。laminas の実セッション永続はこの層でカバー（IT の穴を解消）。
+- テスト改善バックログ: #8b カバレッジ計測 / #14 Larastan 導入。
 - 既知の妥協は `docs/06`（DB平文・flatpickr CDN の SRI 未設定）と `docs/10`（決定事項）に記録。

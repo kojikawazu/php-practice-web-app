@@ -25,4 +25,5 @@
 - **再現性**: Docker により環境を固定（PHP 8.3）。依存は `composer.lock` で固定し、`composer audit` クリーンを維持。
 - **保守性**: フレームワーク標準構成・規約に従い、検証は仕組み化（Laravel: FormRequest 相当の `validate`、Laminas: InputFilter）。
 - **統合テスト（IT）**: レイヤ横断フローは Laravel の Feature テスト、および laminas の `*IntegrationTest`（`dispatch` + SQLite in-memory + 認証識別子注入）で担保する（`docs/08` / `docs/11 #12`）。laminas の認可（所有者スコープ）は SQL レベル（`TaskTableTest`）とコントローラ横断（`TaskControllerIntegrationTest`）の 2 段で検証する。
-- **既知の限界**: laminas の実セッション永続（Cookie を跨いだ保護維持）のみライブ smoke 補完（認証ロジック自体は IT で検証済み）。カバレッジは未計測（`docs/11 #8b`）。
+- **E2E テスト**: 3 アプリの UI/HTTP を通した実フローは Playwright（`e2e/`）で **実環境・実 MySQL** に対して検証する（`docs/08` / `docs/11 #13`）。laminas の実セッション永続（Cookie を跨いだ保護維持）もこの層でカバーする。
+- **既知の限界**: カバレッジは未計測（`docs/11 #8b`）。E2E は実 MySQL に実行毎ユニークなユーザーの残渣が少量たまる（DB 全リセットはしない方針）。
