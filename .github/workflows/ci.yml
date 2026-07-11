@@ -118,6 +118,13 @@ jobs:
         working-directory: apps/${{ matrix.app }}
         run: ./vendor/bin/pint --test
 
+      # Laravel: 静的型解析（Larastan/PHPStan level max）。既存の指摘は phpstan-baseline.neon に
+      # 記録済みで、新規に増えた指摘のみ CI を失敗させる（Laminas の Psalm baseline と同じ運用）。
+      - name: Static analysis (Larastan)
+        if: ${{ matrix.laravel }}
+        working-directory: apps/${{ matrix.app }}
+        run: composer analyse
+
       # Laminas: コーディング標準（修正は `composer cs-fix`）
       - name: Coding standard (phpcs)
         if: ${{ !matrix.laravel }}

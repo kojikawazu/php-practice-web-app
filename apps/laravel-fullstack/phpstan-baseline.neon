@@ -1,0 +1,103 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Parameter \#1 \$attributes of static method Illuminate\\Database\\Eloquent\\Builder\<App\\Models\\User\>\:\:create\(\) expects array\<string, mixed\>, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/AuthController.php
+
+		-
+			message: '#^Parameter \#1 \$credentials of static method Illuminate\\Support\\Facades\\Auth\:\:attempt\(\) expects array, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/AuthController.php
+
+		-
+			message: '#^Cannot access offset ''end_date'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/TaskController.php
+
+		-
+			message: '#^Cannot access offset ''image_tmp'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 3
+			path: app/Http/Controllers/TaskController.php
+
+		-
+			message: '#^Cannot access offset ''mode'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: app/Http/Controllers/TaskController.php
+
+		-
+			message: '#^Cannot access offset ''start_date'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/TaskController.php
+
+		-
+			message: '#^Cannot access offset ''task_id'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/TaskController.php
+
+		-
+			message: '#^Cannot access offset ''title'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/TaskController.php
+
+		-
+			message: '#^Cannot access offset ''url'' on mixed\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: app/Http/Controllers/TaskController.php
+
+		-
+			message: '#^Cannot call method tasks\(\) on App\\Models\\User\|null\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Controllers/TaskController.php
+
+		-
+			message: '#^Cannot cast mixed to string\.$#'
+			identifier: cast.string
+			count: 1
+			path: app/Http/Controllers/TaskController.php
+
+		-
+			message: '#^Parameter \#1 \$p of method App\\Http\\Controllers\\TaskController\:\:dataFromPayload\(\) expects array\<string, mixed\>, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Http/Controllers/TaskController.php
+
+		-
+			message: '#^Parameter \#1 \$path of method App\\Http\\Controllers\\TaskController\:\:deleteImage\(\) expects string\|null, mixed given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/TaskController.php
+
+		-
+			message: '#^Parameter \#1 \$path of method App\\Http\\Controllers\\TaskController\:\:deleteImage\(\) expects string\|null, string\|false\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/TaskController.php
+
+		-
+			message: '#^Parameter \#1 \$tmp of method App\\Http\\Controllers\\TaskController\:\:moveTemp\(\) expects string, mixed given\.$#'
+			identifier: argument.type
+			count: 2
+			path: app/Http/Controllers/TaskController.php
+
+		-
+			message: '#^Method App\\Models\\Task\:\:user\(\) should return Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\<App\\Models\\User, App\\Models\\Task\> but returns Illuminate\\Database\\Eloquent\\Relations\\BelongsTo\<App\\Models\\User, \$this\(App\\Models\\Task\)\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/Task.php
+
+		-
+			message: '#^Method App\\Models\\User\:\:tasks\(\) should return Illuminate\\Database\\Eloquent\\Relations\\HasMany\<App\\Models\\Task, App\\Models\\User\> but returns Illuminate\\Database\\Eloquent\\Relations\\HasMany\<App\\Models\\Task, \$this\(App\\Models\\User\)\>\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Models/User.php

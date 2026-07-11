@@ -24,12 +24,12 @@ PHP 8 の型宣言を第一とし、PHPDoc は**言語の型システムで表�
 
 | アプリ | ツール | 実行 |
 |--------|--------|------|
-| laravel-fullstack / laravel-api | Laravel Pint（フォーマッタ） | `composer exec pint`（`pint --test` で差分検査） |
+| laravel-fullstack / laravel-api | Laravel Pint（フォーマッタ）+ Larastan/PHPStan（静的解析・`level: max`） | `composer exec pint`（`pint --test` で差分検査）/ `composer analyse` |
 | laminas | phpcs / phpcbf（Laminas Coding Standard）+ Psalm（静的解析） | `composer cs-check` / `composer cs-fix` / `vendor/bin/psalm` |
 
 - コミット前に該当アプリのフォーマッタを通し、差分ゼロにする。
 - Laminas は配列を短縮構文 `[]` で書く（`array()` 禁止・phpcs で強制）。
-- **CI で強制**: `lint` ジョブが Pint（`--test`）・phpcs・Psalm を実行する。Psalm の既存指摘は `apps/laminas/psalm-baseline.xml` に記録済みで、新規に増えた指摘のみ CI を失敗させる（baseline は段階的に減らす運用）。
+- **CI で強制**: `lint` ジョブが Pint（`--test`）・Larastan・phpcs・Psalm を実行する。静的解析の既存指摘は baseline に記録済み（Laravel=`apps/laravel-*/phpstan-baseline.neon` / Laminas=`apps/laminas/psalm-baseline.xml`）で、**新規に増えた指摘のみ CI を失敗させる**（baseline は段階的に減らす運用）。Larastan はメモリ上限のため `composer analyse`（`--memory-limit=1G` 込み）で実行する。
 
 ## 依存・設定
 
