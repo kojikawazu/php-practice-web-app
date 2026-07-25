@@ -29,28 +29,65 @@ jobs:
   # そのため否定パターンだけを並べても互いを打ち消して常に true になってしまう。
   # predicate-quantifier: every で AND 評価にすることで「どの除外にも当たらない = コード変更」
   # という意味になる。肯定形の docs フィルタは every だと壊れるので、別ステップに分けている。
+  # test / lint / e2e はそれぞれ読むファイルが違うため、発火条件も分ける。
+  # 各ツールの実際の対象範囲（設定ファイルで確認済み）:
+  #   Larastan = apps/laravel-*/app のみ（phpstan.neon の paths）
+  #   Pint     = プロジェクト全体（pint.json なし = 既定。tests/ database/ routes/ も整形対象）
+  #   Psalm    = module + config + public/index.php（module/*/test を含む）
+  #   phpcs    = config + module + public/index.php（php / dist / phtml）
+  #   PHPUnit  = 各アプリの phpunit.xml / phpunit.xml.dist
+  # → lint は静的解析の設定に依存し phpunit.xml には依存しない。test はその逆。
+  # → どちらも e2e/** / docker/** / compose.yaml / Makefile に依存しない
+  #    （test は setup-php で動き Docker を使わない。CI は Makefile を経由しない）。
   changes:
     name: detect changes
     runs-on: ubuntu-latest
     outputs:
-      code: ${{ steps.code.outputs.code }}
+      test: ${{ steps.code.outputs.test }}
+      lint: ${{ steps.code.outputs.lint }}
       e2e: ${{ steps.code.outputs.e2e }}
       docs: ${{ steps.docs.outputs.docs }}
     steps:
       - uses: actions/checkout@v4
 
-      # 除外リスト（AND 評価）: ドキュメント類の変更だけなら code / e2e を false にする。
+      # 除外リスト（AND 評価）。条件を狭める方向の変更なので under-fire（必要な検査が
+      # 走らない）が最大のリスク。除外して良いのは「そのジョブが読まないと確認できた
+      # ファイル」だけに限る。どの除外にも当たらない変更は必ず発火する（安全側）。
       - uses: dorny/paths-filter@v3
         id: code
         with:
           predicate-quantifier: every
           filters: |
-            code:
+            test:
               - '!docs/**'
               - '!**/*.md'
               - '!.claude/**'
               # markdown lint の設定のみに影響するファイル（下の docs フィルタ側で拾う）
               - '!.markdownlint-cli2.jsonc'
+              # PHPUnit は compose / Playwright / Makefile を使わない
+              - '!e2e/**'
+              - '!docker/**'
+              - '!compose.yaml'
+              - '!Makefile'
+              # 静的解析のみに影響する設定（lint 側で拾う）
+              - '!**/phpstan.neon'
+              - '!**/phpstan-baseline.neon'
+              - '!**/psalm.xml'
+              - '!**/psalm-baseline.xml'
+              - '!**/phpcs.xml'
+            lint:
+              - '!docs/**'
+              - '!**/*.md'
+              - '!.claude/**'
+              - '!.markdownlint-cli2.jsonc'
+              # Pint / phpcs / Psalm / Larastan は compose / Playwright / Makefile を読まない
+              - '!e2e/**'
+              - '!docker/**'
+              - '!compose.yaml'
+              - '!Makefile'
+              # テスト実行のみに影響する設定（test 側で拾う）
+              - '!**/phpunit.xml'
+              - '!**/phpunit.xml.dist'
             e2e:
               - '!docs/**'
               - '!**/*.md'
@@ -59,6 +96,16 @@ jobs:
               # ユニット/IT のテストコードだけの変更で重い compose 起動をしない
               - '!apps/*/tests/**'
               - '!apps/laminas/module/*/test/**'
+              # 静的解析・PHPUnit の設定は E2E の挙動に影響しない
+              - '!**/phpstan.neon'
+              - '!**/phpstan-baseline.neon'
+              - '!**/psalm.xml'
+              - '!**/psalm-baseline.xml'
+              - '!**/phpcs.xml'
+              - '!**/phpunit.xml'
+              - '!**/phpunit.xml.dist'
+              # CI の e2e ジョブは compose を直接叩く（Makefile を使わない）
+              - '!Makefile'
 
       # 肯定リスト（既定の OR 評価）: md が 1 つでも変わったら markdown lint を実行する。
       - uses: dorny/paths-filter@v3
@@ -92,7 +139,7 @@ jobs:
   test:
     name: test (${{ matrix.app }})
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.test == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -135,12 +182,14 @@ jobs:
         working-directory: apps/${{ matrix.app }}
         run: ./vendor/bin/phpunit
 
-  # 静的チェック（整形・コーディング標準・型解析）。test と同じく code 変更時のみ実行する。
-  # Laravel: Pint（整形の差分検査）／ Laminas: phpcs（コーディング標準）+ Psalm（型解析・baseline 運用）。
+  # 静的チェック（整形・コーディング標準・型解析）。lint フィルタが true のときのみ実行する。
+  # test とは発火条件を分けており、静的解析の設定（phpstan.neon / psalm.xml / phpcs.xml /
+  # baseline）だけを変えた場合は lint のみ、phpunit.xml だけを変えた場合は test のみが走る。
+  # Laravel: Pint（整形の差分検査）+ Larastan／ Laminas: phpcs（コーディング標準）+ Psalm（baseline 運用）。
   lint:
     name: lint (${{ matrix.app }})
     needs: changes
-    if: needs.changes.outputs.code == 'true'
+    if: needs.changes.outputs.lint == 'true'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
