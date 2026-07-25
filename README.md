@@ -54,7 +54,18 @@ make e2e                 # e2e/ で npm ci → chromium 導入 → playwright te
 
 対象 URL は既定で compose のポート（8001/8002/8003）。`E2E_FS_URL` / `E2E_LAMINAS_URL` / `E2E_API_URL` で上書きできる。CI では push/PR 時に専用 `e2e` ジョブが compose 起動 → migrate → Playwright を実行する。
 
-CI: push / Pull Request 時に GitHub Actions（`.github/workflows/ci.yml`）が 3 アプリの **テスト**（PHPUnit）と **静的チェック**（Laravel=Pint / Laminas=phpcs + Psalm）を自動実行する。ローカルでの自動修正は Laravel=`vendor/bin/pint`、Laminas=`composer cs-fix`。
+### markdown lint
+
+ドキュメント（`*.md`）は `markdownlint-cli2` で検査する。対象・無効化ルールとその理由は `.markdownlint-cli2.jsonc` に記載。
+
+```bash
+make md-lint            # 検査（CI の markdown-lint ジョブと同じコマンド）
+make md-fix             # 自動修正できる指摘（空行の過不足など）を直す
+```
+
+CI: push / Pull Request 時に GitHub Actions（`.github/workflows/ci.yml`）が 3 アプリの **テスト**（PHPUnit）と **静的チェック**（Laravel=Pint + Larastan / Laminas=phpcs + Psalm）、および **markdown lint** を自動実行する。ローカルでの自動修正は Laravel=`vendor/bin/pint`、Laminas=`composer cs-fix`、md=`make md-fix`。
+
+発火は変更内容で制御される（`.claude/rules/github-actions.md`）: **md のみの変更 → `markdown-lint` だけ**、**コード変更 → `test` / `lint`（+ 該当時 `e2e`）**。詳細は `docs/09`。
 
 各アプリ内で artisan / composer を使う例:
 

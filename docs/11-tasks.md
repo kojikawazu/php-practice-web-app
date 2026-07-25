@@ -16,7 +16,6 @@
 
 ## タスク一覧
 
-
 | ID | タスク | 状態 | 担当 | 期日 |
 |----|--------|------|------|------|
 | 1 | モノレポ初期構築（3アプリ + Docker + MySQL共有 + テスト） | DONE | - | - |
@@ -35,6 +34,8 @@
 | 12 | **IT（統合テスト）の導入**: レイヤ横断の結合テスト方針を定義。特に laminas のコントローラ↔認証↔`TaskTable` フローを PHPUnit 化（Laravel の Feature は IT として整理） | DONE | - | - |
 | 13 | **E2E テストの導入**: Playwright（`e2e/`）で 3 アプリ（fullstack/laminas=ブラウザ, api=HTTP/Bearer）の主要フロー（登録→ログイン→CRUD→ログアウト）と認可・境界値・不正入力を実環境（実 MySQL）で検証。CI に専用 `e2e` ジョブを追加 | DONE | - | - |
 | 14 | Larastan 導入: Laravel 2 アプリにも型解析を追加し Psalm 相当のゲート化（`BelongsTo<>` 等のジェネリクスを活用） | DONE | - | - |
+| 15 | 共通ルール整備: `.claude/rules/` に横断ルール 6 件（github-issue / github-actions / security / static-analysis / duplication / dead-code）を追加し CLAUDE.md と同期 | DONE | - | - |
+| 16 | **CI の発火制御を整備**: パスフィルタを除外リスト方式（fail-open 解消）に変更し、md 変更時のみ走る `markdown-lint` ジョブと `concurrency` を追加 | DONE | - | - |
 
 ## 進捗メモ
 
@@ -45,5 +46,7 @@
 - 未了フォロー（#8b）: カバレッジ計測（CI は現状 `coverage: none`）。#8a（所有者スコープの PHPUnit 化）は `TaskTableTest`（SQLite in-memory）で完了。
 - #13（E2E 導入）DONE: `e2e/`（Playwright / TypeScript）を新設。実環境（compose・実 MySQL）に対し fullstack/laminas はブラウザ、api は HTTP(Bearer) で計 55 ケース（正常/準正常/異常）を実行し全 green を確認。`make e2e` / CI 専用 `e2e` ジョブ（compose 起動→migrate→playwright）を追加。実行毎ユニークユーザー + 所有者スコープでテストを独立させ、DB 全リセットはしない。laminas の実セッション永続はこの層でカバー（IT の穴を解消）。
 - #14（Larastan 導入）DONE: 両 Laravel アプリに `larastan/larastan ^3` を追加し `phpstan.neon`（`level: max`）で型解析をゲート化（Laminas の Psalm 最厳格 + baseline と対をなす）。既存指摘は `phpstan-baseline.neon`（fullstack 23 / api 25）に記録し新規のみ CI 失敗。`composer analyse`（`--memory-limit=1G`）を追加し、CI の `lint` ジョブへ組み込み。付随して依存更新時の `composer audit` で検出された guzzle/psr7 の CVE を patch 更新で解消（`docs/06`）。モデルのリレーションは既に `BelongsTo<User, Task>` 等で注釈済み（max のテンプレート不変性由来の指摘は baseline 化）。
-- テスト改善バックログ: #8b カバレッジ計測。
+- #15（共通ルール整備）DONE: `.claude/rules/` を 9 → 15 ファイルに拡張。テンプレをそのまま置かず既存ルールとの分担を明記（例: `security.md` は SQL バインド・`.env`・所有者スコープを `php.md` / `coding-standards.md` / `error-handling.md` へ委譲）。`duplication.md` には 3 アプリ間の意図的な重複実装を共通化対象外とする例外を追記。併せて過去 PR #1〜#31 に対応する issue を後付け起票（#32〜#62）し履歴を整備。
+- #16（CI 発火制御）DONE: `changes` ジョブのパスフィルタを対象リスト → **除外リスト**方式に変更（新しいトップレベルディレクトリ追加時にテストが黙ってスキップされる fail-open を解消）。`dorny/paths-filter` は既定 OR 評価のため否定パターンが打ち消される点に対処し `predicate-quantifier: every` を使用、肯定形の `docs` 判定は別ステップに分離。md 変更時のみ走る `markdown-lint` ジョブ（`markdownlint-cli2` + `.markdownlint-cli2.jsonc`）と `concurrency` を追加。既存 md の指摘 279 件は「文体系ルールを無効化（理由を設定ファイルに明記）+ 整形崩れ 28 件を修正」で警告ゼロにした。フレームワーク雛形の md（Laravel デフォルト README / Laminas の LICENSE・COPYRIGHT）は lint 対象外。
+- テスト改善バックログ: #8b カバレッジ計測（issue #63 で追跡）。
 - 既知の妥協は `docs/06`（DB平文・flatpickr CDN の SRI 未設定）と `docs/10`（決定事項）に記録。

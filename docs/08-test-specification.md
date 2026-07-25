@@ -13,7 +13,7 @@
 | E2E | ブラウザ自動化で UI から通しで検証 | **`e2e/`（Playwright / TypeScript）**。compose で起動した実環境（実 MySQL・prefix 分離）に対し、fullstack / laminas は実ブラウザ、api は HTTP（Bearer）で 3 アプリ横断に検証（`docs/11 #13` で導入）|
 
 > laminas の IT は、bootstrap 後に ServiceManager の `AdapterInterface` を SQLite in-memory へ、`AuthenticationService` を NonPersistent ストレージ（識別子を直接注入）へ差し替えて実現する。MySQL・実セッションに依存せず、コントローラの認可分岐・リダイレクト・DB 反映という「配線」を検証する。
-
+>
 > **E2E（Playwright）の位置づけ**: IT が SQLite in-memory で「配線」を検証するのに対し、E2E は `docker compose up` した**実環境・実 MySQL**に対してブラウザ/HTTP で通す唯一のレイヤ。`RefreshDatabase` は使わず、**実行毎ユニークなユーザー**を作り所有者スコープでテストを独立させる（共有 DB を全リセットしない方針を踏襲）。1 つの Playwright ランナーに 3 projects（fullstack / laminas / api）を同居させ、baseURL（`E2E_FS_URL` / `E2E_LAMINAS_URL` / `E2E_API_URL`）で切り替える。実行は `make e2e`（事前に `make up && make migrate`）。CI では専用 `e2e` ジョブが compose 起動 → migrate → Playwright を実行する。
 
 ## テスト戦略

@@ -58,15 +58,29 @@ jobs:
   changes:                      # 変更範囲を判定する
     runs-on: ubuntu-latest
     outputs:
-      code: ${{ steps.filter.outputs.code }}
+      code: ${{ steps.code.outputs.code }}
+      docs: ${{ steps.docs.outputs.docs }}
     steps:
       - uses: actions/checkout@v4
+
+      # 除外リスト（AND 評価）: ドキュメントだけの変更なら code=false になる
       - uses: dorny/paths-filter@v3
-        id: filter
+        id: code
         with:
+          predicate-quantifier: every
           filters: |
             code:
-              - '!(docs/**|**/*.md|.claude/**)'
+              - '!docs/**'
+              - '!**/*.md'
+              - '!.claude/**'
+
+      # 肯定リスト（既定の OR 評価）は別ステップに分ける
+      - uses: dorny/paths-filter@v3
+        id: docs
+        with:
+          filters: |
+            docs:
+              - '**/*.md'
 
   test:                         # 必須チェック。常に起動し、中身だけスキップする
     needs: changes
@@ -78,6 +92,15 @@ jobs:
 
 - 必須チェックにしないワークフロー（デプロイ等）は、ワークフローレベルの `paths-ignore` を使ってよい（起動そのものを止める方が安価）。
 - **判定条件は「除外リスト」で書く**（`docs/**` 以外はアプリ変更とみなす）。「対象リスト」で書くと、**新しいディレクトリが増えたときに黙ってテストが走らなくなる**。安全側に倒す。
+
+### 除外リストは `predicate-quantifier: every` が必須（落とし穴）
+
+`dorny/paths-filter` は**パターンごとに picomatch を評価し、既定では結果を OR（`some`）で束ねる**。そのため否定パターンを並べただけでは**互いを打ち消して常に true になり、除外が一切効かない**。
+
+- `'**'` + `'!docs/**'` のような「全部 + 除外」も**効かない**（`'**'` が先に真になる）。
+- `predicate-quantifier: every`（AND 評価）にして**否定パターンのみを並べる**。「どの除外にも当たらない = コード変更」という意味になる。
+- `every` はステップ単位の入力なので、**肯定形のフィルタ（`docs: '**/*.md'` 等）は別ステップに分ける**（`every` だと全パターン一致を要求して壊れる）。
+- 除外リストを変更したら、**判定を実際に検証する**（対象ファイル名を並べて期待値と突き合わせる）。フィルタの誤りは「テストが黙ってスキップされる」形で現れ、CI が緑のまま見逃される。
 
 ## デプロイの発火
 

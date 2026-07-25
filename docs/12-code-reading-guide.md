@@ -71,6 +71,7 @@ Route::middleware('auth:sanctum')->group(function () {
 ```
 
 > **差分ポイント**:
+>
 > - fullstack は名前付きルート + `middleware('guest'/'auth')` グループで認証境界を表現。
 > - api は `apiResource()` 1 行で 7 つの REST ルートを生成し、`auth:sanctum` ミドルウェアで一括保護。
 > - laminas はルートを **PHP 配列**で宣言し、`action` をクエリ的に切り替える（`/tasks/edit/:id`）。コントローラーは `*Factory` 経由で DI される点も Laravel と対照的。
@@ -89,6 +90,7 @@ Route::middleware('auth:sanctum')->group(function () {
 | `routes/web.php` の `middleware('auth'/'guest')` | 認証境界 |
 
 読むポイント:
+
 - `Auth::attempt($credentials)` で照合 → `$request->session()->regenerate()` でセッション固定攻撃対策
 - 登録は `User::create()` 後に `Auth::login($user)` で即ログイン
 - ログアウトは `Auth::logout()` + `session()->invalidate()`
@@ -102,6 +104,7 @@ Route::middleware('auth:sanctum')->group(function () {
 | `app/Models/User.php`（`HasApiTokens`）| `createToken()` を提供 |
 
 読むポイント:
+
 - `$user->createToken('api')->plainTextToken` で平文トークンを生成（**平文は発行時のみ返却**）
 - ログインは `Hash::check($password, $user->password)` で手動照合（セッションを使わない）
 - ログアウトは `$request->user()->currentAccessToken()->delete()` で **そのトークンだけ**失効
@@ -116,6 +119,7 @@ Route::middleware('auth:sanctum')->group(function () {
 | `module/Application/src/Model/UserTable.php` | `findByUsername` / `create` |
 
 読むポイント:
+
 - DI: `AuthControllerFactory` が `AuthenticationService` / `UserTable` / `PasswordHasher` を注入
 - ログイン成功時は `$this->auth->getStorage()->write((object)['id'=>..., 'username'=>...])` で identity をセッションに保存
 - 照合は `$this->hasher->verify($password, $user->password)`（DbTable アダプタではなく自前 bcrypt）
@@ -131,32 +135,34 @@ Route::middleware('auth:sanctum')->group(function () {
 
 **laravel-fullstack / laravel-api（Eloquent ORM）**
 
-```
+```text
 app/Models/Task.php   # $fillable, $casts, user() belongsTo
 app/Models/User.php   # tasks() hasMany（api は HasApiTokens も）
 ```
 
 読むポイント:
+
 - `Task::$fillable` に許可カラム、`$casts` で `done`→bool・`start_date`→date を型変換
 - リレーション: `User hasMany Task` / `Task belongsTo User`
 - api 版 Task は `image_url` アクセサで `image_path` 生値を隠蔽（`$hidden`/`$appends` を確認）
 
 **laminas（Model + TableGateway）**
 
-```
+```text
 module/Application/src/Model/Task.php          # exchangeArray / getArrayCopy
 module/Application/src/Model/TaskTable.php      # SQL を組み立てる DB アクセス
 module/Application/src/Model/UserTable.php
 ```
 
 読むポイント:
+
 - `Task::exchangeArray()` が連想配列 → オブジェクトの詰め替え（`'0'`→false 等の型整形をここで実施。`TaskTest` が仕様）
 - `TaskTable` の `getForUser($id, $userId)` / `fetchPageByUser()` / `countByUser()` / `deleteForUser()` が **所有者スコープを SQL レベル**で表現
 - Eloquent のような「マジック」はなく、`TableGateway` に対し明示的にクエリを書く
 
 **モデルの関連図（3 アプリ共通の論理構造）**
 
-```
+```text
 User (fs_users / api_users / lam_users)
  └── has many  Task (fs_tasks / api_tasks / lam_tasks)   ※ tasks.user_id で所有
 ```
@@ -192,6 +198,7 @@ $task = $this->table->getForUser($id, (int) $user->id); // スコープは Table
 ```
 
 > **差分ポイント**:
+>
 > - Laravel 2 アプリは `Auth::user()->tasks()` / `$request->user()->tasks()` のリレーション経由で自然にスコープされ、単発取得は `abort_if(... 404)` で他人のリソースを 404 にする。
 > - laminas は認証チェックを各アクション冒頭で明示し、所有者条件は `getForUser($id, $userId)` のように **Table 層へ寄せる**（コントローラーは薄い）。
 > - レスポンスも対照的: fullstack=`redirect()->route(...)` / api=`response()->json(...)` / laminas=`ViewModel` or `redirect()->toRoute(...)`。
@@ -207,6 +214,7 @@ $task = $this->table->getForUser($id, (int) $user->id); // スコープは Table
 | laminas | InputFilter クラス | `src/InputFilter/*.php` |
 
 読むポイント:
+
 - Laravel は `'end_date' => ['nullable','date','after_or_equal:start_date']` のようにルールを配列で宣言。失敗時、web は `$errors` でフォーム再表示、api は 422 + `errors`。
 - laminas は `TaskInputFilter` / `RegisterInputFilter` / `LoginInputFilter` がフィルタ（`StringTrim` 等）＋バリデータ（必須・長さ・日付）を担う。`ErrorFormatter::flatten()` でメッセージを一覧化。
 - これら InputFilter は単体テスト（`test/InputFilter/*Test.php`）が仕様書を兼ねる。
@@ -271,6 +279,7 @@ $task = $this->table->getForUser($id, (int) $user->id); // スコープは Table
 | `test/InputFilter/*Test.php` | Task/Register/Login の有効/無効入力 |
 
 読むポイント:
+
 - Laravel 2 アプリは **SQLite in-memory**（`RefreshDatabase`）で隔離実行。共有 MySQL を守る設計（`docs/08`）。
 - laminas は認証/CRUD フローを PHPUnit 化せず **ライブ smoke**（curl + cookie）で検証。認証の核 bcrypt のみ `PasswordHasherTest` で単体保証（未了フォロー: `docs/11 #8`）。
 
@@ -303,11 +312,13 @@ make migrate     # Laravel 2 アプリのマイグレーション
 ```
 
 ### laravel-fullstack
+
 ```bash
 # ブラウザで http://localhost:8001/tasks を開く（/register から登録）
 ```
 
 ### laravel-api
+
 ```bash
 # 登録 → token を取得
 curl -X POST http://localhost:8002/api/register \
@@ -325,11 +336,13 @@ curl http://localhost:8002/api/tasks \
 ```
 
 ### laminas
+
 ```bash
 # ブラウザで http://localhost:8003/tasks を開く（/register から登録）
 ```
 
 ### テスト実行
+
 ```bash
 make test          # 3アプリ一括（fullstack 53 / api 41 / laminas 36）
 make test-fs       # laravel-fullstack

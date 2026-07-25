@@ -54,7 +54,8 @@ API のエンドポイント・入出力・エラー仕様を定義する。対�
 - Task オブジェクト: `{ "id": int, "title": string, "done": bool, "start_date": "Y-m-d"|null, "end_date": "Y-m-d"|null, "image_url": string|null, "created_at": ..., "updated_at": ... }`（`image_path` 生値は非公開）
 
 作成例:
-```
+
+```http
 POST /api/tasks  {"title": "牛乳を買う"}
 → 201  {"id":1,"title":"牛乳を買う","done":false, ...}
 ```

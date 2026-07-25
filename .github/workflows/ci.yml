@@ -11,30 +11,83 @@ permissions:
   contents: read
   pull-requests: read
 
+# 同一 PR に連続 push した際、古い実行をキャンセルして CI 時間を無駄にしない。
+# （デプロイ workflow を追加する際は cancel-in-progress: false にする。中断で不整合が起きるため）
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # 差分パスを 1 か所で判定する軽量ジョブ。
-  # code が変わっていない（= doc-only）なら、重い test ジョブをスキップする。
+  #
+  # 判定は .claude/rules/github-actions.md に従い「除外リスト」で書く。
+  # 対象リスト（'apps/**' 等の列挙）にすると、新しいトップレベルディレクトリが増えたときに
+  # 黙ってテストが走らなくなる（fail-open）ため、「ドキュメント以外はコード変更とみなす」と
+  # 反転させて安全側に倒す。
+  #
+  # dorny/paths-filter はパターンごとに picomatch を評価し、既定では結果を OR（some）で束ねる。
+  # そのため否定パターンだけを並べても互いを打ち消して常に true になってしまう。
+  # predicate-quantifier: every で AND 評価にすることで「どの除外にも当たらない = コード変更」
+  # という意味になる。肯定形の docs フィルタは every だと壊れるので、別ステップに分けている。
   changes:
     name: detect changes
     runs-on: ubuntu-latest
     outputs:
-      code: ${{ steps.filter.outputs.code }}
-      e2e: ${{ steps.filter.outputs.e2e }}
+      code: ${{ steps.code.outputs.code }}
+      e2e: ${{ steps.code.outputs.e2e }}
+      docs: ${{ steps.docs.outputs.docs }}
     steps:
       - uses: actions/checkout@v4
+
+      # 除外リスト（AND 評価）: ドキュメント類の変更だけなら code / e2e を false にする。
       - uses: dorny/paths-filter@v3
-        id: filter
+        id: code
         with:
+          predicate-quantifier: every
           filters: |
             code:
-              - 'apps/**'
-              - '.github/workflows/**'
+              - '!docs/**'
+              - '!**/*.md'
+              - '!.claude/**'
+              # markdown lint の設定のみに影響するファイル（下の docs フィルタ側で拾う）
+              - '!.markdownlint-cli2.jsonc'
             e2e:
-              - 'apps/**'
-              - 'e2e/**'
-              - 'compose.yaml'
-              - 'docker/**'
-              - '.github/workflows/**'
+              - '!docs/**'
+              - '!**/*.md'
+              - '!.claude/**'
+              - '!.markdownlint-cli2.jsonc'
+              # ユニット/IT のテストコードだけの変更で重い compose 起動をしない
+              - '!apps/*/tests/**'
+              - '!apps/laminas/module/*/test/**'
+
+      # 肯定リスト（既定の OR 評価）: md が 1 つでも変わったら markdown lint を実行する。
+      - uses: dorny/paths-filter@v3
+        id: docs
+        with:
+          filters: |
+            docs:
+              - '**/*.md'
+              - '.markdownlint-cli2.jsonc'
+
+  # ドキュメント（md）変更時の軽量チェック。
+  # github-actions.md の「ドキュメント変更でも『何も動かさない』にはしない」に対応する。
+  # 設定と無効化理由は .markdownlint-cli2.jsonc に記載（警告ゼロを維持する運用）。
+  markdown-lint:
+    name: markdown lint
+    needs: changes
+    if: needs.changes.outputs.docs == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 設定ファイル（.markdownlint-cli2.jsonc）の globs / ignores を使うため引数は渡さない。
+      - name: Lint markdown
+        run: npx --yes markdownlint-cli2@0.18.1
 
   test:
     name: test (${{ matrix.app }})
