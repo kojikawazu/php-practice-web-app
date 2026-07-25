@@ -1,0 +1,46 @@
+// markdownlint 設定（CI の markdown-lint ジョブと `make md-lint` が参照する）。
+//
+// 方針は .claude/rules/static-analysis.md に従う:
+//   - 警告ゼロを維持する。守れないルールは「有効にして直す」か「無効にする」の二択とし、
+//     警告を出したまま放置しない。
+//   - 無効化するルールには理由をここに書く。
+{
+  "globs": [
+    "**/*.md"
+  ],
+  "ignores": [
+    "**/vendor/**",
+    "**/node_modules/**",
+    // フレームワーク雛形が生成したファイルは現状維持（coding-standards.md の PHPDoc と同じ方針）。
+    // Laravel デフォルト README は先頭が <p align="center">、Laminas の LICENSE/COPYRIGHT は
+    // 見出しなしの著作権表記で、いずれも我々が書き換えるべきものではない。
+    "apps/laravel-fullstack/README.md",
+    "apps/laravel-api/README.md",
+    "apps/laminas/README.md",
+    "apps/laminas/LICENSE.md",
+    "apps/laminas/COPYRIGHT.md"
+  ],
+  "config": {
+    "default": true,
+
+    // MD013（行長 80 桁）: 無効。本プロジェクトのドキュメントは日本語の散文と
+    // 横長の仕様テーブルが主体で、80 桁は現実的でない（既存 189 件が該当）。
+    // 行長を折ると diff がテーブル単位で壊れ、レビューしにくくなる副作用の方が大きい。
+    "MD013": false,
+
+    // MD033（インライン HTML 禁止）: 無効。仕様書のテーブル内改行などで意図的に使っている。
+    "MD033": false,
+
+    // MD034（裸 URL 禁止）: 無効。README の http://localhost:8001 等は
+    // リンク化せず素のまま読ませたい（コピーして使う手順として提示している）。
+    "MD034": false,
+
+    // MD036（強調を見出し代わりに使わない）: 無効。**太字** 行を段落内の小見出しとして
+    // 使う書き方を .claude/rules/ と docs/ の全体で採用しており、見出しレベルを増やすと
+    // 目次構造が過剰に深くなる。
+    "MD036": false,
+
+    // MD014（$ 付きコマンドで出力を示す）: 無効。コマンド例は出力を載せない方が読みやすい。
+    "MD014": false
+  }
+}

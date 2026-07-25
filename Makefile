@@ -1,4 +1,4 @@
-.PHONY: up down build logs ps migrate test test-fs test-api test-laminas e2e
+.PHONY: up down build logs ps migrate test test-fs test-api test-laminas e2e md-lint md-fix
 
 # コンテナ起動 / 停止
 up:
@@ -37,3 +37,12 @@ test-laminas:
 # 3アプリ（fullstack/laminas=ブラウザ, api=HTTP）を 1 ランナーで実行する。
 e2e:
 	cd e2e && npm ci && npx playwright install chromium && npx playwright test
+
+# markdown lint。対象と無効化ルールの理由は .markdownlint-cli2.jsonc に記載。
+# CI の markdown-lint ジョブと同じコマンドを実行する（手元で先に直せるように）。
+md-lint:
+	npx --yes markdownlint-cli2@0.18.1
+
+# 自動修正できる指摘（空行の過不足など）を直す。MD040 等は手で直す必要がある。
+md-fix:
+	npx --yes markdownlint-cli2@0.18.1 --fix
