@@ -13,7 +13,13 @@ PHP の学習を目的とした練習用 Web アプリケーション
 | quality-gate.md | 全体 | 品質ゲート（セルフレビュー・設計/実装レビュー） |
 | documentation.md | 全体 | ドキュメント更新ルール |
 | git.md | 全体 | GitHub Flow・ブランチ命名・push 禁止物 |
+| github-issue.md | 全体 | GitHub issue 運用（ブランチと対で起票・open/close で進捗管理・サブ issue） |
+| github-actions.md | .github/workflows/** | GitHub Actions の発火ルール（変更内容に応じたジョブ実行・パスフィルタ・デプロイ） |
 | testing.md | 全体 | テスト分類・原則 |
+| security.md | 全体 | セキュリティ最低線（認証・通信・インジェクション対策・シークレット管理） |
+| static-analysis.md | 全体 | 静的解析の運用（役割分担・CI 必須・baseline・抑制コメント） |
+| duplication.md | 全体 | 重複と共通化の判断基準（3 アプリ間は共通化しない） |
+| dead-code.md | 全体 | デッドコード禁止（削除対象・フレームワーク規約の例外・検出手段） |
 | coding-standards.md | apps/**（PHPコード） | PHP 8.3 / PSR-12 / PHPDoc / Pint・phpcs・Psalm / Composer |
 | error-handling.md | apps/**（PHPコード） | バリデーション・HTTP ステータス・所有者スコープ・ログ |
 | php.md | apps/**（PHPコード） | Laravel / Laminas のスタック別作法（所有者スコープ・DB・認証・DI） |
