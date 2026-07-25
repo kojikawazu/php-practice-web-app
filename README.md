@@ -65,7 +65,18 @@ make md-fix             # 自動修正できる指摘（空行の過不足など
 
 CI: push / Pull Request 時に GitHub Actions（`.github/workflows/ci.yml`）が 3 アプリの **テスト**（PHPUnit）と **静的チェック**（Laravel=Pint + Larastan / Laminas=phpcs + Psalm）、および **markdown lint** を自動実行する。ローカルでの自動修正は Laravel=`vendor/bin/pint`、Laminas=`composer cs-fix`、md=`make md-fix`。
 
-発火は変更内容で制御される（`.claude/rules/github-actions.md`）: **md のみの変更 → `markdown-lint` だけ**、**コード変更 → `test` / `lint`（+ 該当時 `e2e`）**。詳細は `docs/09`。
+発火は変更内容で制御される（`.claude/rules/github-actions.md`）。`test` / `lint` / `e2e` / `markdown-lint` はそれぞれ読むファイルが違うため、条件も分けている。
+
+| 変更内容 | 実行されるジョブ |
+|---|---|
+| md ドキュメント / `.claude/**` | `markdown-lint` |
+| `apps/**` のコード | `test` + `lint` + `e2e` |
+| テストコードのみ | `test` + `lint` |
+| 静的解析の設定のみ（`phpstan.neon` / `psalm.xml` / `phpcs.xml` / baseline） | `lint` |
+| `phpunit.xml` のみ | `test` |
+| `compose.yaml` / `docker/**` / `e2e/**` | `e2e` |
+
+詳細（各ツールが読む範囲の根拠を含む）は `docs/09`。
 
 各アプリ内で artisan / composer を使う例:
 

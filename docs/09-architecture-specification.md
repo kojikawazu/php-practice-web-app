@@ -58,13 +58,41 @@ PHP 拡張: `pdo_mysql` ほか各 FW が要求するもの。`docker/php/Dockerf
 - **changes**: `dorny/paths-filter` で差分パスを判定する軽量ジョブ。判定は**除外リスト**で書く（`docs/**` / `**/*.md` / `.claude/**` 以外はコード変更とみなす）。対象リスト方式（`apps/**` の列挙）だと新しいトップレベルディレクトリが増えたときに黙ってテストが走らなくなる（fail-open）ため、安全側に反転させている。
   - paths-filter はパターンごとに picomatch を評価し既定では OR（`some`）で束ねるため、否定パターンだけを並べると互いを打ち消して常に true になる。`predicate-quantifier: every` で AND 評価にし「どの除外にも当たらない = コード変更」と解釈させる。
   - `every` は肯定形フィルタを壊すため、`docs`（`**/*.md`）の判定は既定の OR 評価の**別ステップ**に分けている。
-  - `e2e` は上記の除外に加えてユニットテストのみの変更（`apps/*/tests/**` / `apps/laminas/module/*/test/**`）も除外し、重い compose 起動を避ける。
+  - 出力は `test` / `lint` / `e2e` / `docs` の 4 つ。**ジョブが読まないと確認できたファイルのみを除外する**方針で、3 つのコード系フィルタを個別に持つ。
+
+  各ツールが実際に読む範囲（設定ファイルで確認済み）:
+
+  | ツール | 対象範囲 | 根拠 |
+  |---|---|---|
+  | Larastan | `apps/laravel-*/app` のみ | `phpstan.neon` の `paths` |
+  | Pint | プロジェクト全体（`tests/` `database/` `routes/` も整形対象） | `pint.json` なし = 既定 |
+  | Psalm | `module` + `config` + `public/index.php`（`module/*/test` を含む） | `psalm.xml` の `projectFiles` |
+  | phpcs | `config` + `module` + `public/index.php`（php / dist / phtml） | `phpcs.xml` の `<file>` |
+  | PHPUnit | 各アプリの `phpunit.xml` / `phpunit.xml.dist` | - |
+
+  ここから導かれる発火条件の差分:
+
+  | 変更内容 | test | lint | e2e | markdown-lint |
+  |---|---|---|---|---|
+  | `apps/**` の PHP / Blade / phtml / config / migration、`composer.lock`、`.env.example` | ✅ | ✅ | ✅ | ❌ |
+  | テストコードのみ（`apps/*/tests/**`、`apps/laminas/module/*/test/**`） | ✅ | ✅ | ❌ | ❌ |
+  | 静的解析の設定のみ（`phpstan.neon` / `psalm.xml` / `phpcs.xml` / 各 baseline） | ❌ | ✅ | ❌ | ❌ |
+  | PHPUnit の設定のみ（`phpunit.xml` / `phpunit.xml.dist`） | ✅ | ❌ | ❌ | ❌ |
+  | `compose.yaml` / `docker/**` / `e2e/**` | ❌ | ❌ | ✅ | ❌ |
+  | md ドキュメント / `.claude/**` / `.markdownlint-cli2.jsonc` | ❌ | ❌ | ❌ | ✅ |
+  | `.github/workflows/**` | ✅ | ✅ | ✅ | ❌ |
+  | 上記に当てはまらない変更（新規ディレクトリ等） | ✅ | ✅ | ✅ | ❌ |
+
+  `test` が Docker 系（`compose.yaml` / `docker/**`）に依存しないのは、`shivammathur/setup-php` で動き Docker を使わないため。`Makefile` はどのジョブも参照しない（CI は各コマンドを直接叩く）ため全フィルタで除外している。
+
 - **markdown-lint**: `if: docs == 'true'` で md 変更時のみ実行（`markdownlint-cli2`）。対象と無効化ルールの理由は `.markdownlint-cli2.jsonc` に記載し、**警告ゼロを維持**する（`.claude/rules/static-analysis.md`）。ローカルは `make md-lint` / `make md-fix`。
-- **test**: `needs: changes` + `if: code == 'true'` で、コード変更時のみ実行（doc-only 変更ではスキップ）。`shivammathur/setup-php`（PHP 8.3）で各アプリをセットアップ（Docker 不使用）、matrix で 3 アプリを並行ジョブ実行（`fail-fast: false`）。Laravel ×2 は `php artisan test`（テスト DB は SQLite in-memory のため MySQL サービス不要）、Laminas は `vendor/bin/phpunit`。
-- **lint**: `test` と同じく `needs: changes` + code 変更時のみ実行する静的チェックジョブ（matrix で 3 アプリ並行）。Laravel ×2 は `vendor/bin/pint --test`（整形の差分検査）+ `composer analyse`（Larastan/PHPStan・`level: max`）、Laminas は `composer cs-check`（phpcs / Laminas Coding Standard）+ `vendor/bin/psalm`（型解析・`errorLevel=1`）。静的解析の既存指摘は baseline（Laravel=`apps/laravel-*/phpstan-baseline.neon` / Laminas=`apps/laminas/psalm-baseline.xml`）に記録済みで、CI は**新規に増えた指摘のみ**で失敗する（baseline 運用）。ローカルでの自動修正は Laravel=`vendor/bin/pint`、Laminas=`composer cs-fix`。
+- **test**: `needs: changes` + `if: test == 'true'` で実行。`shivammathur/setup-php`（PHP 8.3）で各アプリをセットアップ（Docker 不使用）、matrix で 3 アプリを並行ジョブ実行（`fail-fast: false`）。Laravel ×2 は `php artisan test`（テスト DB は SQLite in-memory のため MySQL サービス不要）、Laminas は `vendor/bin/phpunit`。
+- **lint**: `if: lint == 'true'` で実行する静的チェックジョブ（matrix で 3 アプリ並行）。Laravel ×2 は `vendor/bin/pint --test`（整形の差分検査）+ `composer analyse`（Larastan/PHPStan・`level: max`）、Laminas は `composer cs-check`（phpcs / Laminas Coding Standard）+ `vendor/bin/psalm`（型解析・`errorLevel=1`）。静的解析の既存指摘は baseline（Laravel=`apps/laravel-*/phpstan-baseline.neon` / Laminas=`apps/laminas/psalm-baseline.xml`）に記録済みで、CI は**新規に増えた指摘のみ**で失敗する（baseline 運用）。ローカルでの自動修正は Laravel=`vendor/bin/pint`、Laminas=`composer cs-fix`。
 - **e2e**: `if: e2e == 'true'` で実行。compose で app + 実 MySQL を起動し、migrate → Playwright で 3 アプリ横断の E2E を検証する（詳細は `docs/08`）。失敗時は Playwright レポートを artifact に上げ、compose ログを出力する。
 
 > 補足: 必須チェックの落とし穴を避けるため、**ワークフローレベルの `paths` / `paths-ignore` は使わない**。ワークフロー自体が起動しないと必須チェックが `pending` のまま完了せず PR がマージ不能になるため、「常に起動してジョブレベル `if:` でスキップする（= skipped は成功扱い）」形を採る（`.claude/rules/github-actions.md`）。
+>
+> `Makefile` のみを変更した PR では**どのジョブも実行されない**（CI は Makefile を経由しないため検査手段がない）。意図的なトレードオフとして受け入れている。検査が必要になった場合は `make -n` の dry-run 等を軽量チェックとして追加する。
 >
 > branch protection（必須チェック）導入時は、マトリクスを `if` でスキップすると `test (app)` 個別の check run が生成されない点に注意。その際は `if: always()` の集約ゲートジョブを追加し、それ 1 つを必須チェックに指定する設計が必要になる。現状このリポジトリは private 無料プランで branch protection を利用できないため、集約ゲートは導入していない。
 
