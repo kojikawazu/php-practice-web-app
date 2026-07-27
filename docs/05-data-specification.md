@@ -31,8 +31,17 @@ Laravel は `config/database.php` の接続設定で `prefix` と `migrations` �
 | url | VARCHAR NULL | 登録 URL（任意・fullstack）|
 | preview_title | VARCHAR NULL | サーバー取得した og:title / title（キャッシュ）|
 | preview_image | VARCHAR NULL | サーバー取得した og:image の URL（キャッシュ）|
-| created_at | TIMESTAMP | 作成日時 |
-| updated_at | TIMESTAMP | 更新日時 |
+| created_at | TIMESTAMP | 作成日時（監査列） |
+| updated_at | TIMESTAMP | 更新日時（監査列） |
+
+### 監査列の設定責務
+
+`created_at` / `updated_at` は業務コードで代入せず、アプリごとに**単一の層**で設定する（ルールは `.claude/rules/php.md` の「監査列」）。作成者・更新者（`created_by` / `updated_by`）は本アプリの要件外とし、保持しない。
+
+| アプリ | 設定する層 |
+|---|---|
+| laravel-fullstack / laravel-api | Eloquent の自動タイムスタンプ（マイグレーションの `$table->timestamps()`）。`$fillable` には含めない |
+| laminas | `TaskTable`（TableGateway には自動機構がないため Table 層に集約）。集約できない場合は DB 側の `DEFAULT CURRENT_TIMESTAMP` / `ON UPDATE CURRENT_TIMESTAMP` |
 
 ## ER 図
 
