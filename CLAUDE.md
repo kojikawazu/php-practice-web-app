@@ -22,4 +22,4 @@ PHP の学習を目的とした練習用 Web アプリケーション
 | dead-code.md | 全体 | デッドコード禁止（削除対象・フレームワーク規約の例外・検出手段） |
 | coding-standards.md | apps/**（PHPコード） | PHP 8.3 / PSR-12 / PHPDoc / Pint・phpcs・Psalm / Composer |
 | error-handling.md | apps/**（PHPコード） | バリデーション・HTTP ステータス・所有者スコープ・ログ |
-| php.md | apps/**（PHPコード） | Laravel / Laminas のスタック別作法（所有者スコープ・DB・認証・DI） |
+| php.md | apps/**（PHPコード） | Laravel / Laminas のスタック別作法（所有者スコープ・DB・監査列・認証・DI） |
