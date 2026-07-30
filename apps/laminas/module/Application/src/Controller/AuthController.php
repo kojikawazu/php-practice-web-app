@@ -16,6 +16,11 @@ use Laminas\View\Model\ViewModel;
 /**
  * ログイン・新規登録・ログアウト。認証成功時は identity をセッション（AuthenticationService の
  * Storage）に保存し、パスワード照合は PasswordHasher（bcrypt）へ委譲する。
+ *
+ * 読み比べ（docs/12-code-reading-guide.md Step 2）:
+ * - laravel-fullstack: app/Http/Controllers/AuthController.php。同じセッション方式だが、照合・セッション
+ *   保存・再生成を Auth::attempt() + session()->regenerate() が一括で行う。本クラスはその内訳が展開された形。
+ * - laravel-api: 同上のパスにトークン方式。セッションを持たない。
  */
 class AuthController extends AbstractActionController
 {

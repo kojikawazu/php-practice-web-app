@@ -13,6 +13,12 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 /**
  * タスクの JSON CRUD・複製・画像配信（すべて auth:sanctum 保護）。
  * 本人のタスクに限定し、他人のリソースは存在を伏せて 404 にする。
+ *
+ * 読み比べ（docs/12-code-reading-guide.md Step 4）:
+ * - laravel-fullstack: 同名 TaskController。Eloquent の使い方は同じで、出力が Blade + redirect になり、
+ *   さらに 2 ステップ確認画面（storeConfirm 等）が加わる。
+ * - laminas: module/Application/src/Controller/TaskController.php。TableGateway で明示 SQL を組む。
+ * 未認証時の扱いも三者三様（本アプリ=401 / fullstack=auth ミドルウェアでリダイレクト / laminas=各アクションで判定）。
  */
 class TaskController extends Controller
 {

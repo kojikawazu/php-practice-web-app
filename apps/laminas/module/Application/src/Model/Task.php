@@ -7,6 +7,10 @@ namespace Application\Model;
 /**
  * タスクのエンティティ。
  * TableGateway の ResultSet プロトタイプとして使うため exchangeArray を持つ。
+ *
+ * 読み比べ（docs/12-code-reading-guide.md Step 3）: exchangeArray() が行っている DB 行→オブジェクトの
+ * 型整形（'0' → false 等）は、Laravel 2 アプリでは Task モデルの $casts 宣言 1 行に相当する。
+ * ORM が何を肩代わりしているかが最も分かりやすく出る箇所（仕様は test/Model/TaskTest.php）。
  */
 class Task
 {

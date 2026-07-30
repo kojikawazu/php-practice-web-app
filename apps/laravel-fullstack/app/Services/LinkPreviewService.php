@@ -14,6 +14,10 @@ use Illuminate\Support\Facades\Http;
  *  - リダイレクトは自動追従せず、各ホップを再検証
  *  - 接続/読み込みタイムアウトと本文サイズ上限
  *  - 取得 HTML はそのまま出さず title / og:image だけ抽出（表示側でエスケープ）
+ *
+ * 読み比べ（docs/12-code-reading-guide.md Step 6）: 本アプリ固有で、他 2 アプリに対応物はない。
+ * 対策の設計判断は docs/06-security-specification.md、テスト（何を許可し何を拒否するか）は
+ * tests/Unit/LinkPreviewServiceTest.php が仕様書として読める。
  */
 class LinkPreviewService
 {

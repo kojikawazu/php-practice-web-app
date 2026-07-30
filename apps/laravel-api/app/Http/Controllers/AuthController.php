@@ -10,6 +10,11 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Sanctum トークン認証。登録・ログインで平文トークンを発行し、ログアウトは現在のトークンのみ失効する。
+ *
+ * 読み比べ（docs/12-code-reading-guide.md Step 2）:
+ * - laravel-fullstack / laminas: どちらもログイン状態をセッションに持つため、ログアウトはセッション破棄で
+ *   全体が切れる。本アプリは状態が DB のトークン行なので、「そのトークンだけ失効」が成立する。
+ * - 発行済みトークンの管理は TokenController（本アプリ固有。他 2 アプリに対応物なし）。
  */
 class AuthController extends Controller
 {

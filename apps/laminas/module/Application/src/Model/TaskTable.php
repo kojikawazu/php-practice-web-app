@@ -9,6 +9,11 @@ use Laminas\Db\TableGateway\TableGatewayInterface;
 /**
  * lam_tasks テーブルへのアクセス（Table Data Gateway パターン）。
  * 認証導入後は user_id でスコープする。
+ *
+ * 読み比べ（docs/12-code-reading-guide.md Step 3）:
+ * Laravel 2 アプリにこのクラスの対応物はない。あちらでは Eloquent が同じ役割を担い、クエリは
+ * コントローラ側に Task::where(...) / $user->tasks() として現れる。結果として所有者スコープの置き場所が
+ * 異なる（本クラス = 全メソッドが userId を要求する形で強制 / Laravel = リレーション経由 + abort_if 404）。
  */
 class TaskTable
 {

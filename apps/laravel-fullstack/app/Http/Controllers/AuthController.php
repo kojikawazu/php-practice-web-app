@@ -11,6 +11,11 @@ use Illuminate\View\View;
 
 /**
  * セッション認証。登録（自動ログイン）・ログイン（セッション再生成）・ログアウト（セッション無効化）。
+ *
+ * 読み比べ（docs/12-code-reading-guide.md Step 2 — 「ログイン状態をどこに持つか」が 3 アプリで最も分かれる点）:
+ * - laravel-api: 同名 AuthController。セッションを持たず、Hash::check() で手動照合してトークンを発行する。
+ * - laminas: module/Application/src/Controller/AuthController.php。Auth::attempt() 相当がなく、
+ *   PasswordHasher（自前 bcrypt）での照合と、AuthenticationService への identity 保存を自分で書く。
  */
 class AuthController extends Controller
 {
