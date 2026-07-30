@@ -32,7 +32,8 @@ globs:
 | 上記に収まらない運用・補足事項の変更 | docs/10-miscellaneous-specification.md |
 | 開発タスク・マイルストーン・進捗の変化 | docs/11-tasks.md |
 | ルートの構成・セットアップ・起動手順の変更 | README.md |
-| `.claude/rules/` の追加・スコープ変更 | CLAUDE.md（Rules テーブル） |
+| 規約本文の変更（`.claude/rules/`） | 原則不要（正本のルールファイルのみ） |
+| 規約ファイルの追加・削除・改名・適用範囲変更 | CLAUDE.md / AGENTS.md 群 / README.md（AI エージェント向けルール表） |
 
 該当する変更がない場合はスキップする。
 
@@ -40,3 +41,4 @@ globs:
 
 - **設計書の管理**: タスクごとに設計書を新規作成しない。既存の番号付き仕様書（docs/01〜11-*.md）に追記・更新する。
 - 仕様変更は 3 アプリ（laravel-fullstack / laravel-api / laminas）への影響有無を確認し、アプリ差分は各仕様書内に明記する。
+- **AI エージェント向け入口の同期**: `.claude/rules/` はルール本文の唯一の正本とする。規約ファイルの構成・名称・適用対象を変更した場合は、Claude Code 向けの `CLAUDE.md`、Codex 向けの該当 `AGENTS.md`、README の対応表を同一 PR で同期する。本文だけの変更では、各入口の更新は不要。
