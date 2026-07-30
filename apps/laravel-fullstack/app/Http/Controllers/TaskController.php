@@ -17,6 +17,11 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 /**
  * タスクの CRUD・完了切替・複製・画像配信。すべて本人のタスクに限定する（他人のは 404）。
  * 新規・編集・複製は確認画面を挟む 2 ステップ（入力→セッション退避→確定）で処理する。
+ *
+ * 読み比べ（docs/12-code-reading-guide.md Step 4）:
+ * - laravel-api: 同名 TaskController。スコープの考え方は同じだが、返すのは JSON で redirect がない。
+ * - laminas: module/Application/src/Controller/TaskController.php。認証判定を各アクション冒頭に書き、
+ *   所有者条件は TaskTable::getForUser() 側へ寄せる（本クラスのように Auth ファサードを直接使わない）。
  */
 class TaskController extends Controller
 {

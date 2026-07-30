@@ -8,6 +8,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * タスク（api_tasks）。JSON では image_path（生パス）を隠し、代わりに仮想属性
  * image_url を出力する（$hidden / $appends + getImageUrlAttribute で実現）。
+ *
+ * 読み比べ（docs/12-code-reading-guide.md Step 3）:
+ * - laravel-fullstack: app/Models/Task.php。表示が Blade なので $hidden による出力制御が要らず、
+ *   代わりに url / preview_* 列を持つ。「モデルが API 契約を兼ねるか否か」でこの差が生まれる。
+ * - laminas: src/Model/Task.php + src/Model/TaskTable.php。
  */
 class Task extends Model
 {

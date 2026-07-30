@@ -7,6 +7,10 @@ use Illuminate\Http\Request;
 
 /**
  * Sanctum の個人アクセストークン管理（一覧・発行・失効）。すべて本人のトークンのみ対象。
+ *
+ * 読み比べ（docs/12-code-reading-guide.md Step 6）: 本アプリ固有で、他 2 アプリに対応物はない。
+ * 認証状態を DB の行として持つトークン方式だからこそ「一覧・個別失効」が機能として成立する
+ * （セッション方式の fullstack / laminas では、ログイン状態を一覧・選択失効する手段がない）。
  */
 class TokenController extends Controller
 {

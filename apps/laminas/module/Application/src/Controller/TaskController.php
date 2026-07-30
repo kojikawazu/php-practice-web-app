@@ -15,6 +15,12 @@ use Laminas\View\Model\ViewModel;
 /**
  * タスクの一覧・作成・編集・複製・削除。すべてログインユーザー本人のタスクに限定する
  * （所有者スコープは TaskTable のメソッド側で担保）。
+ *
+ * 読み比べ（docs/12-code-reading-guide.md Step 4）:
+ * - laravel-fullstack / laravel-api: app/Http/Controllers/TaskController.php。ミドルウェアが認証境界を
+ *   受け持つため、本クラスのような hasIdentity() 判定はアクション内に現れない。
+ * - 依存（TaskTable / AuthenticationService）は TaskControllerFactory が注入する。Laravel 側の
+ *   コンテナ自動解決に対し、Laminas は「誰が何を注入するか」をファクトリに明示するのが対照的。
  */
 class TaskController extends AbstractActionController
 {
