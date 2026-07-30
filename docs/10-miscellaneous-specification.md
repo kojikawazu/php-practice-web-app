@@ -16,7 +16,7 @@
 
 ## 参照資料
 
-- ルート: `README.md`（起動・使い方）、`CLAUDE.md`（AI 向け指示）、`.claude/rules/`（開発ルール）
+- ルート: `README.md`（起動・使い方）、`CLAUDE.md`（Claude Code 向け指示）、`AGENTS.md`（Codex 向け指示）、`.claude/rules/`（開発ルールの正本）
 - 仕様書: `docs/01`〜`docs/11`
 - 外部: Laravel / Laminas / Sanctum / flatpickr の各公式ドキュメント
 

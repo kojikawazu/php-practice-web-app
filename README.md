@@ -89,6 +89,18 @@ docker compose exec php-laminas composer ...
 
 仕様書は `docs/` 配下に番号付きで整理しています。開発ルールは [`.claude/rules/`](./.claude/rules/) を参照。
 
+## AI エージェント向けルール
+
+開発ルールの正本は [`.claude/rules/`](.claude/rules/) です。Claude Code は [`CLAUDE.md`](CLAUDE.md) から、Codex はリポジトリ階層の [`AGENTS.md`](AGENTS.md) から同じルールを参照します。ルール本文は複製せず、変更対象に最も近い `AGENTS.md` が指定する追加ルールも適用します。
+
+| 対象 | Codex 向け指示ファイル | 追加で参照するルール |
+|---|---|---|
+| リポジトリ全体 | [`AGENTS.md`](AGENTS.md) | 共通ルール |
+| `apps/**` | [`apps/AGENTS.md`](apps/AGENTS.md) | PHP 共通・3 アプリ横断 |
+| `apps/laravel-fullstack/**` | [`apps/laravel-fullstack/AGENTS.md`](apps/laravel-fullstack/AGENTS.md) | Laravel・Blade・セッション認証 |
+| `apps/laravel-api/**` | [`apps/laravel-api/AGENTS.md`](apps/laravel-api/AGENTS.md) | Laravel・Sanctum・JSON API |
+| `apps/laminas/**` | [`apps/laminas/AGENTS.md`](apps/laminas/AGENTS.md) | Laminas・TableGateway・DI |
+
 ### よくある探し物（クイックリンク）
 
 | 知りたいこと | 参照先 |
