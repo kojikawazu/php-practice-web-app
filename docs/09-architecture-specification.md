@@ -51,14 +51,15 @@ PHP 拡張: `pdo_mysql` ほか各 FW が要求するもの。`docker/php/Dockerf
 
 ## CI（継続的インテグレーション）
 
-`.github/workflows/ci.yml` が push（main）/ Pull Request 時に実行される。5 ジョブ構成。`GITHUB_TOKEN` は最小権限（`contents: read` / `pull-requests: read`）を明示する（`pull-requests: read` は `dorny/paths-filter` が PR の変更ファイルを GitHub API で取得するために必要）。`concurrency`（`cancel-in-progress: true`）で同一 PR の連続 push 時に古い実行をキャンセルする。
+`.github/workflows/ci.yml` が push（main）/ Pull Request 時に実行される。6 ジョブ構成。`GITHUB_TOKEN` は最小権限（`contents: read` / `pull-requests: read`）を明示する（`pull-requests: read` は `dorny/paths-filter` が PR の変更ファイルを GitHub API で取得するために必要）。`concurrency`（`cancel-in-progress: true`）で同一 PR の連続 push 時に古い実行をキャンセルする。
 
 発火制御の方針は `.claude/rules/github-actions.md` に従い、**変更内容に関係のあるジョブだけを動かす**（ドキュメント変更でテストを回さない／逆にコード変更でテストを取りこぼさない）。
 
 - **changes**: `dorny/paths-filter` で差分パスを判定する軽量ジョブ。判定は**除外リスト**で書く（`docs/**` / `**/*.md` / `.claude/**` 以外はコード変更とみなす）。対象リスト方式（`apps/**` の列挙）だと新しいトップレベルディレクトリが増えたときに黙ってテストが走らなくなる（fail-open）ため、安全側に反転させている。
   - paths-filter はパターンごとに picomatch を評価し既定では OR（`some`）で束ねるため、否定パターンだけを並べると互いを打ち消して常に true になる。`predicate-quantifier: every` で AND 評価にし「どの除外にも当たらない = コード変更」と解釈させる。
   - `every` は肯定形フィルタを壊すため、`docs`（`**/*.md`）の判定は既定の OR 評価の**別ステップ**に分けている。
-  - 出力は `test` / `lint` / `e2e` / `docs` の 4 つ。**ジョブが読まないと確認できたファイルのみを除外する**方針で、3 つのコード系フィルタを個別に持つ。
+  - 出力は `test` / `lint` / `e2e` / `docs` / `workflows` の 5 つ。**ジョブが読まないと確認できたファイルのみを除外する**方針で、3 つのコード系フィルタを個別に持つ。
+  - `workflows` だけは**肯定リスト**（`.github/workflows/**`）で書く。actionlint の検査対象がこのディレクトリで閉じており、未知のファイルが増えても検査すべき対象は増えないため、対象リスト方式でも fail-open にならない。
 
   各ツールが実際に読む範囲（設定ファイルで確認済み）:
 
@@ -72,19 +73,20 @@ PHP 拡張: `pdo_mysql` ほか各 FW が要求するもの。`docker/php/Dockerf
 
   ここから導かれる発火条件の差分:
 
-  | 変更内容 | test | lint | e2e | markdown-lint |
-  |---|---|---|---|---|
-  | `apps/**` の PHP / Blade / phtml / config / migration、`composer.lock`、`.env.example` | ✅ | ✅ | ✅ | ❌ |
-  | テストコードのみ（`apps/*/tests/**`、`apps/laminas/module/*/test/**`） | ✅ | ✅ | ❌ | ❌ |
-  | 静的解析の設定のみ（`phpstan.neon` / `psalm.xml` / `phpcs.xml` / 各 baseline） | ❌ | ✅ | ❌ | ❌ |
-  | PHPUnit の設定のみ（`phpunit.xml` / `phpunit.xml.dist`） | ✅ | ❌ | ❌ | ❌ |
-  | `compose.yaml` / `docker/**` / `e2e/**` | ❌ | ❌ | ✅ | ❌ |
-  | md ドキュメント / `.claude/**` / `.markdownlint-cli2.jsonc` | ❌ | ❌ | ❌ | ✅ |
-  | `.github/workflows/**` | ✅ | ✅ | ✅ | ❌ |
-  | 上記に当てはまらない変更（新規ディレクトリ等） | ✅ | ✅ | ✅ | ❌ |
+  | 変更内容 | test | lint | e2e | markdown-lint | actionlint |
+  |---|---|---|---|---|---|
+  | `apps/**` の PHP / Blade / phtml / config / migration、`composer.lock`、`.env.example` | ✅ | ✅ | ✅ | ❌ | ❌ |
+  | テストコードのみ（`apps/*/tests/**`、`apps/laminas/module/*/test/**`） | ✅ | ✅ | ❌ | ❌ | ❌ |
+  | 静的解析の設定のみ（`phpstan.neon` / `psalm.xml` / `phpcs.xml` / 各 baseline） | ❌ | ✅ | ❌ | ❌ | ❌ |
+  | PHPUnit の設定のみ（`phpunit.xml` / `phpunit.xml.dist`） | ✅ | ❌ | ❌ | ❌ | ❌ |
+  | `compose.yaml` / `docker/**` / `e2e/**` | ❌ | ❌ | ✅ | ❌ | ❌ |
+  | md ドキュメント / `.claude/**` / `.markdownlint-cli2.jsonc` | ❌ | ❌ | ❌ | ✅ | ❌ |
+  | `.github/workflows/**` | ✅ | ✅ | ✅ | ❌ | ✅ |
+  | 上記に当てはまらない変更（新規ディレクトリ等） | ✅ | ✅ | ✅ | ❌ | ❌ |
 
   `test` が Docker 系（`compose.yaml` / `docker/**`）に依存しないのは、`shivammathur/setup-php` で動き Docker を使わないため。`Makefile` はどのジョブも参照しない（CI は各コマンドを直接叩く）ため全フィルタで除外している。
 
+- **actionlint**: `if: workflows == 'true'` で `.github/workflows/**` の変更時のみ実行。workflow の構文・式（`${{ }}`）・runner ラベル・action の入力に加え、**`run:` の中身を shellcheck に流す**（`.claude/rules/github-actions.md` が要求する品質ゲートの実体）。取得は公式 Docker イメージ `rhysd/actionlint` のバージョン固定タグで、`make actionlint` と**同一コマンド**のため手元と CI で結果が一致する。バージョンを上げる際は `Makefile` と `ci.yml` の両方を揃える。
 - **markdown-lint**: `if: docs == 'true'` で md 変更時のみ実行（`markdownlint-cli2`）。対象と無効化ルールの理由は `.markdownlint-cli2.jsonc` に記載し、**警告ゼロを維持**する（`.claude/rules/static-analysis.md`）。ローカルは `make md-lint` / `make md-fix`。
 - **test**: `needs: changes` + `if: test == 'true'` で実行。`shivammathur/setup-php`（PHP 8.3）で各アプリをセットアップ（Docker 不使用）、matrix で 3 アプリを並行ジョブ実行（`fail-fast: false`）。Laravel ×2 は `php artisan test`（テスト DB は SQLite in-memory のため MySQL サービス不要）、Laminas は `vendor/bin/phpunit`。
 - **lint**: `if: lint == 'true'` で実行する静的チェックジョブ（matrix で 3 アプリ並行）。Laravel ×2 は `vendor/bin/pint --test`（整形の差分検査）+ `composer analyse`（Larastan/PHPStan・`level: max`）、Laminas は `composer cs-check`（phpcs / Laminas Coding Standard）+ `vendor/bin/psalm`（型解析・`errorLevel=1`）。静的解析の既存指摘は baseline（Laravel=`apps/laravel-*/phpstan-baseline.neon` / Laminas=`apps/laminas/psalm-baseline.xml`）に記録済みで、CI は**新規に増えた指摘のみ**で失敗する（baseline 運用）。ローカルでの自動修正は Laravel=`vendor/bin/pint`、Laminas=`composer cs-fix`。
