@@ -49,6 +49,8 @@ PHP 拡張: `pdo_mysql` ほか各 FW が要求するもの。`docker/php/Dockerf
 
 タスク画像は名前付きボリューム `task-uploads` を php-fs / php-api の `/var/www/uploads` にマウントして保存（公開ディレクトリ外）。Laravel の `uploads` ディスク（`UPLOADS_ROOT` 基準、アプリ別サブディレクトリ `fs/` `api/`）経由で読み書きし、所有者チェック付きの配信ルートでのみ返す。ボリュームのマウント先は Dockerfile で `www-data` 所有にして php-fpm から書けるようにしている。
 
+> **CSP は nginx ではなくアプリ側で付与する。** nonce をリクエストごとに生成して HTML へ埋め込む必要があり、nginx 側で同じ値を作れないため。両方で設定するとヘッダーが重複し、ブラウザが全ポリシーの積を適用して意図が読めなくなる（`docs/06`）。
+
 ## CI（継続的インテグレーション）
 
 `.github/workflows/ci.yml` が push（main）/ Pull Request 時に実行される。6 ジョブ構成。`GITHUB_TOKEN` は最小権限（`contents: read` / `pull-requests: read`）を明示する（`pull-requests: read` は `dorny/paths-filter` が PR の変更ファイルを GitHub API で取得するために必要）。`concurrency`（`cancel-in-progress: true`）で同一 PR の連続 push 時に古い実行をキャンセルする。
