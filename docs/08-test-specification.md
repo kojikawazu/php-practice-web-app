@@ -44,15 +44,19 @@
 | laminas TaskController（**IT**・dispatch・SQLite） | 認証済み一覧が本人分のみ描画 / POST作成→302+user_idスコープ / 編集POST→更新 / 複製→「（コピー）」作成 / 削除→消える | ゲストは index・作成・削除で /login へ / 他人タスクの編集・削除・複製が無効 / 空title は未作成で再描画 / 不在id編集は一覧へ |
 | laminas AuthController（**IT**・dispatch・SQLite） | 登録→ユーザー作成+302 / 正パスワードでログイン→/tasks / ログアウト→/login | 重複ユーザー名は拒否（既存PW不変） / 短パスワードは未作成 / 誤パスワード拒否 / 未登録ユーザー拒否 |
 | fullstack / api 画像整合性（**失敗注入**・`TaskImageIntegrityTest`）| 差し替えは DB コミット後に旧画像を削除 / 削除でタスクと画像がともに消える | DB create 失敗で孤児ファイルを残さない（作成・複製）/ DB update 失敗で旧画像を失わない / DB delete 失敗でタスクと画像を残し再試行可能にする / ファイルの move・copy 失敗時にタスクを作らない |
+| laminas CSRF（**IT**・`CsrfProtectionIntegrationTest`）| 正しいトークンで作成・削除・ログアウトが通る / 全 POST フォームにトークンが埋まる / 状態変更の導線が POST フォームである | GET での削除・複製・ログアウトは 405 で実行されない / トークン無し・不正トークンの POST は 403（作成・削除・ログイン・登録）|
 | 3アプリ CSP（`CspHeaderTest` / `CspHeaderIntegrationTest`）| HTML 応答にヘッダーが付く / ヘッダーの nonce と HTML の nonce が一致 / nonce がリクエストごとに変わる / 実際に使う CDN だけを許可 | script-src に `'unsafe-inline'`・`'unsafe-eval'` が無い / ワイルドカードが無い / api は script-src を持たない / エラー応答にもヘッダーが付く |
 | fullstack LinkPreview(SSRF) | public IP 許可 / title・og:image 抽出 | private・loopback・link-local・予約IP 拒否 / 非http拒否 / 内部ホスト拒否 / og:image非http除外 |
 | laminas PasswordHasher | hash→verify / bcrypt形式 | 誤パスワード / 空 / 不正ハッシュ / ソルトで毎回異なる |
 | laminas InputFilter | Task/Register/Login の有効入力通過・StringTrim 整形・日付任意通過 | 必須欠落 / 空 / 空白のみ / 長すぎ(255超) / 短パスワード(8未満) / 不正日付 / 終了日<開始日 |
 | fullstack E2E（**Playwright**・実ブラウザ・実MySQL） | 登録→自動ログイン→一覧 / ログアウト→再ログイン / 作成(確認画面→確定) / 編集 / 複製 / 完了トグル / 削除 / 検索 / ページネーション / 日付付き作成 / 画像添付→所有者閲覧(200) | guest→/login誘導 / 誤パスワード / メール重複 / 確認不一致 / 短PW / 空title(確認へ進まず) / 終了日<開始日 / 確認画面キャンセルで未作成 / 他人タスクedit・image 404 |
 | laminas E2E（**Playwright**・実ブラウザ・実MySQL） | 登録→自動ログイン→一覧 / ログアウト→再ログイン / 作成 / 編集 / 複製(「（コピー）」) / 削除 / 検索 / ページネーション | guest→/login誘導 / 誤パスワード / username重複 / 短PW / 空title / 検索ヒットなし / 他人タスクは編集画面に入れず一覧へ / 他人タスク削除は無効 |
+| laminas CSRF E2E（**Playwright**・実ブラウザ・実セッション）| 全 POST フォームにトークンが埋まっている | 認証済みセッションでも GET の削除・ログアウトは 405 / トークン無し・不正トークンの POST は 403 で状態が変わらない |
 | 3アプリ CSP E2E（**Playwright**・実ブラウザ）| ヘッダーが付く / Tailwind が適用される / nonce 付きインライン script が実行され flatpickr が初期化される / CSP 違反 0 件 | nonce 無しで注入したインライン script が実行されない（違反として記録される）|
 | api E2E（**Playwright**・HTTP/Bearer・実MySQL） | register(201) / login(200) / logout(204→401) / CRUD / 複製(201) / 日付Y-m-d / per_pageクランプ / 検索 / 画像image_url→所有者取得(200) | 誤PW422 / メール重複422 / 短PW422 / token無し401 / 無効token401 / title欠落422 / title長すぎ422 / 終了日<開始日422 / 他人タスクview・update・delete・duplicate・image 404 |
 
+> **CSRF の IT** は実セッション（`session_start`）に依存させず、`AbstractIntegrationTestCase` が配列ストレージのセッションコンテナを注入した `CsrfGuard` を ServiceManager へ差し替える。**検証ロジック自体は本物をそのまま通す**（モックしない）。テストからは `withCsrf()` で正規トークンを付けた POST を送る。
+>
 > **失敗注入テスト**（`TaskImageIntegrityTest`）は、ファイルと DB という 2 つの保存先の失敗境界を検証する。DB 失敗は Eloquent のモデルイベント（`Task::creating` 等）で例外を投げて注入し（モックではなく実フック）、ファイル失敗は `Storage` ファサードを差し替えて注入する（`.claude/rules/testing.md` が許可する外部 I/O のモック）。守る不変条件と操作順序は `docs/05`。
 >
 > laminas の認証フロー（register→login→logout）は、`AuthControllerIntegrationTest` で **IT として PHPUnit 化済み**（コントローラ→InputFilter→UserTable→DB→bcrypt 照合を通しで検証）。**実セッションの永続**（Cookie を跨いだ保護ページ維持）は **E2E（Playwright）が実ブラウザでカバー**（ログアウト→再ログイン等）。認証ロジックの核（bcrypt）は `PasswordHasherTest` でも単体保証する。

@@ -7,6 +7,7 @@ namespace ApplicationTest\Integration;
 use Application\Model\Task;
 use Application\Model\TaskTable;
 use Application\Model\UserTable;
+use Application\Service\CsrfGuard;
 use Application\Service\PasswordHasher;
 use Laminas\Authentication\AuthenticationService;
 use Laminas\Authentication\Storage\NonPersistent;
@@ -14,6 +15,10 @@ use Laminas\Db\Adapter\Adapter;
 use Laminas\Db\Adapter\AdapterInterface;
 use Laminas\Db\ResultSet\ResultSet;
 use Laminas\Db\TableGateway\TableGateway;
+use Laminas\Session\Config\StandardConfig;
+use Laminas\Session\SessionManager;
+use Laminas\Session\Container as SessionContainer;
+use Laminas\Session\Storage\ArrayStorage;
 use Laminas\Stdlib\ArrayUtils;
 use Laminas\Test\PHPUnit\Controller\AbstractHttpControllerTestCase;
 
@@ -35,6 +40,9 @@ abstract class AbstractIntegrationTestCase extends AbstractHttpControllerTestCas
     protected UserTable $userTable;
 
     protected PasswordHasher $hasher;
+
+    /** CSRF 検証の実体（テスト用セッションを注入したもの） */
+    protected CsrfGuard $csrf;
 
     protected function setUp(): void
     {
@@ -108,6 +116,36 @@ abstract class AbstractIntegrationTestCase extends AbstractHttpControllerTestCas
             $auth->getStorage()->write($identity);
         }
         $services->setService(AuthenticationService::class, $auth);
+
+        // CSRF は実セッション（PHP の session_start）に依存させず、配列ストレージを使う。
+        // 検証ロジック自体は本物の CsrfGuard をそのまま通す（モックしない）。
+        $this->csrf = new CsrfGuard($this->sessionContainer());
+        $services->setService(CsrfGuard::class, $this->csrf);
+    }
+
+    /** テスト用のセッションコンテナ（配列ストレージ・プロセス内で完結） */
+    private function sessionContainer(): SessionContainer
+    {
+        $manager = new SessionManager(new StandardConfig(), new ArrayStorage());
+
+        return new SessionContainer('csrf_test', $manager);
+    }
+
+    /** フォームに埋まるのと同じ CSRF トークン */
+    protected function csrfToken(): string
+    {
+        return $this->csrf->token();
+    }
+
+    /**
+     * POST データへ CSRF トークンを足す（通常操作の再現）。
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    protected function withCsrf(array $data = []): array
+    {
+        return $data + [CsrfGuard::FIELD => $this->csrfToken()];
     }
 
     /** 認証済みユーザーの識別子（AuthController が書き込む形と同一の stdClass） */

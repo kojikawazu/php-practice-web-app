@@ -15,6 +15,7 @@ $this->headTitle('ログイン (laminas)');
     <?php endif; ?>
 
     <form method="post" action="<?= $this->url('login') ?>" class="bg-white rounded-lg shadow p-4 space-y-3">
+        <?= $this->csrfInput() ?>
         <input type="text" name="username" placeholder="ユーザー名" class="border rounded px-3 py-2 w-full">
         <input type="password" name="password" placeholder="パスワード" class="border rounded px-3 py-2 w-full">
         <button type="submit" class="bg-blue-600 text-white rounded px-4 py-2 w-full hover:bg-blue-700">ログイン</button>

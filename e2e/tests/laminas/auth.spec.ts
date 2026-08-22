@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { registerLaminas, loginLaminas } from '../../helpers/laminas';
+import { registerLaminas, loginLaminas, logoutLaminas } from '../../helpers/laminas';
 import { uniqueUsername } from '../../helpers/unique';
 import { PASSWORD } from '../../helpers/config';
 
@@ -15,8 +15,7 @@ test.describe('laminas 認証', () => {
   test('ログアウト後に再ログインできる', async ({ page }) => {
     const username = uniqueUsername();
     await registerLaminas(page, { username, password: PASSWORD });
-    await page.goto('/logout');
-    await expect(page).toHaveURL(/\/login/);
+    await logoutLaminas(page);
 
     await loginLaminas(page, username, PASSWORD);
     await expect(page).toHaveURL(/\/tasks/);
@@ -32,7 +31,7 @@ test.describe('laminas 認証', () => {
   test('誤ったパスワードではログインできない', async ({ page }) => {
     const username = uniqueUsername();
     await registerLaminas(page, { username, password: PASSWORD });
-    await page.goto('/logout');
+    await logoutLaminas(page);
 
     await loginLaminas(page, username, 'wrong-password');
     await expect(page).toHaveURL(/\/login/);
@@ -42,7 +41,7 @@ test.describe('laminas 認証', () => {
   test('既存ユーザー名は登録できない（既存パスワードは不変）', async ({ page }) => {
     const username = uniqueUsername();
     await registerLaminas(page, { username, password: PASSWORD });
-    await page.goto('/logout');
+    await logoutLaminas(page);
 
     await page.goto('/register');
     await page.fill('input[name="username"]', username);

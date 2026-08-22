@@ -309,6 +309,7 @@ $task = $this->table->getForUser($id, (int) $user->id); // スコープは Table
 | `test/Integration/AuthControllerIntegrationTest.php` | IT | 登録 → ログイン → ログアウトを dispatch で通し検証 |
 | `test/Integration/TaskControllerIntegrationTest.php` | IT | CRUD と、他人タスクの編集・削除・複製が弾かれること |
 | `test/Integration/CspHeaderIntegrationTest.php` | IT | CSP ヘッダーの内容（nonce の一致・`'unsafe-inline'` の混入検出）|
+| `test/Integration/CsrfProtectionIntegrationTest.php` | IT | GET での状態変更が 405 / トークン不正が 403 / 正規トークンは成功 |
 
 **3 アプリ横断** — `e2e/`（Playwright / TypeScript）
 
@@ -317,6 +318,7 @@ $task = $this->table->getForUser($id, (int) $user->id); // スコープは Table
 | `e2e/tests/fullstack/`, `e2e/tests/laminas/` | E2E | 実ブラウザで 登録 → ログイン → CRUD → ログアウト と異常系 |
 | `e2e/tests/api/` | E2E | HTTP（Bearer）で同じフローと 401/404/422 を検証 |
 | `e2e/tests/*/csp.spec.ts` | E2E | CSP の実挙動（違反ゼロ・nonce 無しインライン script が動かない）|
+| `e2e/tests/laminas/csrf.spec.ts` | E2E | 実セッションでの CSRF（GET は 405・トークン無しは 403）|
 
 読むポイント:
 
@@ -328,9 +330,9 @@ $task = $this->table->getForUser($id, (int) $user->id); // スコープは Table
 
 ---
 
-### Step 6.5: CSP の付け方を読む（層の違いが最も出る）
+### Step 6.5: 横断的関心事（CSP / CSRF）の挟み方を読む（層の違いが最も出る）
 
-同じ「全応答にヘッダーを付ける」要件を、フレームワークの構造差でどう実現するかの対比。
+同じ「全リクエスト・全応答に一律で何かをする」要件を、フレームワークの構造差でどう実現するかの対比。
 
 | | laravel-fullstack | laravel-api | laminas |
 |---|---|---|---|
@@ -344,6 +346,21 @@ $task = $this->table->getForUser($id, (int) $user->id); // スコープは Table
 - **Laminas にはミドルウェア層が無い**。レスポンスを加工したいときは MVC のライフサイクルイベントを購読する。「どこで横断的関心事を挟むか」がフレームワークごとに違う典型例。
 - nonce はヘッダーと HTML で**同じ値**でなければならない。Laravel はミドルウェアが両方を担当できるが、Laminas はヘッダー（イベント）とビュー（ヘルパー）で担当が分かれるため、**共有インスタンス**を経由して一致させている。
 - `script-src` に `'unsafe-inline'` を書くと nonce が無視される（CSP の仕様）。3 アプリともテストでこの退行を検出する（`docs/06`）。
+
+**CSRF**（セッション認証の 2 アプリのみ。api は Bearer トークンで Cookie を使わないため不要）
+
+| | laravel-fullstack | laminas |
+|---|---|---|
+| トークンの発行 | Blade の `@csrf` | ビューヘルパー `$this->csrfInput()`（`src/View/Helper/CsrfInput.php`）|
+| トークンの検証 | `VerifyCsrfToken` ミドルウェア（フレームワーク標準）| `Module::onBootstrap` の `EVENT_ROUTE` リスナー |
+| トークンの実体 | `session('_token')` | `src/Service/CsrfGuard.php`（`random_bytes(32)` + `hash_equals`）|
+| 拒否時 | 419 | 403（GET で状態変更は 405）|
+
+読むポイント:
+
+- **Laravel は雛形で有効、Laminas は自分で組む**。CSRF は「フレームワークがどこまで面倒を見るか」の差が最も分かりやすい機能。`CsrfGuard` を読むと、Laravel が隠している中身（セッションに乱数を置いて定数時間比較するだけ）が見える。
+- laminas は**アクションごとに検証しない**。1 箇所（EVENT_ROUTE）で全 POST を見る。個々に書く形は「新しい POST を足したとき書き忘れる = 無防備」になるため（`security.md`）。Laravel のミドルウェアがグループ全体に効くのと同じ考え方を、イベントで実現している。
+- 状態変更を POST に限定するのは CSRF トークン以前の前提。GET で消せるなら `<img src>` を踏ませるだけで成立する（`src/Controller/RequiresPostTrait.php`）。
 
 ---
 

@@ -24,6 +24,8 @@ use Laminas\View\Model\ViewModel;
  */
 class TaskController extends AbstractActionController
 {
+    use RequiresPostTrait;
+
     public function __construct(
         private TaskTable $table,
         private AuthenticationService $auth
@@ -114,6 +116,10 @@ class TaskController extends AbstractActionController
 
     public function duplicateAction()
     {
+        if ($response = $this->rejectUnlessPost()) {
+            return $response;
+        }
+
         if (! $this->auth->hasIdentity()) {
             return $this->redirect()->toRoute('login');
         }
@@ -148,6 +154,10 @@ class TaskController extends AbstractActionController
 
     public function deleteAction()
     {
+        if ($response = $this->rejectUnlessPost()) {
+            return $response;
+        }
+
         if (! $this->auth->hasIdentity()) {
             return $this->redirect()->toRoute('login');
         }

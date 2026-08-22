@@ -28,7 +28,7 @@
 ## 脆弱性対策
 
 - **XSS**: 出力エスケープ（Blade `{{ }}` / Laminas `escapeHtml`）。
-- **CSRF**: Laravel web フォームは `@csrf` トークン。API は Cookie を使わないトークン認証で対象外。
+- **CSRF**: セッション認証の 2 アプリ（fullstack / laminas）は全 POST フォームにトークンを必須とする（下記「CSRF 対策の方針」）。API は Cookie を使わない Bearer トークン認証のため対象外。
 - **SQL インジェクション**: Eloquent / Laminas TableGateway のバインドパラメータ経由でクエリを構築（生 SQL の文字列結合をしない）。
 - **認可**: タスクは `user_id` でスコープし、他人のリソースは 404 / 対象外。
 - **アップロード画像**: 公開ディレクトリ外（名前付きボリューム）に保存し、アプリ経由の所有者チェック付きルートでのみ配信（URL を知っても他人は閲覧不可）。`image`/`mimes`/`max:2048` で種別・サイズを検証。
@@ -41,6 +41,52 @@
   - 接続/読み込みタイムアウト・本文サイズ上限
   - 取得 HTML はそのまま出さず `title`/`og:image` だけ抽出し、表示時にエスケープ（`og:image` は http(s) のみ採用）
   - セキュリティの核 `isPublicIp()` は単体テストで担保
+
+## CSRF 対策の方針
+
+セッション認証は Cookie が自動送信されるため、外部サイトが仕込んだリクエストでも認証が通ってしまう。2 段で防ぐ。
+
+### 1. 状態を変える操作は POST に限定する
+
+GET で状態が変わると、`<img src="http://host/tasks/delete/1">` を含むページを開かせるだけで操作が成立する（トークン以前の問題）。
+
+| アプリ | ログアウト | 複製 | 削除 |
+|---|---|---|---|
+| laravel-fullstack | POST | POST | DELETE |
+| laminas | POST | POST | POST |
+
+laminas は POST 以外を **405 Method Not Allowed**（`Allow: POST` 付き）で拒否する。実装は `Application\Controller\RequiresPostTrait`。
+
+### 2. 全 POST に CSRF トークンを要求する
+
+| アプリ | 発行 | 検証 |
+|---|---|---|
+| laravel-fullstack | Blade の `@csrf` | `VerifyCsrfToken` ミドルウェア（フレームワーク標準・419） |
+| laminas | ビューヘルパー `$this->csrfInput()` | `Module::onBootstrap` の `MvcEvent::EVENT_ROUTE` リスナー（**403**） |
+
+**laminas は個々のアクションで検証しない。** 各アクションに書く形にすると、新しい POST を足したときの書き忘れがそのまま無防備になるため、ルーティング後に全 POST を一括で検証する（`security.md`「ミドルウェアを付け忘れたら公開になる実装にしない」）。
+
+### トークンの実装（laminas）
+
+`Application\Service\CsrfGuard` が同期トークンパターンを持つ。
+
+- 生成: `bin2hex(random_bytes(32))`（256 bit・CSPRNG）
+- 保存: laminas-session のコンテナ（認証の identity と同じセッション）
+- 比較: `hash_equals()` による定数時間比較
+- 寿命: セッション内で不変（毎回変えると複数タブ・ブラウザバックで壊れる）。Laravel の `_token` と同じ方針
+
+laminas-validator / laminas-session の `Csrf` バリデータは使わない。**双方とも 3.0 で削除予定の非推奨 API**（`getHash()` を含む）で、抑制コメントを重ねることになるため。実体は「乱数 + 定数時間比較」だけなので自前で持つ。
+
+### 拒否時の応答
+
+| 状況 | 応答 |
+|---|---|
+| 状態変更を GET で叩く | 405 Method Not Allowed |
+| CSRF トークンが無い / 不正 | 403 Forbidden |
+
+**リダイレクトで隠さない。** 他人のリソースを 404 で隠すのは「存在を教えない」ためだが、CSRF の拒否は逆に**攻撃が失敗したことを明示的に記録**したい。リダイレクトだと成功と区別できず、テストでも運用ログでも検知できない。
+
+Laravel が CSRF 不一致に 419（フレームワーク独自）を返すのに対し、laminas は標準的な 403 を使う。
 
 ## CSP の方針
 

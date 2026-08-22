@@ -87,6 +87,8 @@ return [
             // CSP の nonce はリクエスト内で 1 つ。共有インスタンスにすることで
             // ヘッダーと PHTML の nonce が必ず一致する。
             Service\ContentSecurityPolicy::class => InvokableFactory::class,
+            // CSRF トークンはセッションに紐づくため、発行側と検証側で同一インスタンスを使う
+            Service\CsrfGuard::class => Service\CsrfGuardFactory::class,
             // 認証サービス（既定の Session ストレージで identity を保持）
             AuthenticationService::class => function () {
                 return new AuthenticationService();
@@ -103,9 +105,11 @@ return [
     'view_helpers' => [
         'factories' => [
             View\Helper\CspNonce::class => View\Helper\CspNonceFactory::class,
+            View\Helper\CsrfInput::class => View\Helper\CsrfInputFactory::class,
         ],
         'aliases' => [
             'cspNonce' => View\Helper\CspNonce::class,
+            'csrfInput' => View\Helper\CsrfInput::class,
         ],
     ],
     'view_manager' => [

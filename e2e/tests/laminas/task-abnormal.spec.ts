@@ -50,17 +50,20 @@ test.describe('laminas タスク（準正常・異常系）', () => {
     const pageA = await ctxA.newPage();
     await registerLaminas(pageA, { username: uniqueUsername(), password: PASSWORD });
     await createTaskLaminas(pageA, 'A keep');
-    const delHref = await taskItems(pageA)
+    // 削除は POST のみ（docs/06）。フォームの action から対象パスを取る
+    const delAction = await taskItems(pageA)
       .filter({ hasText: 'A keep' })
-      .getByRole('link', { name: '削除' })
-      .getAttribute('href');
-    expect(delHref).not.toBeNull();
+      .locator('form[action*="/tasks/delete/"]')
+      .getAttribute('action');
+    expect(delAction).not.toBeNull();
 
     const ctxB = await browser.newContext();
     const pageB = await ctxB.newPage();
     await registerLaminas(pageB, { username: uniqueUsername(), password: PASSWORD });
-    const path = new URL(delHref as string, URLS.laminas).pathname;
-    await pageB.goto(path); // deleteForUser で B スコープ → 無効
+    // B 自身の正しい CSRF トークンで A のタスク削除を試みる（CSRF ではなく所有者スコープの検証）
+    const token = await pageB.locator('input[name="csrf"]').first().inputValue();
+    const path = new URL(delAction as string, URLS.laminas).pathname;
+    await pageB.request.post(path, { form: { csrf: token } }); // deleteForUser で B スコープ → 無効
     await ctxB.close();
 
     // A の一覧を再確認: タスクは残っている
