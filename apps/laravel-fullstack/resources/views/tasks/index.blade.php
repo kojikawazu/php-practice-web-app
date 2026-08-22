@@ -88,6 +88,6 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
-    <script>flatpickr('.flatpickr', { dateFormat: 'Y-m-d', allowInput: true });</script>
+    <script nonce="{{ $cspNonce }}">flatpickr('.flatpickr', { dateFormat: 'Y-m-d', allowInput: true });</script>
 </body>
 </html>

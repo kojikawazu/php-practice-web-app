@@ -84,6 +84,9 @@ return [
             Model\TaskTable::class       => Model\TaskTableFactory::class,
             Model\UserTable::class       => Model\UserTableFactory::class,
             Service\PasswordHasher::class => InvokableFactory::class,
+            // CSP の nonce はリクエスト内で 1 つ。共有インスタンスにすることで
+            // ヘッダーと PHTML の nonce が必ず一致する。
+            Service\ContentSecurityPolicy::class => InvokableFactory::class,
             // 認証サービス（既定の Session ストレージで identity を保持）
             AuthenticationService::class => function () {
                 return new AuthenticationService();
@@ -95,6 +98,14 @@ return [
             Controller\IndexController::class => InvokableFactory::class,
             Controller\TaskController::class  => Controller\TaskControllerFactory::class,
             Controller\AuthController::class  => Controller\AuthControllerFactory::class,
+        ],
+    ],
+    'view_helpers' => [
+        'factories' => [
+            View\Helper\CspNonce::class => View\Helper\CspNonceFactory::class,
+        ],
+        'aliases' => [
+            'cspNonce' => View\Helper\CspNonce::class,
         ],
     ],
     'view_manager' => [

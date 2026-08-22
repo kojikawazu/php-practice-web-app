@@ -284,6 +284,7 @@ $task = $this->table->getForUser($id, (int) $user->id); // スコープは Table
 | `tests/Feature/AuthTest.php` | IT | 登録&自動ログイン / ログアウト / 誤パスワード / メール重複 |
 | `tests/Feature/TaskTest.php` | IT | 一覧/作成/トグル/編集/複製/画像/2ステップ確認/検索/ページネーション、他人タスク 404 |
 | `tests/Feature/TaskImageIntegrityTest.php` | IT | 失敗注入。ファイルと DB の失敗境界（順序と補償）|
+| `tests/Feature/CspHeaderTest.php` | IT | CSP ヘッダーの内容（nonce の一致・`'unsafe-inline'` の混入検出）|
 | `tests/Unit/LinkPreviewServiceTest.php` | 単体 | SSRF: public 許可 / private・loopback・link-local 拒否 |
 
 **laravel-api** — `tests/Feature/`（=IT）, `tests/Unit/`
@@ -294,6 +295,7 @@ $task = $this->table->getForUser($id, (int) $user->id); // スコープは Table
 | `tests/Feature/TaskApiTest.php` | IT | JSON CRUD、境界値（`per_page` クランプ等）、他人タスク 404 |
 | `tests/Feature/TokenApiTest.php` | IT | トークンの発行 / 一覧（ハッシュ非公開）/ 失効 |
 | `tests/Feature/TaskImageIntegrityTest.php` | IT | 失敗注入。ファイルと DB の失敗境界（順序と補償）|
+| `tests/Feature/CspHeaderTest.php` | IT | CSP ヘッダーの内容（`default-src 'none'` の維持）|
 | `tests/Unit/TaskModelTest.php` | 単体 | `$fillable` / `$casts` / `$hidden` と `image_url` アクセサ |
 
 **laminas** — `module/Application/test/`
@@ -306,6 +308,7 @@ $task = $this->table->getForUser($id, (int) $user->id); // スコープは Table
 | `test/InputFilter/*Test.php` | 単体 | Task/Register/Login の有効/無効入力 |
 | `test/Integration/AuthControllerIntegrationTest.php` | IT | 登録 → ログイン → ログアウトを dispatch で通し検証 |
 | `test/Integration/TaskControllerIntegrationTest.php` | IT | CRUD と、他人タスクの編集・削除・複製が弾かれること |
+| `test/Integration/CspHeaderIntegrationTest.php` | IT | CSP ヘッダーの内容（nonce の一致・`'unsafe-inline'` の混入検出）|
 
 **3 アプリ横断** — `e2e/`（Playwright / TypeScript）
 
@@ -313,6 +316,7 @@ $task = $this->table->getForUser($id, (int) $user->id); // スコープは Table
 |---|---|---|
 | `e2e/tests/fullstack/`, `e2e/tests/laminas/` | E2E | 実ブラウザで 登録 → ログイン → CRUD → ログアウト と異常系 |
 | `e2e/tests/api/` | E2E | HTTP（Bearer）で同じフローと 401/404/422 を検証 |
+| `e2e/tests/*/csp.spec.ts` | E2E | CSP の実挙動（違反ゼロ・nonce 無しインライン script が動かない）|
 
 読むポイント:
 
@@ -321,6 +325,25 @@ $task = $this->table->getForUser($id, (int) $user->id); // スコープは Table
 - 所有者スコープは 2 段で読む。SQL レベルが `TaskTableTest`、コントローラを通した横断フローが `TaskControllerIntegrationTest`（Laravel の `abort_if(..., 404)` に対応する層）。
 - 実セッションの永続（Cookie を跨いだログイン維持）は IT では検証できないため **E2E が担当**する。3 粒度の役割分担はここが一番分かりやすい。
 - `TaskImageIntegrityTest` は**失敗注入**という別種のテスト。DB 失敗はモデルイベントで例外を投げ、ファイル失敗は `Storage` を差し替えて起こす。「正常に動くこと」ではなく「壊れ方が安全であること」を検証する（不変条件は `docs/05`）。
+
+---
+
+### Step 6.5: CSP の付け方を読む（層の違いが最も出る）
+
+同じ「全応答にヘッダーを付ける」要件を、フレームワークの構造差でどう実現するかの対比。
+
+| | laravel-fullstack | laravel-api | laminas |
+|---|---|---|---|
+| 実装 | `app/Http/Middleware/ContentSecurityPolicy.php` | 同左（同名） | `src/Service/ContentSecurityPolicy.php` + `src/Module.php` |
+| 付与する場所 | グローバルミドルウェア | グローバルミドルウェア | `MvcEvent::EVENT_FINISH` リスナー |
+| nonce の受け渡し | `View::share()` → Blade の `{{ $cspNonce }}` | 不要（JSON のみ）| ServiceManager の共有サービス → ビューヘルパー `$this->cspNonce()` |
+| ポリシー | CDN + nonce + `img-src https:`（OGP）| `default-src 'none'` | CDN + nonce（`img-src` は self のみ）|
+
+読むポイント:
+
+- **Laminas にはミドルウェア層が無い**。レスポンスを加工したいときは MVC のライフサイクルイベントを購読する。「どこで横断的関心事を挟むか」がフレームワークごとに違う典型例。
+- nonce はヘッダーと HTML で**同じ値**でなければならない。Laravel はミドルウェアが両方を担当できるが、Laminas はヘッダー（イベント）とビュー（ヘルパー）で担当が分かれるため、**共有インスタンス**を経由して一致させている。
+- `script-src` に `'unsafe-inline'` を書くと nonce が無視される（CSP の仕様）。3 アプリともテストでこの退行を検出する（`docs/06`）。
 
 ---
 
