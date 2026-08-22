@@ -48,7 +48,7 @@ make down               # 停止
 
 ```bash
 make up && make migrate  # 実環境を起動
-make e2e                 # e2e/ で npm ci → chromium 導入 → playwright test（3 projects 計55ケース）
+make e2e                 # e2e/ で npm ci → chromium 導入 → playwright test（3 projects）
 # 個別: cd e2e && npx playwright test --project=api
 ```
 
