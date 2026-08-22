@@ -17,6 +17,7 @@ $this->headTitle('タスク編集 (laminas)');
     <?php endif; ?>
 
     <form method="post" action="<?= $this->url('tasks', ['action' => 'edit', 'id' => $task->id]) ?>" class="bg-white rounded-lg shadow p-4 space-y-3">
+        <?= $this->csrfInput() ?>
         <div>
             <label class="block text-sm text-gray-600 mb-1">タイトル</label>
             <input type="text" name="title" value="<?= $this->escapeHtmlAttr($task->title) ?>" class="border rounded px-3 py-2 w-full">

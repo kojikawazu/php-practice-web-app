@@ -21,6 +21,15 @@ export async function loginLaminas(page: Page, username: string, password: strin
   await page.getByRole('button', { name: 'ログイン' }).click();
 }
 
+/**
+ * ログアウトする。
+ * 状態変更のため GET リンクではなく CSRF トークン付きの POST フォーム（docs/06）。
+ */
+export async function logoutLaminas(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'ログアウト' }).click();
+  await expect(page).toHaveURL(/\/login/);
+}
+
 /** laminas は確認画面なし: 追加フォーム submit で即作成 → 一覧へ。 */
 export async function createTaskLaminas(page: Page, title: string): Promise<void> {
   await page.goto('/tasks');

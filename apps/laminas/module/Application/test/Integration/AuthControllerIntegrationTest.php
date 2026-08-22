@@ -21,10 +21,10 @@ class AuthControllerIntegrationTest extends AbstractIntegrationTestCase
     public function testRegisterCreatesUserAndRedirects(): void
     {
         $this->prepareServices(null);
-        $this->dispatch('/register', 'POST', [
+        $this->dispatch('/register', 'POST', $this->withCsrf([
             'username' => 'bob',
             'password' => 'password123',
-        ]);
+        ]));
 
         $this->assertResponseStatusCode(302);
         $this->assertControllerName(AuthController::class);
@@ -42,10 +42,10 @@ class AuthControllerIntegrationTest extends AbstractIntegrationTestCase
         $this->userTable->create('alice', $this->hasher->hash('password123'));
 
         $this->prepareServices(null);
-        $this->dispatch('/login', 'POST', [
+        $this->dispatch('/login', 'POST', $this->withCsrf([
             'username' => 'alice',
             'password' => 'password123',
-        ]);
+        ]));
 
         $this->assertResponseStatusCode(302);
         $this->assertRedirectTo('/tasks');
@@ -54,7 +54,7 @@ class AuthControllerIntegrationTest extends AbstractIntegrationTestCase
     public function testLogoutRedirectsToLogin(): void
     {
         $this->prepareServices($this->identity(1, 'alice'));
-        $this->dispatch('/logout', 'GET');
+        $this->dispatch('/logout', 'POST', $this->withCsrf());
 
         $this->assertResponseStatusCode(302);
         $this->assertRedirectTo('/login');
@@ -67,10 +67,10 @@ class AuthControllerIntegrationTest extends AbstractIntegrationTestCase
         $this->userTable->create('alice', $this->hasher->hash('password123'));
 
         $this->prepareServices(null);
-        $this->dispatch('/register', 'POST', [
+        $this->dispatch('/register', 'POST', $this->withCsrf([
             'username' => 'alice',
             'password' => 'anotherpass',
-        ]);
+        ]));
 
         // 重複はエラー表示で一覧再描画（リダイレクトしない）
         $this->assertNotRedirect();
@@ -84,10 +84,10 @@ class AuthControllerIntegrationTest extends AbstractIntegrationTestCase
     public function testRegisterWithShortPasswordCreatesNoUser(): void
     {
         $this->prepareServices(null);
-        $this->dispatch('/register', 'POST', [
+        $this->dispatch('/register', 'POST', $this->withCsrf([
             'username' => 'charlie',
             'password' => 'short',
-        ]);
+        ]));
 
         $this->assertNotRedirect();
         $this->assertResponseStatusCode(200);
@@ -99,10 +99,10 @@ class AuthControllerIntegrationTest extends AbstractIntegrationTestCase
         $this->userTable->create('alice', $this->hasher->hash('password123'));
 
         $this->prepareServices(null);
-        $this->dispatch('/login', 'POST', [
+        $this->dispatch('/login', 'POST', $this->withCsrf([
             'username' => 'alice',
             'password' => 'wrongpass',
-        ]);
+        ]));
 
         $this->assertNotRedirect();
         $this->assertResponseStatusCode(200);
@@ -111,10 +111,10 @@ class AuthControllerIntegrationTest extends AbstractIntegrationTestCase
     public function testLoginWithUnknownUserIsRejected(): void
     {
         $this->prepareServices(null);
-        $this->dispatch('/login', 'POST', [
+        $this->dispatch('/login', 'POST', $this->withCsrf([
             'username' => 'nobody',
             'password' => 'password123',
-        ]);
+        ]));
 
         $this->assertNotRedirect();
         $this->assertResponseStatusCode(200);

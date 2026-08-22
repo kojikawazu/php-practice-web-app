@@ -24,6 +24,8 @@ use Laminas\View\Model\ViewModel;
  */
 class AuthController extends AbstractActionController
 {
+    use RequiresPostTrait;
+
     public function __construct(
         private AuthenticationService $auth,
         private UserTable $users,
@@ -100,6 +102,10 @@ class AuthController extends AbstractActionController
 
     public function logoutAction()
     {
+        if ($response = $this->rejectUnlessPost()) {
+            return $response;
+        }
+
         $this->auth->clearIdentity();
 
         return $this->redirect()->toRoute('login');

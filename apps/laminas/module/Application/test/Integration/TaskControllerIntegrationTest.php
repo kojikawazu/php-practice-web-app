@@ -38,7 +38,7 @@ class TaskControllerIntegrationTest extends AbstractIntegrationTestCase
     public function testAuthenticatedPostCreatesTaskScopedToUser(): void
     {
         $this->prepareServices($this->identity(self::USER_A));
-        $this->dispatch('/tasks', 'POST', ['title' => '牛乳を買う']);
+        $this->dispatch('/tasks', 'POST', $this->withCsrf(['title' => '牛乳を買う']));
 
         $this->assertResponseStatusCode(302);
         $this->assertRedirectTo('/tasks');
@@ -52,7 +52,7 @@ class TaskControllerIntegrationTest extends AbstractIntegrationTestCase
         $id = $this->seedTask(self::USER_A, '変更前');
 
         $this->prepareServices($this->identity(self::USER_A));
-        $this->dispatch('/tasks/edit/' . $id, 'POST', ['title' => '変更後']);
+        $this->dispatch('/tasks/edit/' . $id, 'POST', $this->withCsrf(['title' => '変更後']));
 
         $this->assertResponseStatusCode(302);
         $this->assertRedirectTo('/tasks');
@@ -68,7 +68,7 @@ class TaskControllerIntegrationTest extends AbstractIntegrationTestCase
         $id = $this->seedTask(self::USER_A, '牛乳を買う');
 
         $this->prepareServices($this->identity(self::USER_A));
-        $this->dispatch('/tasks/duplicate/' . $id, 'GET');
+        $this->dispatch('/tasks/duplicate/' . $id, 'POST', $this->withCsrf());
 
         $this->assertResponseStatusCode(302);
         $this->assertRedirectTo('/tasks');
@@ -82,7 +82,7 @@ class TaskControllerIntegrationTest extends AbstractIntegrationTestCase
         $id = $this->seedTask(self::USER_A, '削除対象');
 
         $this->prepareServices($this->identity(self::USER_A));
-        $this->dispatch('/tasks/delete/' . $id, 'GET');
+        $this->dispatch('/tasks/delete/' . $id, 'POST', $this->withCsrf());
 
         $this->assertResponseStatusCode(302);
         $this->assertRedirectTo('/tasks');
@@ -103,7 +103,7 @@ class TaskControllerIntegrationTest extends AbstractIntegrationTestCase
     public function testGuestPostCreateRedirectsToLoginAndCreatesNothing(): void
     {
         $this->prepareServices(null);
-        $this->dispatch('/tasks', 'POST', ['title' => 'ゲストの作成']);
+        $this->dispatch('/tasks', 'POST', $this->withCsrf(['title' => 'ゲストの作成']));
 
         $this->assertRedirectTo('/login');
         $this->assertSame(0, $this->taskTable->countByUser(self::USER_A, ''));
@@ -114,7 +114,7 @@ class TaskControllerIntegrationTest extends AbstractIntegrationTestCase
         $id = $this->seedTask(self::USER_A, '守られるべきタスク');
 
         $this->prepareServices(null);
-        $this->dispatch('/tasks/delete/' . $id, 'GET');
+        $this->dispatch('/tasks/delete/' . $id, 'POST', $this->withCsrf());
 
         $this->assertRedirectTo('/login');
         $this->assertNotNull($this->taskTable->getForUser($id, self::USER_A));
@@ -128,7 +128,7 @@ class TaskControllerIntegrationTest extends AbstractIntegrationTestCase
 
         // USER_A として USER_B のタスクを編集しようとする
         $this->prepareServices($this->identity(self::USER_A));
-        $this->dispatch('/tasks/edit/' . $id, 'POST', ['title' => '乗っ取り']);
+        $this->dispatch('/tasks/edit/' . $id, 'POST', $this->withCsrf(['title' => '乗っ取り']));
 
         $this->assertResponseStatusCode(302);
         $this->assertRedirectTo('/tasks');
@@ -143,7 +143,7 @@ class TaskControllerIntegrationTest extends AbstractIntegrationTestCase
         $id = $this->seedTask(self::USER_B, '他人のタスク');
 
         $this->prepareServices($this->identity(self::USER_A));
-        $this->dispatch('/tasks/delete/' . $id, 'GET');
+        $this->dispatch('/tasks/delete/' . $id, 'POST', $this->withCsrf());
 
         $this->assertRedirectTo('/tasks');
         $this->assertNotNull($this->taskTable->getForUser($id, self::USER_B));
@@ -154,7 +154,7 @@ class TaskControllerIntegrationTest extends AbstractIntegrationTestCase
         $id = $this->seedTask(self::USER_B, '他人のタスク');
 
         $this->prepareServices($this->identity(self::USER_A));
-        $this->dispatch('/tasks/duplicate/' . $id, 'GET');
+        $this->dispatch('/tasks/duplicate/' . $id, 'POST', $this->withCsrf());
 
         $this->assertRedirectTo('/tasks');
         $this->assertSame(0, $this->taskTable->countByUser(self::USER_A, ''));
@@ -166,7 +166,7 @@ class TaskControllerIntegrationTest extends AbstractIntegrationTestCase
     public function testEmptyTitleDoesNotCreateTask(): void
     {
         $this->prepareServices($this->identity(self::USER_A));
-        $this->dispatch('/tasks', 'POST', ['title' => '']);
+        $this->dispatch('/tasks', 'POST', $this->withCsrf(['title' => '']));
 
         // バリデーション不合格：リダイレクトせず一覧を再描画し、タスクは作られない
         $this->assertNotRedirect();

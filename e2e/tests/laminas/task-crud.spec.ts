@@ -26,7 +26,7 @@ test.describe('laminas タスク CRUD（正常系）', () => {
 
   test('タスクを複製すると「（コピー）」が付く', async ({ page }) => {
     await createTaskLaminas(page, 'Lam dup');
-    await taskItems(page).filter({ hasText: 'Lam dup' }).getByRole('link', { name: '複製' }).click();
+    await taskItems(page).filter({ hasText: 'Lam dup' }).getByRole('button', { name: '複製' }).click();
 
     await expect(page).toHaveURL(/\/tasks/);
     await expect(page.getByText('Lam dup（コピー）')).toBeVisible();
@@ -34,7 +34,7 @@ test.describe('laminas タスク CRUD（正常系）', () => {
 
   test('タスクを削除できる', async ({ page }) => {
     await createTaskLaminas(page, 'Lam del');
-    await taskItems(page).filter({ hasText: 'Lam del' }).getByRole('link', { name: '削除' }).click();
+    await taskItems(page).filter({ hasText: 'Lam del' }).getByRole('button', { name: '削除' }).click();
 
     await expect(page).toHaveURL(/\/tasks/);
     await expect(page.getByText('Lam del')).toHaveCount(0);
