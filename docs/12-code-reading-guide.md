@@ -269,33 +269,55 @@ $task = $this->table->getForUser($id, (int) $user->id); // スコープは Table
 
 テストは実装意図の最良のドキュメント。実装を読む前にテストを読むと早い。
 
-**laravel-fullstack** — `tests/Feature/`, `tests/Unit/`
+テストは **単体 / IT（統合）/ E2E** の 3 粒度で構成する。文書の役割分担は次のとおりで、本書は「どのファイルを開くか」だけを扱う。
 
-| ファイル | 内容 |
+| 文書 | 扱う内容 |
 |---|---|
-| `tests/Feature/AuthTest.php` | 登録&自動ログイン / 誤パスワード / メール重複 |
-| `tests/Feature/`（Task 系）| 一覧/作成/トグル/編集/複製/画像/2ステップ確認/検索/ページネーション、他人タスク 404 |
-| `tests/Unit/LinkPreviewServiceTest.php` | SSRF: public 許可 / private・loopback・link-local 拒否 |
+| 本書（`docs/12`）| どのテストファイルを、どの順で読むか |
+| `docs/08` | テスト戦略・粒度の定義・ケース一覧 |
+| `docs/11` | 実測のケース数と進捗（変動する事実の置き場）|
 
-**laravel-api** — `tests/Feature/`
+**laravel-fullstack** — `tests/Feature/`（=IT）, `tests/Unit/`
 
-| ファイル | 内容 |
-|---|---|
-| `tests/Feature/AuthApiTest.php` | register/login のトークン返却、token 無し 401 |
-| `tests/Feature/`（Task / Token 系）| JSON CRUD、他人タスク 404、トークン一覧（ハッシュ非公開）|
+| ファイル | 粒度 | 内容 |
+|---|---|---|
+| `tests/Feature/AuthTest.php` | IT | 登録&自動ログイン / ログアウト / 誤パスワード / メール重複 |
+| `tests/Feature/TaskTest.php` | IT | 一覧/作成/トグル/編集/複製/画像/2ステップ確認/検索/ページネーション、他人タスク 404 |
+| `tests/Unit/LinkPreviewServiceTest.php` | 単体 | SSRF: public 許可 / private・loopback・link-local 拒否 |
+
+**laravel-api** — `tests/Feature/`（=IT）, `tests/Unit/`
+
+| ファイル | 粒度 | 内容 |
+|---|---|---|
+| `tests/Feature/AuthApiTest.php` | IT | register/login のトークン返却、token 無し 401 |
+| `tests/Feature/TaskApiTest.php` | IT | JSON CRUD、境界値（`per_page` クランプ等）、他人タスク 404 |
+| `tests/Feature/TokenApiTest.php` | IT | トークンの発行 / 一覧（ハッシュ非公開）/ 失効 |
+| `tests/Unit/TaskModelTest.php` | 単体 | `$fillable` / `$casts` / `$hidden` と `image_url` アクセサ |
 
 **laminas** — `module/Application/test/`
 
-| ファイル | 内容 |
-|---|---|
-| `test/Model/TaskTest.php` | `exchangeArray` の型整形 |
-| `test/Service/PasswordHasherTest.php` | hash→verify、bcrypt 形式、ソルト差異 |
-| `test/InputFilter/*Test.php` | Task/Register/Login の有効/無効入力 |
+| ファイル | 粒度 | 内容 |
+|---|---|---|
+| `test/Model/TaskTest.php` | 単体 | `exchangeArray` の型整形 |
+| `test/Model/TaskTableTest.php` | 単体 | SQL レベルの所有者スコープ（他人タスクを取得・更新・削除できない）|
+| `test/Service/PasswordHasherTest.php` | 単体 | hash→verify、bcrypt 形式、ソルト差異 |
+| `test/InputFilter/*Test.php` | 単体 | Task/Register/Login の有効/無効入力 |
+| `test/Integration/AuthControllerIntegrationTest.php` | IT | 登録 → ログイン → ログアウトを dispatch で通し検証 |
+| `test/Integration/TaskControllerIntegrationTest.php` | IT | CRUD と、他人タスクの編集・削除・複製が弾かれること |
+
+**3 アプリ横断** — `e2e/`（Playwright / TypeScript）
+
+| ファイル | 粒度 | 内容 |
+|---|---|---|
+| `e2e/tests/fullstack/`, `e2e/tests/laminas/` | E2E | 実ブラウザで 登録 → ログイン → CRUD → ログアウト と異常系 |
+| `e2e/tests/api/` | E2E | HTTP（Bearer）で同じフローと 401/404/422 を検証 |
 
 読むポイント:
 
 - Laravel 2 アプリは **SQLite in-memory**（`RefreshDatabase`）で隔離実行。共有 MySQL を守る設計（`docs/08`）。
-- laminas は認証/CRUD フローを PHPUnit 化せず **ライブ smoke**（curl + cookie）で検証。認証の核 bcrypt のみ `PasswordHasherTest` で単体保証（未了フォロー: `docs/11 #8`）。
+- laminas の IT は `test/Integration/AbstractIntegrationTestCase.php` が肝。bootstrap 後に ServiceManager の `AdapterInterface` を SQLite in-memory へ、`AuthenticationService` を NonPersistent ストレージ（識別子を直接注入）へ差し替えて dispatch する。Laravel が `RefreshDatabase` + `actingAs()` で暗黙に用意する土台を、Laminas では**自分で組み立てる**という対比になる。
+- 所有者スコープは 2 段で読む。SQL レベルが `TaskTableTest`、コントローラを通した横断フローが `TaskControllerIntegrationTest`（Laravel の `abort_if(..., 404)` に対応する層）。
+- 実セッションの永続（Cookie を跨いだログイン維持）は IT では検証できないため **E2E が担当**する。3 粒度の役割分担はここが一番分かりやすい。
 
 ---
 
@@ -358,8 +380,17 @@ curl http://localhost:8002/api/tasks \
 ### テスト実行
 
 ```bash
-make test          # 3アプリ一括（fullstack 53 / api 41 / laminas 36）
+make test          # 3アプリ一括（PHPUnit）
 make test-fs       # laravel-fullstack
 make test-api      # laravel-api
 make test-laminas  # laminas
 ```
+
+E2E（Playwright）は実環境に対して実行するため、先に compose を起動する。
+
+```bash
+make up && make migrate
+make e2e           # 3アプリ横断（fullstack / laminas = ブラウザ、api = HTTP）
+```
+
+ケース数は変動するため本書では持たない（実測は `docs/11` の進捗メモを参照）。
