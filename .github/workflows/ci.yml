@@ -47,6 +47,7 @@ jobs:
       lint: ${{ steps.code.outputs.lint }}
       e2e: ${{ steps.code.outputs.e2e }}
       docs: ${{ steps.docs.outputs.docs }}
+      workflows: ${{ steps.workflows.outputs.workflows }}
     steps:
       - uses: actions/checkout@v4
 
@@ -115,6 +116,34 @@ jobs:
             docs:
               - '**/*.md'
               - '.markdownlint-cli2.jsonc'
+
+      # 肯定リスト: actionlint は workflow ファイルだけを読むため、対象を明示して絞る。
+      # （除外リストにしないのは、検査対象が .github/workflows/** で閉じており
+      #   「未知のファイルが増えたら発火させる」必要がないため。fail-open にならない）
+      - uses: dorny/paths-filter@v3
+        id: workflows
+        with:
+          filters: |
+            workflows:
+              - '.github/workflows/**'
+
+  # GitHub Actions ワークフロー自身の静的解析。
+  # .claude/rules/github-actions.md が workflow 変更時の actionlint 実行を要求するため、
+  # その品質ゲートを CI 上で強制する。構文・式（${{ }}）・runner ラベル・action 入力に加え、
+  # run: の中身を shellcheck に流すため、shell の不具合もここで落ちる。
+  #
+  # 取得は公式 Docker イメージのバージョン固定タグ。Makefile の `make actionlint` と
+  # 同一コマンドで、手元と CI で同じ検査結果になる（バージョンを上げるときは両方直す）。
+  actionlint:
+    name: actionlint
+    needs: changes
+    if: needs.changes.outputs.workflows == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint workflows (actionlint)
+        run: docker run --rm -v "$PWD":/repo --workdir /repo rhysd/actionlint:1.7.12 -color
 
   # ドキュメント（md）変更時の軽量チェック。
   # github-actions.md の「ドキュメント変更でも『何も動かさない』にはしない」に対応する。
@@ -258,7 +287,7 @@ jobs:
 
       - name: Wait for MySQL healthy
         run: |
-          for i in $(seq 1 60); do
+          for _ in $(seq 1 60); do
             if docker compose ps mysql | grep -q healthy; then
               echo "mysql healthy"; exit 0
             fi
@@ -304,7 +333,7 @@ jobs:
         run: |
           check() {
             url="$1"; shift; last=""
-            for i in $(seq 1 40); do
+            for _ in $(seq 1 40); do
               code=$(curl -s -o /dev/null -w "%{http_code}" "$@" "$url" || true)
               last="$code"
               case "$code" in

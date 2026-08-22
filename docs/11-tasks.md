@@ -37,6 +37,7 @@
 | 15 | 共通ルール整備: `.claude/rules/` に横断ルール 6 件（github-issue / github-actions / security / static-analysis / duplication / dead-code）を追加し CLAUDE.md と同期 | DONE | - | - |
 | 16 | **CI の発火制御を整備**: パスフィルタを除外リスト方式（fail-open 解消）に変更し、md 変更時のみ走る `markdown-lint` ジョブと `concurrency` を追加 | DONE | - | - |
 | 17 | CI の発火条件を `test` / `lint` / `e2e` に分離（各ツールが実際に読む範囲に基づき、無関係な変更で片方を走らせない） | DONE | - | - |
+| 18 | **actionlint を CI に導入**: workflow 自身の静的解析（構文・式・shellcheck）を `.github/workflows/**` 変更時に強制。`make actionlint` で手元と CI を同一コマンドに揃える | DONE | - | - |
 
 ## 進捗メモ
 
@@ -52,5 +53,6 @@
 - #15（共通ルール整備）DONE: `.claude/rules/` を 9 → 15 ファイルに拡張。テンプレをそのまま置かず既存ルールとの分担を明記（例: `security.md` は SQL バインド・`.env`・所有者スコープを `php.md` / `coding-standards.md` / `error-handling.md` へ委譲）。`duplication.md` には 3 アプリ間の意図的な重複実装を共通化対象外とする例外を追記。併せて過去 PR #1〜#31 に対応する issue を後付け起票（#32〜#62）し履歴を整備。
 - #16（CI 発火制御）DONE: `changes` ジョブのパスフィルタを対象リスト → **除外リスト**方式に変更（新しいトップレベルディレクトリ追加時にテストが黙ってスキップされる fail-open を解消）。`dorny/paths-filter` は既定 OR 評価のため否定パターンが打ち消される点に対処し `predicate-quantifier: every` を使用、肯定形の `docs` 判定は別ステップに分離。md 変更時のみ走る `markdown-lint` ジョブ（`markdownlint-cli2` + `.markdownlint-cli2.jsonc`）と `concurrency` を追加。既存 md の指摘 279 件は「文体系ルールを無効化（理由を設定ファイルに明記）+ 整形崩れ 28 件を修正」で警告ゼロにした。フレームワーク雛形の md（Laravel デフォルト README / Laminas の LICENSE・COPYRIGHT）は lint 対象外。
 - #17（発火条件の分離）DONE: `changes` ジョブの出力を `code` 単一から `test` / `lint` / `e2e` に分割。各ツールが実際に読む範囲を設定ファイルで確認（Larastan=`app` のみ / Pint=全体 / Psalm=`module`+`config` / phpcs=`config`+`module`）し、**そのジョブが読まないと確認できたファイルだけ**を除外した。結果、静的解析の設定のみの変更 → `lint` だけ、`phpunit.xml` のみ → `test` だけ、`compose.yaml`・`docker/**`・`e2e/**` → `e2e` だけが走る。除外リスト方式は維持（未知のファイルは全ジョブ発火）。判定は picomatch で 34 ケース検証。既知のトレードオフとして `Makefile` のみの変更ではどのジョブも走らない（CI が Makefile を経由しないため検査手段がない・`docs/09` に明記）。
+- #18（actionlint 導入）DONE: `.claude/rules/github-actions.md` が要求しながら CI に存在しなかった actionlint を `actionlint` ジョブとして追加（issue #92）。取得は公式 Docker イメージのバージョン固定タグ（`rhysd/actionlint:1.7.12`）で、`make actionlint` と CI が同一コマンド。`changes` ジョブに肯定リストの `workflows` フィルタを追加し `.github/workflows/**` 変更時のみ発火させる。導入時に既存 `ci.yml` の shellcheck 指摘 2 件（SC2034: `for i in $(seq ...)` のループ変数が未使用）を検出し `for _` に修正した。
 - テスト改善バックログ: #8b カバレッジ計測（issue #63 で追跡）。
 - 既知の妥協は `docs/06`（DB平文・flatpickr CDN の SRI 未設定）と `docs/10`（決定事項）に記録。

@@ -63,9 +63,19 @@ make md-lint            # 検査（CI の markdown-lint ジョブと同じコマ
 make md-fix             # 自動修正できる指摘（空行の過不足など）を直す
 ```
 
-CI: push / Pull Request 時に GitHub Actions（`.github/workflows/ci.yml`）が 3 アプリの **テスト**（PHPUnit）と **静的チェック**（Laravel=Pint + Larastan / Laminas=phpcs + Psalm）、および **markdown lint** を自動実行する。ローカルでの自動修正は Laravel=`vendor/bin/pint`、Laminas=`composer cs-fix`、md=`make md-fix`。
+### GitHub Actions ワークフローの検査（actionlint）
 
-発火は変更内容で制御される（`.claude/rules/github-actions.md`）。`test` / `lint` / `e2e` / `markdown-lint` はそれぞれ読むファイルが違うため、条件も分けている。
+`.github/workflows/**` を変更したら actionlint を通す。構文・式（`${{ }}`）・runner ラベルに加え、`run:` の中身を shellcheck で検査する。
+
+```bash
+make actionlint         # 検査（CI の actionlint ジョブと同じコマンド・同じバージョン）
+```
+
+Docker イメージ `rhysd/actionlint` をバージョン固定で使うため、ホストへのインストールは不要。バージョンを上げるときは `Makefile` と `.github/workflows/ci.yml` の両方を同じタグに揃える。
+
+CI: push / Pull Request 時に GitHub Actions（`.github/workflows/ci.yml`）が 3 アプリの **テスト**（PHPUnit）と **静的チェック**（Laravel=Pint + Larastan / Laminas=phpcs + Psalm）、および **markdown lint** / **actionlint** を自動実行する。ローカルでの自動修正は Laravel=`vendor/bin/pint`、Laminas=`composer cs-fix`、md=`make md-fix`。
+
+発火は変更内容で制御される（`.claude/rules/github-actions.md`）。`test` / `lint` / `e2e` / `markdown-lint` / `actionlint` はそれぞれ読むファイルが違うため、条件も分けている。
 
 | 変更内容 | 実行されるジョブ |
 |---|---|
@@ -75,6 +85,7 @@ CI: push / Pull Request 時に GitHub Actions（`.github/workflows/ci.yml`）が
 | 静的解析の設定のみ（`phpstan.neon` / `psalm.xml` / `phpcs.xml` / baseline） | `lint` |
 | `phpunit.xml` のみ | `test` |
 | `compose.yaml` / `docker/**` / `e2e/**` | `e2e` |
+| `.github/workflows/**` | `actionlint` + `test` + `lint` + `e2e` |
 
 詳細（各ツールが読む範囲の根拠を含む）は `docs/09`。
 
