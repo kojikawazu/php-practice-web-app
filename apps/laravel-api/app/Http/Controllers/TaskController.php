@@ -8,7 +8,9 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Throwable;
 
 /**
  * タスクの JSON CRUD・複製・画像配信（すべて auth:sanctum 保護）。
@@ -53,11 +55,13 @@ class TaskController extends Controller
         ]);
         unset($validated['image']);
 
+        $created = null;
         if ($request->hasFile('image')) {
-            $validated['image_path'] = $this->storeImage($request->file('image'));
+            $created = $this->storeImage($request->file('image'));
+            $validated['image_path'] = $created;
         }
 
-        $task = $request->user()->tasks()->create($validated);
+        $task = $this->persistOrDiscard(fn () => $request->user()->tasks()->create($validated), $created);
 
         return response()->json($task, 201);
     }
@@ -66,13 +70,16 @@ class TaskController extends Controller
     {
         $this->authorizeOwnership($request, $task);
 
-        $copy = $request->user()->tasks()->create([
+        // 画像を先にコピーしてから DB に反映する（DB 失敗時はコピーを補償削除）
+        $created = $this->copyImage($task->image_path);
+
+        $copy = $this->persistOrDiscard(fn () => $request->user()->tasks()->create([
             'title' => mb_substr($task->title.'（コピー）', 0, 255),
             'done' => false,
             'start_date' => $task->start_date?->format('Y-m-d'),
             'end_date' => $task->end_date?->format('Y-m-d'),
-            'image_path' => $this->copyImage($task->image_path),
-        ]);
+            'image_path' => $created,
+        ]), $created);
 
         return response()->json($copy, 201);
     }
@@ -97,12 +104,26 @@ class TaskController extends Controller
         ]);
         unset($validated['image']);
 
+        // 旧画像は「DB 反映が成功してから」削除する。
+        // 先に消すと、保存や DB 更新が失敗した時点で旧画像を復旧できなくなる。
+        $replaced = $task->image_path;
+        $created = null;
         if ($request->hasFile('image')) {
-            $this->deleteImage($task->image_path);
-            $validated['image_path'] = $this->storeImage($request->file('image'));
+            $created = $this->storeImage($request->file('image'));
+            $validated['image_path'] = $created;
         }
 
-        $task->update($validated);
+        // update() はモデルイベントで中断されると例外を投げずに false を返す。
+        // そのまま進むと DB 未更新のまま旧画像を消してしまうため、失敗として扱う。
+        $this->persistOrDiscard(function () use ($task, $validated): void {
+            if (! $task->update($validated)) {
+                throw new RuntimeException('タスクの更新に失敗しました。');
+            }
+        }, $created);
+
+        if ($created !== null) {
+            $this->deleteImage($replaced);
+        }
 
         return response()->json($task);
     }
@@ -110,8 +131,14 @@ class TaskController extends Controller
     public function destroy(Request $request, Task $task): JsonResponse
     {
         $this->authorizeOwnership($request, $task);
-        $this->deleteImage($task->image_path);
-        $task->delete();
+
+        // DB を先に消す。逆順にすると DB 削除が失敗したときに画像だけ失われ、
+        // 再試行しても復旧できない（孤児ファイルは残っても後から掃除できる）。
+        $imagePath = $task->image_path;
+        if (! $task->delete()) {
+            throw new RuntimeException('タスクの削除に失敗しました。');
+        }
+        $this->deleteImage($imagePath);
 
         return response()->json(null, 204);
     }
@@ -125,9 +152,18 @@ class TaskController extends Controller
         return response()->file(Storage::disk('uploads')->path($task->image_path));
     }
 
+    /**
+     * 画像を保存し、保存パスを返す。失敗は戻り値ではなく例外で伝える。
+     * 呼び出し側は「保存できた」前提で DB へ path を書くため、false を通してはならない。
+     */
     private function storeImage(UploadedFile $file): string
     {
-        return $file->store('', 'uploads');
+        $path = $file->store('', 'uploads');
+        if (! is_string($path) || $path === '') {
+            throw new RuntimeException('画像の保存に失敗しました。');
+        }
+
+        return $path;
     }
 
     private function deleteImage(?string $path): void
@@ -144,9 +180,36 @@ class TaskController extends Controller
         }
         $ext = pathinfo($path, PATHINFO_EXTENSION);
         $copy = (string) Str::uuid().($ext ? '.'.$ext : '');
-        Storage::disk('uploads')->copy($path, $copy);
+        if (! Storage::disk('uploads')->copy($path, $copy)) {
+            throw new RuntimeException('画像の複製に失敗しました。');
+        }
 
         return $copy;
+    }
+
+    /**
+     * DB 反映を実行し、失敗したらこの操作で作成したファイルを削除して例外を再送出する。
+     *
+     * ファイルシステムは DB トランザクションに参加できない（削除したファイルはロールバックで戻らない）。
+     * そのため「ファイルを先に作る → DB → 失敗なら補償削除」の順で整合を取る。
+     * 許容するのは孤児ファイルのみで、DB に実在しない path を残さないことを不変条件とする。
+     * 作成が中断された場合（ファイルは残り DB 行が無い）は孤児ファイルであり、不変条件は破れない。
+     *
+     * @template TResult
+     *
+     * @param  callable(): TResult  $persist  DB 反映処理
+     * @param  string|null  $created  この操作で新規作成したファイル（なければ null）
+     * @return TResult
+     */
+    private function persistOrDiscard(callable $persist, ?string $created): mixed
+    {
+        try {
+            return $persist();
+        } catch (Throwable $e) {
+            $this->deleteImage($created);
+
+            throw $e;
+        }
     }
 
     /** 他人のタスクは存在を伏せて 404 にする */
