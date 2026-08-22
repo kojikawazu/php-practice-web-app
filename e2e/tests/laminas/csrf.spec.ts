@@ -66,6 +66,22 @@ test.describe('laminas CSRF', () => {
     await expect(page.getByText('偽トークン')).toHaveCount(0);
   });
 
+  test('完了トグルも GET / トークン無しでは実行されない', async ({ page }) => {
+    await registerLaminas(page, { username: uniqueUsername(), password: PASSWORD });
+    await createTaskLaminas(page, 'トグルは守られる');
+
+    const action = await taskItems(page)
+      .filter({ hasText: 'トグルは守られる' })
+      .locator('form[action*="/tasks/toggle/"]')
+      .getAttribute('action');
+
+    expect((await page.request.get(action as string)).status()).toBe(405);
+    expect((await page.request.post(action as string, { form: {} })).status()).toBe(403);
+
+    await page.goto('/tasks');
+    await expect(taskItems(page).filter({ hasText: 'トグルは守られる' }).locator('span.line-through')).toHaveCount(0);
+  });
+
   test('全 POST フォームに CSRF トークンが埋め込まれている', async ({ page }) => {
     await page.goto('/login');
     await expect(page.locator('form[method="post"] input[name="csrf"]')).toHaveCount(1);

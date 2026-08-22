@@ -46,6 +46,28 @@ class CsrfProtectionIntegrationTest extends AbstractIntegrationTestCase
         $this->assertSame(1, $this->taskTable->countByUser(self::USER_ID, ''), 'GET で複製されてはならない');
     }
 
+    public function testGetCannotToggleTask(): void
+    {
+        $id = $this->seedTask(self::USER_ID, '勝手に完了にされない');
+        $this->prepareServices($this->identity(self::USER_ID));
+
+        $this->dispatch('/tasks/toggle/' . $id, 'GET');
+
+        $this->assertResponseStatusCode(405);
+        $this->assertFalse($this->taskTable->getForUser($id, self::USER_ID)?->done, 'GET で切り替わってはならない');
+    }
+
+    public function testToggleWithoutTokenIsRejected(): void
+    {
+        $id = $this->seedTask(self::USER_ID, '勝手に完了にされない');
+        $this->prepareServices($this->identity(self::USER_ID));
+
+        $this->dispatch('/tasks/toggle/' . $id, 'POST', []);
+
+        $this->assertResponseStatusCode(403);
+        $this->assertFalse($this->taskTable->getForUser($id, self::USER_ID)?->done);
+    }
+
     public function testGetCannotLogout(): void
     {
         $this->prepareServices($this->identity(self::USER_ID));

@@ -62,6 +62,25 @@ class TaskControllerIntegrationTest extends AbstractIntegrationTestCase
         $this->assertSame('変更後', $task->title);
     }
 
+    public function testAuthenticatedToggleFlipsDoneBothWays(): void
+    {
+        $id = $this->seedTask(self::USER_A, 'トグル対象');
+
+        $this->prepareServices($this->identity(self::USER_A));
+        $this->dispatch('/tasks/toggle/' . $id, 'POST', $this->withCsrf());
+
+        $this->assertResponseStatusCode(302);
+        $this->assertTrue($this->taskTable->getForUser($id, self::USER_A)?->done, '未完了 → 完了');
+
+        // 同じ操作でもう一度戻せる（双方向）
+        $this->reset(true);
+        $this->prepareServices($this->identity(self::USER_A));
+        $this->dispatch('/tasks/toggle/' . $id, 'POST', $this->withCsrf());
+
+        $this->assertResponseStatusCode(302);
+        $this->assertFalse($this->taskTable->getForUser($id, self::USER_A)?->done, '完了 → 未完了');
+    }
+
     public function testAuthenticatedDuplicateCreatesCopyForOwner(): void
     {
         $this->seedTask(self::USER_A, '牛乳を買う');
@@ -147,6 +166,29 @@ class TaskControllerIntegrationTest extends AbstractIntegrationTestCase
 
         $this->assertRedirectTo('/tasks');
         $this->assertNotNull($this->taskTable->getForUser($id, self::USER_B));
+    }
+
+    public function testTogglingOthersTaskHasNoEffect(): void
+    {
+        $id = $this->seedTask(self::USER_B, 'B のタスク');
+
+        $this->prepareServices($this->identity(self::USER_A));
+        $this->dispatch('/tasks/toggle/' . $id, 'POST', $this->withCsrf());
+
+        $this->assertResponseStatusCode(302);
+        $this->assertFalse($this->taskTable->getForUser($id, self::USER_B)?->done, '他人のタスクは変更されない');
+    }
+
+    public function testGuestCannotToggle(): void
+    {
+        $id = $this->seedTask(self::USER_A, 'ゲストには触らせない');
+
+        $this->prepareServices(null);
+        $this->dispatch('/tasks/toggle/' . $id, 'POST', $this->withCsrf());
+
+        $this->assertResponseStatusCode(302);
+        $this->assertRedirectTo('/login');
+        $this->assertFalse($this->taskTable->getForUser($id, self::USER_A)?->done);
     }
 
     public function testDuplicatingOthersTaskCreatesNothing(): void

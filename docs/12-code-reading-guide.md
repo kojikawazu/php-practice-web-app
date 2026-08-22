@@ -307,7 +307,7 @@ $task = $this->table->getForUser($id, (int) $user->id); // スコープは Table
 | `test/Service/PasswordHasherTest.php` | 単体 | hash→verify、bcrypt 形式、ソルト差異 |
 | `test/InputFilter/*Test.php` | 単体 | Task/Register/Login の有効/無効入力 |
 | `test/Integration/AuthControllerIntegrationTest.php` | IT | 登録 → ログイン → ログアウトを dispatch で通し検証 |
-| `test/Integration/TaskControllerIntegrationTest.php` | IT | CRUD と、他人タスクの編集・削除・複製が弾かれること |
+| `test/Integration/TaskControllerIntegrationTest.php` | IT | CRUD・完了トグルと、他人タスクの編集・削除・複製・トグルが弾かれること |
 | `test/Integration/CspHeaderIntegrationTest.php` | IT | CSP ヘッダーの内容（nonce の一致・`'unsafe-inline'` の混入検出）|
 | `test/Integration/CsrfProtectionIntegrationTest.php` | IT | GET での状態変更が 405 / トークン不正が 403 / 正規トークンは成功 |
 

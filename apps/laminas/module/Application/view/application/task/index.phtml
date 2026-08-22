@@ -48,6 +48,10 @@ $base = $this->url('tasks');
             <?php if ($task->start_date || $task->end_date) : ?>
                 <span class="text-xs text-gray-500">[<?= $this->escapeHtml($task->start_date ?? '—') ?> 〜 <?= $this->escapeHtml($task->end_date ?? '—') ?>]</span>
             <?php endif; ?>
+            <form method="post" action="<?= $this->url('tasks', ['action' => 'toggle', 'id' => $task->id]) ?>" class="inline">
+                <?= $this->csrfInput() ?>
+                <button type="submit" class="text-sm text-green-600 hover:underline"><?= $task->done ? '未完了に戻す' : '完了' ?></button>
+            </form>
             <a href="<?= $this->url('tasks', ['action' => 'edit', 'id' => $task->id]) ?>" class="text-sm text-blue-600 hover:underline">編集</a>
             <form method="post" action="<?= $this->url('tasks', ['action' => 'duplicate', 'id' => $task->id]) ?>" class="inline">
                 <?= $this->csrfInput() ?>
