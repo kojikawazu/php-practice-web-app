@@ -283,6 +283,7 @@ $task = $this->table->getForUser($id, (int) $user->id); // スコープは Table
 |---|---|---|
 | `tests/Feature/AuthTest.php` | IT | 登録&自動ログイン / ログアウト / 誤パスワード / メール重複 |
 | `tests/Feature/TaskTest.php` | IT | 一覧/作成/トグル/編集/複製/画像/2ステップ確認/検索/ページネーション、他人タスク 404 |
+| `tests/Feature/TaskImageIntegrityTest.php` | IT | 失敗注入。ファイルと DB の失敗境界（順序と補償）|
 | `tests/Unit/LinkPreviewServiceTest.php` | 単体 | SSRF: public 許可 / private・loopback・link-local 拒否 |
 
 **laravel-api** — `tests/Feature/`（=IT）, `tests/Unit/`
@@ -292,6 +293,7 @@ $task = $this->table->getForUser($id, (int) $user->id); // スコープは Table
 | `tests/Feature/AuthApiTest.php` | IT | register/login のトークン返却、token 無し 401 |
 | `tests/Feature/TaskApiTest.php` | IT | JSON CRUD、境界値（`per_page` クランプ等）、他人タスク 404 |
 | `tests/Feature/TokenApiTest.php` | IT | トークンの発行 / 一覧（ハッシュ非公開）/ 失効 |
+| `tests/Feature/TaskImageIntegrityTest.php` | IT | 失敗注入。ファイルと DB の失敗境界（順序と補償）|
 | `tests/Unit/TaskModelTest.php` | 単体 | `$fillable` / `$casts` / `$hidden` と `image_url` アクセサ |
 
 **laminas** — `module/Application/test/`
@@ -318,6 +320,7 @@ $task = $this->table->getForUser($id, (int) $user->id); // スコープは Table
 - laminas の IT は `test/Integration/AbstractIntegrationTestCase.php` が肝。bootstrap 後に ServiceManager の `AdapterInterface` を SQLite in-memory へ、`AuthenticationService` を NonPersistent ストレージ（識別子を直接注入）へ差し替えて dispatch する。Laravel が `RefreshDatabase` + `actingAs()` で暗黙に用意する土台を、Laminas では**自分で組み立てる**という対比になる。
 - 所有者スコープは 2 段で読む。SQL レベルが `TaskTableTest`、コントローラを通した横断フローが `TaskControllerIntegrationTest`（Laravel の `abort_if(..., 404)` に対応する層）。
 - 実セッションの永続（Cookie を跨いだログイン維持）は IT では検証できないため **E2E が担当**する。3 粒度の役割分担はここが一番分かりやすい。
+- `TaskImageIntegrityTest` は**失敗注入**という別種のテスト。DB 失敗はモデルイベントで例外を投げ、ファイル失敗は `Storage` を差し替えて起こす。「正常に動くこと」ではなく「壊れ方が安全であること」を検証する（不変条件は `docs/05`）。
 
 ---
 

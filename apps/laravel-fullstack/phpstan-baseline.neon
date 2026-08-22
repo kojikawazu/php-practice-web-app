@@ -79,12 +79,6 @@ parameters:
 			path: app/Http/Controllers/TaskController.php
 
 		-
-			message: '#^Parameter \#1 \$path of method App\\Http\\Controllers\\TaskController\:\:deleteImage\(\) expects string\|null, string\|false\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/TaskController.php
-
-		-
 			message: '#^Parameter \#1 \$tmp of method App\\Http\\Controllers\\TaskController\:\:moveTemp\(\) expects string, mixed given\.$#'
 			identifier: argument.type
 			count: 2

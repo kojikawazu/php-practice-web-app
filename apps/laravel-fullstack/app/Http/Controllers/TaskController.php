@@ -12,7 +12,9 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Throwable;
 
 /**
  * タスクの CRUD・完了切替・複製・画像配信。すべて本人のタスクに限定する（他人のは 404）。
@@ -61,11 +63,13 @@ class TaskController extends Controller
         }
 
         $data = $this->dataFromPayload($payload);
+        $created = null;
         if (! empty($payload['image_tmp'])) {
-            $data['image_path'] = $this->moveTemp($payload['image_tmp']);
+            $created = $this->moveTemp($payload['image_tmp']);
+            $data['image_path'] = $created;
         }
 
-        Auth::user()->tasks()->create($data);
+        $this->persistOrDiscard(fn () => Auth::user()->tasks()->create($data), $created);
         session()->forget(self::CONFIRM_KEY);
 
         return redirect()->route('tasks.index');
@@ -97,13 +101,28 @@ class TaskController extends Controller
             return redirect()->route('tasks.index');
         }
 
+        // 旧画像は「DB 反映が成功してから」削除する。
+        // 先に消すと、移動や DB 更新が失敗した時点で旧画像を復旧できなくなる。
         $data = $this->dataFromPayload($payload);
+        $replaced = $task->image_path;
+        $created = null;
         if (! empty($payload['image_tmp'])) {
-            $this->deleteImage($task->image_path);
-            $data['image_path'] = $this->moveTemp($payload['image_tmp']);
+            $created = $this->moveTemp($payload['image_tmp']);
+            $data['image_path'] = $created;
         }
 
-        $task->update($data);
+        // update() はモデルイベントで中断されると例外を投げずに false を返す。
+        // そのまま進むと DB 未更新のまま旧画像を消してしまうため、失敗として扱う。
+        $this->persistOrDiscard(function () use ($task, $data): void {
+            if (! $task->update($data)) {
+                throw new RuntimeException('タスクの更新に失敗しました。');
+            }
+        }, $created);
+
+        if ($created !== null) {
+            $this->deleteImage($replaced);
+        }
+
         session()->forget(self::CONFIRM_KEY);
 
         return redirect()->route('tasks.index');
@@ -122,16 +141,19 @@ class TaskController extends Controller
     {
         $this->authorizeOwnership($task);
 
-        Auth::user()->tasks()->create([
+        // 画像を先にコピーしてから DB に反映する（DB 失敗時はコピーを補償削除）
+        $created = $this->copyImage($task->image_path);
+
+        $this->persistOrDiscard(fn () => Auth::user()->tasks()->create([
             'title' => $this->copyTitle($task->title),
             'done' => false,
             'start_date' => $task->start_date?->format('Y-m-d'),
             'end_date' => $task->end_date?->format('Y-m-d'),
-            'image_path' => $this->copyImage($task->image_path),
+            'image_path' => $created,
             'url' => $task->url,
             'preview_title' => $task->preview_title,
             'preview_image' => $task->preview_image,
-        ]);
+        ]), $created);
 
         return redirect()->route('tasks.index');
     }
@@ -147,8 +169,14 @@ class TaskController extends Controller
     public function destroy(Task $task): RedirectResponse
     {
         $this->authorizeOwnership($task);
-        $this->deleteImage($task->image_path);
-        $task->delete();
+
+        // DB を先に消す。逆順にすると DB 削除が失敗したときに画像だけ失われ、
+        // 再試行しても復旧できない（孤児ファイルは残っても後から掃除できる）。
+        $imagePath = $task->image_path;
+        if (! $task->delete()) {
+            throw new RuntimeException('タスクの削除に失敗しました。');
+        }
+        $this->deleteImage($imagePath);
 
         return redirect()->route('tasks.index');
     }
@@ -195,7 +223,11 @@ class TaskController extends Controller
         ];
 
         if ($request->hasFile('image')) {
-            $payload['image_tmp'] = $request->file('image')->store('tmp', 'uploads');
+            $tmp = $request->file('image')->store('tmp', 'uploads');
+            if (! is_string($tmp) || $tmp === '') {
+                throw new RuntimeException('画像の一時保存に失敗しました。');
+            }
+            $payload['image_tmp'] = $tmp;
             $payload['image_name'] = $request->file('image')->getClientOriginalName();
         }
 
@@ -249,7 +281,10 @@ class TaskController extends Controller
     {
         $ext = pathinfo($tmp, PATHINFO_EXTENSION);
         $final = (string) Str::uuid().($ext ? '.'.$ext : '');
-        Storage::disk('uploads')->move($tmp, $final);
+        // 移動に失敗したら DB へ進まない。tmp/ は残るが、次の確認操作で clearPendingTemp が掃除する。
+        if (! Storage::disk('uploads')->move($tmp, $final)) {
+            throw new RuntimeException('画像の保存に失敗しました。');
+        }
 
         return $final;
     }
@@ -269,9 +304,36 @@ class TaskController extends Controller
         }
         $ext = pathinfo($path, PATHINFO_EXTENSION);
         $copy = (string) Str::uuid().($ext ? '.'.$ext : '');
-        Storage::disk('uploads')->copy($path, $copy);
+        if (! Storage::disk('uploads')->copy($path, $copy)) {
+            throw new RuntimeException('画像の複製に失敗しました。');
+        }
 
         return $copy;
+    }
+
+    /**
+     * DB 反映を実行し、失敗したらこの操作で作成したファイルを削除して例外を再送出する。
+     *
+     * ファイルシステムは DB トランザクションに参加できない（削除したファイルはロールバックで戻らない）。
+     * そのため「ファイルを先に作る → DB → 失敗なら補償削除」の順で整合を取る。
+     * 許容するのは孤児ファイルのみで、DB に実在しない path を残さないことを不変条件とする。
+     * 作成が中断された場合（ファイルは残り DB 行が無い）は孤児ファイルであり、不変条件は破れない。
+     *
+     * @template TResult
+     *
+     * @param  callable(): TResult  $persist  DB 反映処理
+     * @param  string|null  $created  この操作で新規作成したファイル（なければ null）
+     * @return TResult
+     */
+    private function persistOrDiscard(callable $persist, ?string $created): mixed
+    {
+        try {
+            return $persist();
+        } catch (Throwable $e) {
+            $this->deleteImage($created);
+
+            throw $e;
+        }
     }
 
     /** 他人のタスクは存在を伏せて 404 にする */
