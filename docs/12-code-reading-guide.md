@@ -130,16 +130,19 @@ Route::middleware('auth:sanctum')->group(function () {
 |---|---|
 | `module/Application/src/Controller/AuthController.php` | ログイン・登録・ログアウト |
 | `module/Application/src/Service/PasswordHasher.php` | bcrypt ハッシュ/照合 |
+| `module/Application/src/Service/AuthSession.php` | 認証遷移時のセッション ID 再生成・破棄 |
 | `module/Application/src/Model/UserTable.php` | `findByUsername` / `create` |
 
 読むポイント:
 
-- DI: `AuthControllerFactory` が `AuthenticationService` / `UserTable` / `PasswordHasher` を注入
-- ログイン成功時は `$this->auth->getStorage()->write((object)['id'=>..., 'username'=>...])` で identity をセッションに保存
+- DI: `AuthControllerFactory` が `AuthenticationService` / `UserTable` / `PasswordHasher` / `AuthSessionInterface` を注入
+- ログイン成功時は `$this->session->regenerate()` で ID を振り直してから `$this->auth->getStorage()->write((object)['id'=>..., 'username'=>...])` で identity を保存
 - 照合は `$this->hasher->verify($password, $user->password)`（DbTable アダプタではなく自前 bcrypt）
-- ログアウトは `$this->auth->clearIdentity()`
+- ログアウトは `$this->auth->clearIdentity()` + `$this->session->invalidate()`
 
 > **差分ポイント**: 「ログイン状態をどこに持つか」が三者三様 — fullstack=サーバーセッション / api=DB のトークン（ステートレス）/ laminas=AuthenticationService の Session Storage。
+>
+> **差分ポイント**: fullstack に `AuthSession` の対応物は無い。`Auth::attempt()` / `Auth::login()` が内部で `session()->migrate(true)` を呼び、認証とセッション再生成を一体で扱うため。laminas は laminas-authentication（認証）と laminas-session（セッション）が別コンポーネントなので、その繋ぎ目を自分で書く（`docs/06`「セッション管理の方針」）。
 
 ---
 

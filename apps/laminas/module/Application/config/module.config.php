@@ -8,6 +8,7 @@ use Laminas\Authentication\AuthenticationService;
 use Laminas\Router\Http\Literal;
 use Laminas\Router\Http\Segment;
 use Laminas\ServiceManager\Factory\InvokableFactory;
+use Laminas\Session\Storage\SessionArrayStorage;
 
 return [
     'router' => [
@@ -89,11 +90,29 @@ return [
             Service\ContentSecurityPolicy::class => InvokableFactory::class,
             // CSRF トークンはセッションに紐づくため、発行側と検証側で同一インスタンスを使う
             Service\CsrfGuard::class => Service\CsrfGuardFactory::class,
-            // 認証サービス（既定の Session ストレージで identity を保持）
-            AuthenticationService::class => function () {
-                return new AuthenticationService();
-            },
+            // 認証成功・ログアウト時のセッション操作（セッション固定攻撃対策）
+            Service\AuthSessionInterface::class => Service\AuthSessionFactory::class,
+            // 認証サービス（identity は共有 SessionManager 上の Session ストレージへ）
+            AuthenticationService::class => Service\AuthenticationServiceFactory::class,
         ],
+    ],
+    // セッションの方針（docs/06「セッション管理」）。SessionManager をコンテナから
+    // 解決したときに SessionConfigFactory がこのキーを読む（キーが無いと例外になる）。
+    'session_config' => [
+        // 未知のセッション ID を採用しない。再生成が「仕込まれた後」の対策なのに対し、
+        // これは「そもそも ID を仕込ませない」対策で、両方でセッション固定攻撃を塞ぐ。
+        'use_strict_mode' => true,
+        // Cookie を JavaScript から読めなくする（XSS でセッションを持ち出させない）
+        'cookie_httponly' => true,
+        // 外部サイト起点のリクエストに Cookie を載せない（CSRF の多層防御）
+        'cookie_samesite' => 'Lax',
+        // cookie_secure はローカルが HTTP のため設定しない。本番（HTTPS）では
+        // 有効化が必須（docs/06「既知の注意点」）。
+    ],
+    // SessionManagerFactory は session_storage も必須で要求する（欠けると例外）。
+    // SessionArrayStorage は SessionManager が既定で使うものと同じで、$_SESSION を直接扱う。
+    'session_storage' => [
+        'type' => SessionArrayStorage::class,
     ],
     'controllers' => [
         'factories' => [

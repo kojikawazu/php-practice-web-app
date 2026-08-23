@@ -7,6 +7,7 @@ namespace ApplicationTest\Integration;
 use Application\Model\Task;
 use Application\Model\TaskTable;
 use Application\Model\UserTable;
+use Application\Service\AuthSessionInterface;
 use Application\Service\CsrfGuard;
 use Application\Service\PasswordHasher;
 use Laminas\Authentication\AuthenticationService;
@@ -43,6 +44,9 @@ abstract class AbstractIntegrationTestCase extends AbstractHttpControllerTestCas
 
     /** CSRF 検証の実体（テスト用セッションを注入したもの） */
     protected CsrfGuard $csrf;
+
+    /** 認証遷移時のセッション操作の記録（実セッションを張らずに呼び出しを検証する） */
+    protected RecordingAuthSession $authSession;
 
     protected function setUp(): void
     {
@@ -121,6 +125,11 @@ abstract class AbstractIntegrationTestCase extends AbstractHttpControllerTestCas
         // 検証ロジック自体は本物の CsrfGuard をそのまま通す（モックしない）。
         $this->csrf = new CsrfGuard($this->sessionContainer());
         $services->setService(CsrfGuard::class, $this->csrf);
+
+        // セッション ID の再生成も ext/session に依存するため、記録用実装へ差し替える。
+        // 実際に ID が変わることは E2E で担保する（RecordingAuthSession の DocBlock 参照）。
+        $this->authSession = new RecordingAuthSession($auth);
+        $services->setService(AuthSessionInterface::class, $this->authSession);
     }
 
     /** テスト用のセッションコンテナ（配列ストレージ・プロセス内で完結） */

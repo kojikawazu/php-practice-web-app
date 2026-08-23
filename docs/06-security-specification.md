@@ -29,6 +29,7 @@
 
 - **XSS**: 出力エスケープ（Blade `{{ }}` / Laminas `escapeHtml`）。
 - **CSRF**: セッション認証の 2 アプリ（fullstack / laminas）は全 POST フォームにトークンを必須とする（下記「CSRF 対策の方針」）。API は Cookie を使わない Bearer トークン認証のため対象外。
+- **セッション固定攻撃**: セッション認証の 2 アプリは認証成功時にセッション ID を再生成し、未知の ID を採用しない（下記「セッション管理の方針」）。
 - **SQL インジェクション**: Eloquent / Laminas TableGateway のバインドパラメータ経由でクエリを構築（生 SQL の文字列結合をしない）。
 - **認可**: タスクは `user_id` でスコープし、他人のリソースは 404 / 対象外。
 - **アップロード画像**: 公開ディレクトリ外（名前付きボリューム）に保存し、アプリ経由の所有者チェック付きルートでのみ配信（URL を知っても他人は閲覧不可）。`image`/`mimes`/`max:2048` で種別・サイズを検証。
@@ -88,6 +89,57 @@ laminas-validator / laminas-session の `Csrf` バリデータは使わない。
 
 Laravel が CSRF 不一致に 419（フレームワーク独自）を返すのに対し、laminas は標準的な 403 を使う。
 
+## セッション管理の方針
+
+セッション認証は「Cookie の値を知っている人＝本人」として扱う。ID を攻撃者に握られた時点で認証が意味を失うため、**ID のライフサイクル**を明示的に管理する。対象は fullstack / laminas の 2 アプリ（api は Cookie を使わない Bearer トークン認証のため対象外）。
+
+### セッション固定攻撃（Session Fixation）への対策
+
+攻撃者があらかじめ用意した ID を被害者のブラウザに持たせ、被害者がその ID のままログインすると、同じ ID で認証済みセッションに相乗りできる。**仕込ませない**対策と**仕込まれた後に無効化する**対策の 2 段で塞ぐ。
+
+| 段 | 対策 | 実装 |
+|---|---|---|
+| 1. 仕込ませない | 未知のセッション ID を採用せず、常にサーバーが発行した ID だけを使う | `session.use_strict_mode = 1` |
+| 2. 無効化する | 認証に成功した瞬間に ID を振り直し、旧 ID のセッションを削除する | 下表「再生成のタイミング」|
+
+### 再生成のタイミング
+
+| 契機 | 動作 |
+|---|---|
+| ログイン成功 | ID を再生成（データは引き継ぐ）→ その後に identity を書き込む |
+| 登録＝自動ログイン | 同上（登録直後の自動ログインも「認証成功」として扱う）|
+| ログアウト | セッションの中身を破棄し、ID も作り直す（CSRF トークンも失効する）|
+
+**identity を書き込む前に再生成する。** この順序なら「認証済み状態は、必ず新しい ID の下でだけ存在する」と言い切れる。再生成では旧 ID のデータを削除し（`deleteOldSession = true` 相当）、仕込まれた ID が生き残らないようにする。
+
+### アプリごとの実装
+
+| アプリ | 実装 |
+|---|---|
+| laravel-fullstack | フレームワーク任せ。`Auth::attempt()` / `Auth::login()` が内部で `SessionGuard::updateSession()` → `session()->migrate(true)` を実行する。ログアウトは `session()->invalidate()` + `session()->regenerateToken()` |
+| laminas | `Application\Service\AuthSessionInterface`（本番実装 `AuthSession`）に集約し、`AuthController` から呼ぶ。実体は laminas-session の `SessionManager::regenerateId(true)` |
+
+**laminas だけ自分で書く必要がある。** laminas-authentication は「認証」だけを担い、セッション管理は laminas-session の担当で、両者を繋ぐのはアプリの責務だから。フルスタックとマイクロフレームワークの責務境界の差がそのまま現れる箇所。
+
+CSRF のように `Module::onBootstrap` のリスナーで一括処理はしない。「認証に成功した瞬間」は横断的に判定できずコントローラにしか分からないため、リスナー化しても判定を渡すだけの間接化になる。
+
+### セッション Cookie の属性（laminas）
+
+`module/Application/config/module.config.php` の `session_config` で指定する。
+
+| 設定 | 値 | 理由 |
+|---|---|---|
+| `use_strict_mode` | `true` | 未知の ID を採用しない（上記 1 段目）|
+| `cookie_httponly` | `true` | JavaScript から読めなくし、XSS でのセッション持ち出しを防ぐ |
+| `cookie_samesite` | `Lax` | 外部サイト起点のリクエストに Cookie を載せない（CSRF の多層防御）|
+| `cookie_secure` | 未設定 | ローカルが HTTP のため。本番では有効化が必須（下記「既知の注意点」）|
+
+`SessionManager` はコンテナ経由の単一インスタンスとし、CSRF トークン・identity・ID 再生成のすべてが同じセッションを見るようにする。既定の `Container::getDefaultManager()` に任せると、設定の効いていない暗黙のインスタンスを掴む。
+
+### テストでの担保
+
+ID が実際に変わることは ext/session の挙動なので、**E2E（`e2e/tests/laminas/session.spec.ts`）で担保する**。攻撃者が仕込んだ ID を被害者に持たせてログインさせ、攻撃者側が認証済みにならないことまで再現する。IT では「認証に成功した経路でだけ・identity を書く前に再生成が走る」ことを検証する（`docs/08`）。
+
 ## CSP の方針
 
 XSS 対策の出力エスケープが 1 箇所漏れても即被害にならないよう、多層防御としてすべての HTML/JSON 応答に `Content-Security-Policy` を付与する。
@@ -139,6 +191,7 @@ api（JSON・画像バイナリのみ）: `default-src 'none'; base-uri 'none'; 
 - **guzzle 依存の CVE（解消済み）**: Larastan 導入（依存更新）時の `composer audit` で `guzzlehttp/guzzle`（CVE-2026-55767 / CVE-2026-55568）・`guzzlehttp/psr7`（CVE-2026-55766）が検出されたため、両 Laravel アプリで guzzle 7.14+ / psr7 2.12+ へ更新して解消した（`composer audit` クリーンを確認）。guzzle は `laravel/framework` の依存。
 - **DB 認証情報の平文**: 学習用のため `.env` / Laminas `global.php` に開発用認証情報（app/secret）を記載。公開・本番では秘密情報をリポジトリ管理外（local.php・シークレットストア）へ移すこと。
 - **CSRF / セッション**: Laravel web・Laminas はセッション認証（フォームは CSRF 前提）。API は Sanctum のステートレストークン。
+- **セッション Cookie の `Secure` 属性が未設定**: ローカルは HTTP（compose）で動かすため `cookie_secure` を有効にしていない（有効にすると平文 HTTP では Cookie が送られず、ログインできなくなる）。本番化時は HTTPS 必須化（本書「通信」）とあわせて `cookie_secure = true` を設定すること。
 - ~~API 認証なし~~（解消済み）: `laravel-api` に Sanctum トークン認証を導入済み。
 - **CSP の `style-src` に `'unsafe-inline'` が必要**: Tailwind CSS（Play CDN）は実行時に `<style>` 要素を DOM へ注入するため、nonce が付かない。CSP は `style-src` に nonce/hash があると `'unsafe-inline'` を無視する仕様のため、両立できない（実ブラウザで確認済み: `style-src 'self'` のみだと画面が完全に無スタイルになる）。`script-src` は nonce のみで運用し `'unsafe-inline'` を付けていない。Tailwind を CLI/Vite でビルドして self-host すれば `style-src` からも外せる。
 - **フロントを CDN 読み込み（SRI 未設定）**: 日付ピッカー flatpickr（jsDelivr 固定版 @4.6.13）と Tailwind CSS（Play CDN）をブラウザから読み込んでいる。学習用のため Subresource Integrity（`integrity`）は付けていない（Tailwind Play CDN は動的スクリプトのため SRI 非対応）。本番化時は flatpickr に SRI 付与、Tailwind は CLI/Vite でビルドして self-host することが望ましい。

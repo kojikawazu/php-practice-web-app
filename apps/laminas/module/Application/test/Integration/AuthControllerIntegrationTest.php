@@ -13,6 +13,10 @@ use Application\Controller\AuthController;
  * を通しで検証する。laminas のセッション認証フローは従来ライブ smoke 中心だったが、
  * ここで register / login の「配線と bcrypt 照合」を PHPUnit で担保する
  * （実セッション永続は NonPersistent ストレージで代替し、対象外とする）。
+ *
+ * セッション固定攻撃対策（docs/06「セッション管理」）については、この層で
+ * 「認証に成功した経路でだけ・identity を書く前に再生成が走る」ことを検証する。
+ * ID が実際に変わることは ext/session の挙動なので E2E 側で担保する。
  */
 class AuthControllerIntegrationTest extends AbstractIntegrationTestCase
 {
@@ -118,5 +122,133 @@ class AuthControllerIntegrationTest extends AbstractIntegrationTestCase
 
         $this->assertNotRedirect();
         $this->assertResponseStatusCode(200);
+    }
+
+    // ---- セッション固定攻撃対策: 認証成功時にセッション ID を再生成する ----
+
+    public function testLoginRegeneratesSessionIdBeforeWritingIdentity(): void
+    {
+        $this->userTable->create('alice', $this->hasher->hash('password123'));
+
+        $this->prepareServices(null);
+        $this->dispatch('/login', 'POST', $this->withCsrf([
+            'username' => 'alice',
+            'password' => 'password123',
+        ]));
+
+        $this->assertSame(['regenerate'], $this->authSession->calls());
+        // 再生成の時点ではまだ identity が無い＝認証済み状態は新しい ID の下でしか存在しない
+        $this->assertSame([false], $this->authSession->identityPresentOnRegenerate());
+    }
+
+    public function testRegisterRegeneratesSessionIdBeforeWritingIdentity(): void
+    {
+        $this->prepareServices(null);
+        $this->dispatch('/register', 'POST', $this->withCsrf([
+            'username' => 'bob',
+            'password' => 'password123',
+        ]));
+
+        $this->assertSame(['regenerate'], $this->authSession->calls());
+        $this->assertSame([false], $this->authSession->identityPresentOnRegenerate());
+    }
+
+    public function testLogoutInvalidatesSession(): void
+    {
+        $this->prepareServices($this->identity(1, 'alice'));
+        $this->dispatch('/logout', 'POST', $this->withCsrf());
+
+        // identity を消すだけでなくセッションごと作り直す（CSRF トークンも失効させる）
+        $this->assertSame(['invalidate'], $this->authSession->calls());
+    }
+
+    public function testLoginWithWrongPasswordDoesNotRegenerate(): void
+    {
+        $this->userTable->create('alice', $this->hasher->hash('password123'));
+
+        $this->prepareServices(null);
+        $this->dispatch('/login', 'POST', $this->withCsrf([
+            'username' => 'alice',
+            'password' => 'wrongpass',
+        ]));
+
+        $this->assertSame([], $this->authSession->calls());
+    }
+
+    public function testLoginWithUnknownUserDoesNotRegenerate(): void
+    {
+        $this->prepareServices(null);
+        $this->dispatch('/login', 'POST', $this->withCsrf([
+            'username' => 'nobody',
+            'password' => 'password123',
+        ]));
+
+        $this->assertSame([], $this->authSession->calls());
+    }
+
+    public function testRegisterWithShortPasswordDoesNotRegenerate(): void
+    {
+        $this->prepareServices(null);
+        $this->dispatch('/register', 'POST', $this->withCsrf([
+            'username' => 'charlie',
+            'password' => 'short',
+        ]));
+
+        $this->assertSame([], $this->authSession->calls());
+    }
+
+    public function testRegisterWithDuplicateUsernameDoesNotRegenerate(): void
+    {
+        $this->userTable->create('alice', $this->hasher->hash('password123'));
+
+        $this->prepareServices(null);
+        $this->dispatch('/register', 'POST', $this->withCsrf([
+            'username' => 'alice',
+            'password' => 'anotherpass',
+        ]));
+
+        $this->assertSame([], $this->authSession->calls());
+    }
+
+    public function testLoginRejectedByCsrfDoesNotRegenerate(): void
+    {
+        $this->userTable->create('alice', $this->hasher->hash('password123'));
+
+        $this->prepareServices(null);
+        // CSRF で 403 になる経路は dispatch まで進まない。再生成も起きない
+        $this->dispatch('/login', 'POST', [
+            'username' => 'alice',
+            'password' => 'password123',
+        ]);
+
+        $this->assertResponseStatusCode(403);
+        $this->assertSame([], $this->authSession->calls());
+    }
+
+    public function testLogoutRejectedByCsrfDoesNotInvalidate(): void
+    {
+        $this->prepareServices($this->identity(1, 'alice'));
+        $this->dispatch('/logout', 'POST', []);
+
+        $this->assertResponseStatusCode(403);
+        $this->assertSame([], $this->authSession->calls());
+    }
+
+    public function testGetLogoutDoesNotInvalidate(): void
+    {
+        $this->prepareServices($this->identity(1, 'alice'));
+        $this->dispatch('/logout', 'GET');
+
+        $this->assertResponseStatusCode(405);
+        $this->assertSame([], $this->authSession->calls());
+    }
+
+    public function testAlreadyAuthenticatedLoginPageDoesNotRegenerate(): void
+    {
+        $this->prepareServices($this->identity(1, 'alice'));
+        $this->dispatch('/login', 'GET');
+
+        $this->assertRedirectTo('/tasks');
+        $this->assertSame([], $this->authSession->calls());
     }
 }

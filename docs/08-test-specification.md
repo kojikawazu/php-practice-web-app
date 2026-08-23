@@ -43,6 +43,7 @@
 | laminas TaskTable（所有者スコープ・SQLite） | 本人タスクの取得/一覧/検索/作成/更新/削除 | 他人タスクの取得null / 他人タスクを削除しても消えない / user_id偽装updateが他人に及ばない / countが他人を除外 / 一覧が他人を除外 / 検索ヒットなし |
 | laminas TaskController（**IT**・dispatch・SQLite） | 認証済み一覧が本人分のみ描画 / POST作成→302+user_idスコープ / 編集POST→更新 / **完了トグル（双方向）** / 複製→「（コピー）」作成 / 削除→消える | ゲストは index・作成・削除・**トグル**で /login へ / 他人タスクの編集・削除・複製・**トグル**が無効 / 空title は未作成で再描画 / 不在id編集は一覧へ |
 | laminas AuthController（**IT**・dispatch・SQLite） | 登録→ユーザー作成+302 / 正パスワードでログイン→/tasks / ログアウト→/login | 重複ユーザー名は拒否（既存PW不変） / 短パスワードは未作成 / 誤パスワード拒否 / 未登録ユーザー拒否 |
+| laminas セッション再生成（**IT**・`AuthControllerIntegrationTest`）| ログイン・登録で `regenerate()` が 1 回・**identity 書き込み前**に呼ばれる / ログアウトで `invalidate()` が呼ばれる | 誤パスワード・未登録ユーザー・短パスワード・ユーザー名重複・CSRF 403・GET ログアウト 405・ログイン済みでの /login 再訪では呼ばれない |
 | fullstack / api 画像整合性（**失敗注入**・`TaskImageIntegrityTest`）| 差し替えは DB コミット後に旧画像を削除 / 削除でタスクと画像がともに消える | DB create 失敗で孤児ファイルを残さない（作成・複製）/ DB update 失敗で旧画像を失わない / DB delete 失敗でタスクと画像を残し再試行可能にする / ファイルの move・copy 失敗時にタスクを作らない |
 | laminas CSRF（**IT**・`CsrfProtectionIntegrationTest`）| 正しいトークンで作成・削除・ログアウトが通る / 全 POST フォームにトークンが埋まる / 状態変更の導線が POST フォームである | GET での削除・複製・トグル・ログアウトは 405 で実行されない / トークン無し・不正トークンの POST は 403（作成・削除・トグル・ログイン・登録）|
 | 3アプリ CSP（`CspHeaderTest` / `CspHeaderIntegrationTest`）| HTML 応答にヘッダーが付く / ヘッダーの nonce と HTML の nonce が一致 / nonce がリクエストごとに変わる / 実際に使う CDN だけを許可 | script-src に `'unsafe-inline'`・`'unsafe-eval'` が無い / ワイルドカードが無い / api は script-src を持たない / エラー応答にもヘッダーが付く |
@@ -52,6 +53,7 @@
 | fullstack E2E（**Playwright**・実ブラウザ・実MySQL） | 登録→自動ログイン→一覧 / ログアウト→再ログイン / 作成(確認画面→確定) / 編集 / 複製 / 完了トグル / 削除 / 検索 / ページネーション / 日付付き作成 / 画像添付→所有者閲覧(200) | guest→/login誘導 / 誤パスワード / メール重複 / 確認不一致 / 短PW / 空title(確認へ進まず) / 終了日<開始日 / 確認画面キャンセルで未作成 / 他人タスクedit・image 404 |
 | laminas E2E（**Playwright**・実ブラウザ・実MySQL） | 登録→自動ログイン→一覧 / ログアウト→再ログイン / 作成 / 編集 / 複製(「（コピー）」) / **完了トグル（取り消し線→戻す）** / 削除 / 検索 / ページネーション | guest→/login誘導 / 誤パスワード / username重複 / 短PW / 空title / 検索ヒットなし / 他人タスクは編集画面に入れず一覧へ / 他人タスクの削除・**トグル**は無効 |
 | laminas CSRF E2E（**Playwright**・実ブラウザ・実セッション）| 全 POST フォームにトークンが埋まっている | 認証済みセッションでも GET の削除・ログアウトは 405 / トークン無し・不正トークンの POST は 403 で状態が変わらない |
+| laminas セッション E2E（**Playwright**・実ブラウザ・実セッション）| ログイン前後・登録前後で `PHPSESSID` が変わる / Cookie が HttpOnly・SameSite=Lax | 攻撃者が仕込んだ ID は被害者ログイン後に使えない（セッション固定の再現）/ ログアウト後は旧 ID で認証状態に戻れない / 未知の ID を仕込んでも採用されない（`use_strict_mode`）|
 | 3アプリ CSP E2E（**Playwright**・実ブラウザ）| ヘッダーが付く / Tailwind が適用される / nonce 付きインライン script が実行され flatpickr が初期化される / CSP 違反 0 件 | nonce 無しで注入したインライン script が実行されない（違反として記録される）|
 | api E2E（**Playwright**・HTTP/Bearer・実MySQL） | register(201) / login(200) / logout(204→401) / CRUD / 複製(201) / 日付Y-m-d / per_pageクランプ / 検索 / 画像image_url→所有者取得(200) | 誤PW422 / メール重複422 / 短PW422 / token無し401 / 無効token401 / title欠落422 / title長すぎ422 / 終了日<開始日422 / 他人タスクview・update・delete・duplicate・image 404 |
 
