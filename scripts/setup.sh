@@ -72,13 +72,17 @@ done
 # php-fpm は www-data で動くが、チェックアウトはホストユーザー所有。Laravel の
 # storage / bootstrap-cache（ビューのコンパイル）と laminas の data/cache（設定キャッシュ）に
 # 書けないと 500 になる。macOS の bind mount は寛容だが Linux は厳格なため、そちらで顕在化する。
-# 777 は粗いが、ホスト UID をコンテナへ合わせる仕組みを持たない現構成での最小の手当て。
+#
+# `a+rwX` の X（大文字）はディレクトリにだけ実行権を付ける。`777` にすると
+# 対象に含まれる追跡ファイル（.gitignore / .gitkeep）の実行ビットまで立ち、
+# git が 100644 => 100755 のモード変更として拾って作業ツリーが汚れる（issue #112）。
+# ディレクトリの権限は 777 相当のままなので、www-data の書き込みには影響しない。
 log 'フレームワークの書き込み先を用意する'
 for svc in php-fs php-api; do
   docker compose exec -T --user root "$svc" sh -c \
-    'mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache bootstrap/cache && chmod -R 777 storage bootstrap/cache'
+    'mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache bootstrap/cache && chmod -R a+rwX storage bootstrap/cache'
 done
-docker compose exec -T --user root php-laminas sh -c 'mkdir -p data/cache && chmod -R 777 data'
+docker compose exec -T --user root php-laminas sh -c 'mkdir -p data/cache && chmod -R a+rwX data'
 
 # ---- 6. APP_KEY（未設定のときだけ生成する）----
 log 'Laravel の APP_KEY を確認する'
