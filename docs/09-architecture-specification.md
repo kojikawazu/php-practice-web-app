@@ -43,11 +43,22 @@ Docker Compose のサービス構成:
 | `php-fs` | php:8.3-fpm（自前ビルド） | laravel-fullstack |
 | `php-api` | php:8.3-fpm（自前ビルド） | laravel-api |
 | `php-laminas` | php:8.3-fpm（自前ビルド） | laminas |
-| `nginx` | nginx:alpine | リバースプロキシ。ポート 8001/8002/8003 |
+| `nginx` | nginx:alpine | リバースプロキシ。ポート 8001/8002/8003（`.env` の `FS_PORT` / `API_PORT` / `LAMINAS_PORT` で上書き可）|
 
 PHP 拡張: `pdo_mysql` ほか各 FW が要求するもの。`docker/php/Dockerfile` で導入。
 
 タスク画像は名前付きボリューム `task-uploads` を php-fs / php-api の `/var/www/uploads` にマウントして保存（公開ディレクトリ外）。Laravel の `uploads` ディスク（`UPLOADS_ROOT` 基準、アプリ別サブディレクトリ `fs/` `api/`）経由で読み書きし、所有者チェック付きの配信ルートでのみ返す。ボリュームのマウント先は Dockerfile で `www-data` 所有にして php-fpm から書けるようにしている。
+
+### ホスト側の公開ポート
+
+ホストへ公開するポートは `.env` で上書きできる（既定は MySQL 3306 / 8001 / 8002 / 8003）。
+
+| 変数 | 既定 | 用途 |
+|---|---|---|
+| `MYSQL_PORT` | 3306 | MySQL（ホストの GUI クライアント等から繋ぐ用。**アプリは使わない**）|
+| `FS_PORT` / `API_PORT` / `LAMINAS_PORT` | 8001 / 8002 / 8003 | nginx が各アプリを公開するポート |
+
+**アプリ間は compose ネットワーク（`DB_HOST=mysql`）で繋がるため、公開ポートを変えても動作は変わらない。** 既に MySQL や 8001 番台を使っているマシンで、fresh clone がポート衝突だけで起動できなくなるのを避けるために可変にしている。
 
 > **CSP は nginx ではなくアプリ側で付与する。** nonce をリクエストごとに生成して HTML へ埋め込む必要があり、nginx 側で同じ値を作れないため。両方で設定するとヘッダーが重複し、ブラウザが全ポリシーの積を適用して意図が読めなくなる（`docs/06`）。
 
@@ -96,7 +107,7 @@ PHP 拡張: `pdo_mysql` ほか各 FW が要求するもの。`docker/php/Dockerf
 
 > 補足: 必須チェックの落とし穴を避けるため、**ワークフローレベルの `paths` / `paths-ignore` は使わない**。ワークフロー自体が起動しないと必須チェックが `pending` のまま完了せず PR がマージ不能になるため、「常に起動してジョブレベル `if:` でスキップする（= skipped は成功扱い）」形を採る（`.claude/rules/github-actions.md`）。
 >
-> `Makefile` のみを変更した PR では**どのジョブも実行されない**（CI は Makefile を経由しないため検査手段がない）。意図的なトレードオフとして受け入れている。検査が必要になった場合は `make -n` の dry-run 等を軽量チェックとして追加する。
+> `Makefile` のみを変更した PR では**どのジョブも実行されない**（CI は Makefile を経由しないため検査手段がない）。意図的なトレードオフとして受け入れている。検査が必要になった場合は `make -n` の dry-run 等を軽量チェックとして追加する。なお初期化手順の実体は `scripts/setup.sh` にあり、こちらは e2e ジョブが実際に実行するため CI で検査される（`Makefile` の `setup` ターゲットはそれを呼ぶだけ）。
 >
 > branch protection（必須チェック）導入時は、マトリクスを `if` でスキップすると `test (app)` 個別の check run が生成されない点に注意。その際は `if: always()` の集約ゲートジョブを追加し、それ 1 つを必須チェックに指定する設計が必要になる。現状このリポジトリは private 無料プランで branch protection を利用できないため、集約ゲートは導入していない。
 
@@ -105,7 +116,7 @@ PHP 拡張: `pdo_mysql` ほか各 FW が要求するもの。`docker/php/Dockerf
 学習用のためローカル `docker compose up` のみ。環境変数は `.env`（`.env.example` を雛形）。
 
 ```bash
-cp .env.example .env
-docker compose up -d --build
-# 各アプリの初期化（マイグレーション等）は README / Makefile 参照
+make setup   # = scripts/setup.sh（.env・vendor・APP_KEY・書き込み権限・migrate・疎通確認）
 ```
+
+`docker compose up` だけでは起動しない。**compose の bind mount がイメージ側の `vendor/` を隠す**ため、コンテナ内で `composer install` をやり直す必要があり、Laravel の `.env` / `APP_KEY` も生成されていないため。初期化手順の正本は `scripts/setup.sh` に置き、ローカル（`make setup`）と CI の `e2e` ジョブが同じものを実行する。

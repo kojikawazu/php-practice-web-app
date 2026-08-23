@@ -25,9 +25,32 @@ PHP の学習を目的とした練習用 Web アプリケーション
 前提: Docker / Docker Compose（ホストに PHP・Composer は不要）。
 
 ```bash
-cp .env.example .env
-make up                 # = docker compose up -d --build
-make migrate            # 2つの Laravel アプリのマイグレーション（lam_tasks は MySQL 初期化SQLで自動作成）
+make setup              # 初回のみ。3 アプリが応答する状態まで一括で用意する
+```
+
+`make setup` は `scripts/setup.sh` を実行し、次をまとめて行う。**冪等**なので、環境が壊れたと思ったら何度でも実行してよい（既存の `.env` / `APP_KEY` / DB のデータは壊さない）。
+
+1. ルートと Laravel 2 アプリの `.env` を `.env.example` から作成（既にあれば触らない）
+2. `docker compose up -d --build` と MySQL の healthy 待ち
+3. **3 アプリの `composer install`（コンテナ内）** — compose の bind mount がイメージ側の `vendor/` を隠すため、fresh clone では必ず必要
+4. フレームワークの書き込み先（Laravel の `storage` / `bootstrap/cache`、laminas の `data/cache`）を用意
+5. Laravel の `APP_KEY` を生成（**未設定のときだけ**。再生成すると既存セッション・暗号化データが読めなくなる）
+6. マイグレーション（`lam_tasks` は MySQL の初期化 SQL で自動作成）
+7. 3 アプリが応答することを確認
+
+CI の `e2e` ジョブも同じ `scripts/setup.sh` を実行する。手順を 2 か所に書くと片方だけ直されて fresh clone が起動できない状態に戻るため、正本を 1 つにしている。
+
+2 回目以降の起動は `make up` だけでよい。
+
+### ポートが衝突する場合
+
+既定は MySQL 3306 / fullstack 8001 / api 8002 / laminas 8003。既に使っているポートがあれば `.env` で変更する（アプリ間は compose ネットワークで繋がるため、公開ポートを変えても動作は変わらない）。
+
+```bash
+MYSQL_PORT=3307
+FS_PORT=18001
+API_PORT=18002
+LAMINAS_PORT=18003
 ```
 
 ## 使い方
@@ -47,7 +70,7 @@ make down               # 停止
 3 アプリ横断の E2E は `e2e/`（Playwright / TypeScript）にあり、**`docker compose` で起動した実環境（実 MySQL）** に対して実行する（fullstack/laminas はブラウザ、api は HTTP/Bearer）。
 
 ```bash
-make up && make migrate  # 実環境を起動
+make setup               # 実環境を起動（初回・再実行可）
 make e2e                 # e2e/ で npm ci → chromium 導入 → playwright test（3 projects）
 # 個別: cd e2e && npx playwright test --project=api
 ```

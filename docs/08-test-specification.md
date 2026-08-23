@@ -14,7 +14,7 @@
 
 > laminas の IT は、bootstrap 後に ServiceManager の `AdapterInterface` を SQLite in-memory へ、`AuthenticationService` を NonPersistent ストレージ（識別子を直接注入）へ差し替えて実現する。MySQL・実セッションに依存せず、コントローラの認可分岐・リダイレクト・DB 反映という「配線」を検証する。
 >
-> **E2E（Playwright）の位置づけ**: IT が SQLite in-memory で「配線」を検証するのに対し、E2E は `docker compose up` した**実環境・実 MySQL**に対してブラウザ/HTTP で通す唯一のレイヤ。`RefreshDatabase` は使わず、**実行毎ユニークなユーザー**を作り所有者スコープでテストを独立させる（共有 DB を全リセットしない方針を踏襲）。1 つの Playwright ランナーに 3 projects（fullstack / laminas / api）を同居させ、baseURL（`E2E_FS_URL` / `E2E_LAMINAS_URL` / `E2E_API_URL`）で切り替える。実行は `make e2e`（事前に `make up && make migrate`）。CI では専用 `e2e` ジョブが compose 起動 → migrate → Playwright を実行する。
+> **E2E（Playwright）の位置づけ**: IT が SQLite in-memory で「配線」を検証するのに対し、E2E は `docker compose up` した**実環境・実 MySQL**に対してブラウザ/HTTP で通す唯一のレイヤ。`RefreshDatabase` は使わず、**実行毎ユニークなユーザー**を作り所有者スコープでテストを独立させる（共有 DB を全リセットしない方針を踏襲）。1 つの Playwright ランナーに 3 projects（fullstack / laminas / api）を同居させ、baseURL（`E2E_FS_URL` / `E2E_LAMINAS_URL` / `E2E_API_URL`）で切り替える。実行は `make e2e`（事前に `make setup`）。CI では専用 `e2e` ジョブが同じ `scripts/setup.sh` で環境を用意してから Playwright を実行する。
 
 ## テスト戦略
 
@@ -77,7 +77,7 @@ make test-laminas  # laminas
 E2E（Playwright・実環境に対して実行）:
 
 ```bash
-make up && make migrate   # compose 起動 + Laravel マイグレーション
+make setup                # 実環境を起動（.env・vendor・APP_KEY・migrate まで一括・冪等）
 make e2e                  # e2e/ で npm ci → chromium 導入 → playwright test（3 projects）
 # 個別実行例: cd e2e && npx playwright test --project=api
 ```

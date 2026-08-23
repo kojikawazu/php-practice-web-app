@@ -1,4 +1,11 @@
-.PHONY: up down build logs ps migrate test test-fs test-api test-laminas e2e actionlint md-lint md-fix
+.PHONY: setup up down build logs ps migrate test test-fs test-api test-laminas e2e actionlint md-lint md-fix
+
+# 初回セットアップ（fresh clone から 3 アプリが応答する状態まで）。
+# .env・vendor・APP_KEY・書き込み権限・マイグレーションまでを一括で用意する。
+# 冪等なので、環境が壊れたと思ったら何度でも実行してよい。
+# 手順の正本は scripts/setup.sh。CI の e2e ジョブも同じスクリプトを実行する。
+setup:
+	./scripts/setup.sh
 
 # コンテナ起動 / 停止
 up:
