@@ -68,7 +68,28 @@ POST /api/tasks  {"title": "牛乳を買う"}
 | done | sometimes / boolean |
 | start_date | nullable / date（`Y-m-d`）|
 | end_date | nullable / date / 開始日以降（下記「タスク期間の整合性」）|
-| image | nullable / image / mimes:jpeg,png,webp,gif / max:2048（KB）|
+| image | nullable / image / mimes:jpeg,png,webp,gif / max:2048（KB = 2 MiB）|
+
+### アップロードサイズの境界
+
+画像の上限 2MB は **アプリのバリデーションを最終判定**にする。前段（nginx / PHP）で弾くと、統一エラー形式（`{"message": ..., "errors": {...}}`）を返せないため。
+
+| リクエスト body | 応答 | 判定するのは |
+|---|---|---|
+| 画像 ≤ 2 MiB | 201 / 200 | — |
+| 画像 > 2 MiB かつ body ≤ 5 MiB | **422**（`errors.image`）| **Laravel**（`max:2048`）|
+| body > 5 MiB | **413**（nginx の HTML。JSON ではない）| nginx（外側のハードガード）|
+
+そのために各層の上限を **nginx < PHP** の順に並べ、nginx を通ったリクエストは必ず Laravel が判定するようにしている。
+
+| 層 | 設定 | 値 |
+|---|---|---|
+| nginx | `client_max_body_size`（`docker/nginx/default.conf`）| 5m |
+| PHP | `upload_max_filesize` / `post_max_size`（`docker/php/uploads.ini`）| 5M / 6M |
+| Laravel | `max:2048`（`TaskController`）| 2 MiB |
+
+- **既定値のままだと壊れる。** nginx の既定は 1m、PHP の `upload_max_filesize` の既定は 2M。前者は 1MB 超の正当な画像を 413 で弾き、後者は 2 MiB ちょうどが境界に張り付く。
+- クライアントは **413 では JSON が返らない**ことを前提にする（本文は nginx の HTML）。
 
 ### タスク期間の整合性（部分更新の扱い）
 

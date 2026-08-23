@@ -3,7 +3,7 @@ import { registerFullstack, createTaskFullstack, setDate, taskItems } from '../.
 import { uniqueEmail } from '../../helpers/unique';
 import { PASSWORD } from '../../helpers/config';
 import { URLS } from '../../helpers/config';
-import { pngUpload } from '../../helpers/png';
+import { pngUpload, pngUploadOfSize } from '../../helpers/png';
 
 test.describe('fullstack タスク（準正常・異常系）', () => {
   test('空タイトルは確認画面へ進まず、エラーになる', async ({ page }) => {
@@ -85,5 +85,27 @@ test.describe('fullstack タスク（準正常・異常系）', () => {
     const resp = await pageB.request.get(path);
     expect(resp.status()).toBe(404);
     await ctxB.close();
+  });
+
+  /** アップロードサイズの境界（docs/07）。nginx ではなくアプリの検証が判定する。 */
+  test('1MB 超 2MB 以下の画像は確認画面へ進める', async ({ page }) => {
+    await registerFullstack(page, { name: 'User', email: uniqueEmail(), password: PASSWORD });
+    await page.goto('/tasks');
+    await page.fill('input[name="title"]', 'Big image ok');
+    await page.setInputFiles('input[name="image"]', pngUploadOfSize(1_500_000));
+    await page.getByRole('button', { name: '追加' }).click();
+
+    await expect(page.getByRole('button', { name: 'この内容で登録' })).toBeVisible();
+  });
+
+  test('2MB 超の画像は確認画面へ進まず、エラーになる', async ({ page }) => {
+    await registerFullstack(page, { name: 'User', email: uniqueEmail(), password: PASSWORD });
+    await page.goto('/tasks');
+    await page.fill('input[name="title"]', 'Big image ng');
+    await page.setInputFiles('input[name="image"]', pngUploadOfSize(2_200_000));
+    await page.getByRole('button', { name: '追加' }).click();
+
+    await expect(page.getByRole('button', { name: 'この内容で登録' })).toHaveCount(0);
+    await expect(page.locator('.bg-red-100')).toBeVisible();
   });
 });

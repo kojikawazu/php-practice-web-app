@@ -51,6 +51,7 @@
 | fullstack LinkPreview(SSRF) | public IP 許可 / title・og:image 抽出 | private・loopback・link-local・予約IP 拒否 / 非http拒否 / 内部ホスト拒否 / og:image非http除外 |
 | laminas PasswordHasher | hash→verify / bcrypt形式 | 誤パスワード / 空 / 不正ハッシュ / ソルトで毎回異なる |
 | laminas InputFilter | Task/Register/Login の有効入力通過・StringTrim 整形・日付任意通過 | 必須欠落 / 空 / 空白のみ / 長すぎ(255超) / 短パスワード(8未満) / 不正日付 / 終了日<開始日 |
+| アップロードサイズ境界 E2E（**Playwright**・nginx 経由）| 1MB 超 2MB 以下の画像が api で 201・fullstack で確認画面へ進める（nginx 既定 1m だと 413 になる箇所）| 2MB 超は **Laravel の 422**（`errors.image` 付き。nginx/PHP ではなくアプリが判定）/ fullstack はエラー表示で確認画面へ進まない / nginx の上限超（5MB 超）は 413 |
 | fullstack E2E（**Playwright**・実ブラウザ・実MySQL） | 登録→自動ログイン→一覧 / ログアウト→再ログイン / 作成(確認画面→確定) / 編集 / 複製 / 完了トグル / 削除 / 検索 / ページネーション / 日付付き作成 / 画像添付→所有者閲覧(200) | guest→/login誘導 / 誤パスワード / メール重複 / 確認不一致 / 短PW / 空title(確認へ進まず) / 終了日<開始日 / 確認画面キャンセルで未作成 / 他人タスクedit・image 404 |
 | laminas E2E（**Playwright**・実ブラウザ・実MySQL） | 登録→自動ログイン→一覧 / ログアウト→再ログイン / 作成 / 編集 / 複製(「（コピー）」) / **完了トグル（取り消し線→戻す）** / 削除 / 検索 / ページネーション | guest→/login誘導 / 誤パスワード / username重複 / 短PW / 空title / 検索ヒットなし / 他人タスクは編集画面に入れず一覧へ / 他人タスクの削除・**トグル**は無効 |
 | laminas CSRF E2E（**Playwright**・実ブラウザ・実セッション）| 全 POST フォームにトークンが埋まっている | 認証済みセッションでも GET の削除・ログアウトは 405 / トークン無し・不正トークンの POST は 403 で状態が変わらない |
