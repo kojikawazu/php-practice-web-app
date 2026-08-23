@@ -388,9 +388,8 @@ $task = $this->table->getForUser($id, (int) $user->id); // スコープは Table
 ### 起動（共通・リポジトリルート）
 
 ```bash
-cp .env.example .env
-make up          # docker compose up -d --build
-make migrate     # Laravel 2 アプリのマイグレーション
+make setup       # 初回のみ。.env・vendor・APP_KEY・migrate まで一括（冪等・再実行可）
+# 2 回目以降は make up だけでよい
 ```
 
 ### laravel-fullstack
@@ -435,7 +434,7 @@ make test-laminas  # laminas
 E2E（Playwright）は実環境に対して実行するため、先に compose を起動する。
 
 ```bash
-make up && make migrate
+make setup         # 実環境を起動（初回・再実行可）
 make e2e           # 3アプリ横断（fullstack / laminas = ブラウザ、api = HTTP）
 ```
 

@@ -279,73 +279,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Prepare env
-        run: cp .env.example .env
-
-      - name: Start stack (docker compose)
-        run: docker compose up -d --build
-
-      - name: Wait for MySQL healthy
-        run: |
-          for _ in $(seq 1 60); do
-            if docker compose ps mysql | grep -q healthy; then
-              echo "mysql healthy"; exit 0
-            fi
-            sleep 3
-          done
-          echo "mysql did not become healthy"; docker compose ps; exit 1
-
-      # compose のバインドマウントがビルド時の vendor を隠すため、各コンテナで composer install する。
-      # （ローカルは開発中に導入済みの vendor が使われるが、CI のチェックアウトには存在しない）
-      - name: Prepare Laravel env (fs / api)
-        run: |
-          docker compose exec -T php-fs sh -c "cp -n .env.example .env || true"
-          docker compose exec -T php-api sh -c "cp -n .env.example .env || true"
-
-      - name: Install PHP dependencies (3 apps)
-        run: |
-          docker compose exec -T php-fs composer install --no-interaction --prefer-dist --no-progress
-          docker compose exec -T php-api composer install --no-interaction --prefer-dist --no-progress
-          docker compose exec -T php-laminas composer install --no-interaction --prefer-dist --no-progress
-
-      # php-fpm は www-data で動くが、CI のチェックアウトは runner UID 所有のためフレームワークの
-      # 書き込み先（Laravel=storage/bootstrap-cache のビュー compile、laminas=data/cache の設定キャッシュ）に
-      # 書けず 500 になる。macOS の bind mount は寛容だが Linux は厳格なため CI でのみ顕在化する。
-      - name: Make framework write dirs writable (php-fpm=www-data)
-        run: |
-          docker compose exec -T --user root php-fs sh -c "mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache bootstrap/cache && chmod -R 777 storage bootstrap/cache"
-          docker compose exec -T --user root php-api sh -c "mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache bootstrap/cache && chmod -R 777 storage bootstrap/cache"
-          docker compose exec -T --user root php-laminas sh -c "mkdir -p data/cache && chmod -R 777 data"
-
-      - name: Generate Laravel app key (fs / api)
-        run: |
-          docker compose exec -T php-fs php artisan key:generate --force
-          docker compose exec -T php-api php artisan key:generate --force
-
-      - name: Migrate (Laravel ×2)
-        run: |
-          docker compose exec -T php-fs php artisan migrate --force
-          docker compose exec -T php-api php artisan migrate --force
-
-      # 200/302/401 を「正常起動」とみなす。500 等が続く場合はここで早期に失敗させ、
-      # 30秒×リトライでテストが長時間ハングするのを防ぐ（api は Accept で 401 を期待）。
-      - name: Wait for apps to respond
-        run: |
-          check() {
-            url="$1"; shift; last=""
-            for _ in $(seq 1 40); do
-              code=$(curl -s -o /dev/null -w "%{http_code}" "$@" "$url" || true)
-              last="$code"
-              case "$code" in
-                200|302|401) echo "$url -> $code"; return 0 ;;
-              esac
-              sleep 3
-            done
-            echo "app not healthy: $url (last status: $last)"; return 1
-          }
-          check http://localhost:8001/login
-          check http://localhost:8003/login
-          check http://localhost:8002/api/tasks -H "Accept: application/json"
+      # 初期化手順の正本は scripts/setup.sh（ローカルの `make setup` と同じもの）。
+      # .env 作成・compose 起動・MySQL 待ち・3 アプリの composer install・書き込み権限・
+      # APP_KEY・マイグレーション・疎通確認までを含む。CI 側へ手順を複製すると、
+      # 片方だけ直されて fresh clone が起動できない状態に戻るため 1 か所へ寄せる。
+      - name: Set up stack (scripts/setup.sh)
+        run: ./scripts/setup.sh
 
       - name: Setup Node
         uses: actions/setup-node@v4
