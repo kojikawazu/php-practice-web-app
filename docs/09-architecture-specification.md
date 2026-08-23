@@ -45,7 +45,19 @@ Docker Compose のサービス構成:
 | `php-laminas` | php:8.3-fpm（自前ビルド） | laminas |
 | `nginx` | nginx:alpine | リバースプロキシ。ポート 8001/8002/8003（`.env` の `FS_PORT` / `API_PORT` / `LAMINAS_PORT` で上書き可）|
 
-PHP 拡張: `pdo_mysql` ほか各 FW が要求するもの。`docker/php/Dockerfile` で導入。
+PHP 拡張: `pdo_mysql` ほか各 FW が要求するもの。`docker/php/Dockerfile` で導入。PHP の設定上書きは `docker/php/uploads.ini`（アップロードサイズ）を `conf.d/` へ配置する。
+
+### リクエストサイズの上限
+
+画像アップロード（最大 2MB）を**アプリのバリデーションで判定させる**ため、各層の上限を **nginx < PHP** の順に並べる。nginx を通ったリクエストは必ず PHP に届き、Laravel が最終判定する（境界の仕様は `docs/07`）。
+
+| 層 | 設定 | 値 | 既定 |
+|---|---|---|---|
+| nginx（fullstack / api）| `client_max_body_size` | 5m | 1m |
+| nginx（laminas）| — | 既定のまま | 1m |
+| PHP（3 アプリ共通イメージ）| `upload_max_filesize` / `post_max_size` | 5M / 6M | 2M / 8M |
+
+laminas はアップロード機能を持たないため既定の 1m のままとし、不要に大きな body を受け付けない。
 
 タスク画像は名前付きボリューム `task-uploads` を php-fs / php-api の `/var/www/uploads` にマウントして保存（公開ディレクトリ外）。Laravel の `uploads` ディスク（`UPLOADS_ROOT` 基準、アプリ別サブディレクトリ `fs/` `api/`）経由で読み書きし、所有者チェック付きの配信ルートでのみ返す。ボリュームのマウント先は Dockerfile で `www-data` 所有にして php-fpm から書けるようにしている。
 

@@ -11,6 +11,10 @@
   "ignores": [
     "**/vendor/**",
     "**/node_modules/**",
+    // Playwright の実行結果（.gitignore 済みの生成物）。失敗時に error-context.md が
+    // 出力されるため、E2E が落ちた直後の `make md-lint` が無関係な指摘で失敗してしまう。
+    "e2e/test-results/**",
+    "e2e/playwright-report/**",
     // フレームワーク雛形が生成したファイルは現状維持（coding-standards.md の PHPDoc と同じ方針）。
     // Laravel デフォルト README は先頭が <p align="center">、Laminas の LICENSE/COPYRIGHT は
     // 見出しなしの著作権表記で、いずれも我々が書き換えるべきものではない。

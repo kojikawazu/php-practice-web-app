@@ -10,6 +10,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN docker-php-ext-configure intl \
     && docker-php-ext-install -j"$(nproc)" pdo_mysql mysqli zip intl bcmath
 
+# アップロードのサイズ上限（既定の 2M / 8M を上書き。理由は uploads.ini に記載）
+COPY uploads.ini /usr/local/etc/php/conf.d/uploads.ini
+
 # Composer（公式イメージからバイナリをコピー）
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { registerApi, authHeaders } from '../../helpers/api';
+import { pngUploadOfSize } from '../../helpers/png';
 
 test.describe('api タスク（異常系）', () => {
   test('title 欠落は 422', async ({ request }) => {
@@ -82,5 +83,43 @@ test.describe('api タスク（異常系）', () => {
     expect((await request.delete(`/api/tasks/${id}`, { headers: h })).status()).toBe(404);
     expect((await request.post(`/api/tasks/${id}/duplicate`, { headers: h })).status()).toBe(404);
     expect((await request.get(`/api/tasks/${id}/image`, { headers: h })).status()).toBe(404);
+  });
+
+  /**
+   * アップロードサイズの境界（docs/07）。
+   * 2MB 以下は受け付け、2MB 超はアプリのバリデーションが 422 で拒否する。
+   * nginx の client_max_body_size を既定（1m）のままにすると、1MB 超の
+   * 正当な画像が 413 になり Laravel の検証に到達しない（issue #87）。
+   */
+  test('1MB 超 2MB 以下の画像は登録できる', async ({ request }) => {
+    const user = await registerApi(request);
+    const res = await request.post('/api/tasks', {
+      multipart: { title: 'big but ok', image: pngUploadOfSize(1_500_000) },
+      headers: authHeaders(user.token),
+    });
+    expect(res.status()).toBe(201);
+    expect(typeof (await res.json()).image_url).toBe('string');
+  });
+
+  test('2MB 超の画像はアプリの検証で 422（統一エラー形式）', async ({ request }) => {
+    const user = await registerApi(request);
+    const res = await request.post('/api/tasks', {
+      multipart: { title: 'too big', image: pngUploadOfSize(2_200_000) },
+      headers: authHeaders(user.token),
+    });
+    // nginx や PHP ではなく Laravel が弾く＝ errors 付きの JSON が返る
+    expect(res.status()).toBe(422);
+    const body = await res.json();
+    expect(body.errors).toHaveProperty('image');
+  });
+
+  test('nginx の上限を超える body は 413 で切られる', async ({ request }) => {
+    const user = await registerApi(request);
+    const res = await request.post('/api/tasks', {
+      multipart: { title: 'way too big', image: pngUploadOfSize(5_500_000) },
+      headers: authHeaders(user.token),
+    });
+    // 外側のハードガード。ここは JSON ではなく nginx の HTML が返る
+    expect(res.status()).toBe(413);
   });
 });
