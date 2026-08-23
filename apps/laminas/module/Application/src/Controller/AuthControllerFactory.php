@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Application\Controller;
 
 use Application\Model\UserTable;
+use Application\Service\AuthSessionInterface;
 use Application\Service\PasswordHasher;
 use Laminas\Authentication\AuthenticationService;
 use Laminas\ServiceManager\Factory\FactoryInterface;
@@ -17,7 +18,8 @@ class AuthControllerFactory implements FactoryInterface
         return new AuthController(
             $container->get(AuthenticationService::class),
             $container->get(UserTable::class),
-            $container->get(PasswordHasher::class)
+            $container->get(PasswordHasher::class),
+            $container->get(AuthSessionInterface::class)
         );
     }
 }
