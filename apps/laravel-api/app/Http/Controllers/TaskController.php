@@ -95,13 +95,30 @@ class TaskController extends Controller
     {
         $this->authorizeOwnership($request, $task);
 
-        $validated = $request->validate([
+        $rules = [
             'title' => ['sometimes', 'required', 'string', 'max:255'],
             'done' => ['sometimes', 'boolean'],
             'start_date' => ['nullable', 'date'],
-            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+            'end_date' => ['nullable', 'date'],
             'image' => self::IMAGE_RULES,
-        ]);
+        ];
+
+        // 更新後に確定する開始日・終了日を組み立ててから整合性を検証する。
+        // store() のように 'after_or_equal:start_date' と書くと、比較対象を
+        // **リクエストの中から**探すため、片側だけの PATCH では対象が消えて素通りする。
+        $start = $this->resolveDate($request, 'start_date', $task->start_date?->format('Y-m-d'));
+        $end = $this->resolveDate($request, 'end_date', $task->end_date?->format('Y-m-d'));
+
+        if ($request->hasAny(['start_date', 'end_date']) && $start !== null && $end !== null) {
+            // エラーはクライアントが送ったフィールドに載せる。送っていない側に出しても直しようがない
+            if ($request->has('end_date')) {
+                $rules['end_date'][] = 'after_or_equal:'.$start;
+            } else {
+                $rules['start_date'][] = 'before_or_equal:'.$end;
+            }
+        }
+
+        $validated = $request->validate($rules);
         unset($validated['image']);
 
         // 旧画像は「DB 反映が成功してから」削除する。
@@ -210,6 +227,27 @@ class TaskController extends Controller
 
             throw $e;
         }
+    }
+
+    /**
+     * 更新後に確定する日付（Y-m-d）を返す。リクエストに含まれていればその値、
+     * 含まれていなければ保存済みの値を使う。
+     *
+     * 日付として解釈できない入力は null を返して比較ルールへ持ち込まない。
+     * その値自体は 'date' ルールが 422 にするため、同じ誤りを二重に報告しない。
+     *
+     * @param  string|null  $stored  保存済みの値（Y-m-d）
+     */
+    private function resolveDate(Request $request, string $key, ?string $stored): ?string
+    {
+        if (! $request->has($key)) {
+            return $stored;
+        }
+
+        $value = $request->input($key);
+
+        // 'date' ルールと同じ strtotime で解釈できるかを判定する
+        return is_string($value) && $value !== '' && strtotime($value) !== false ? $value : null;
     }
 
     /** 他人のタスクは存在を伏せて 404 にする */

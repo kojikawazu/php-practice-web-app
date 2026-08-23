@@ -26,6 +26,46 @@ test.describe('api タスク（異常系）', () => {
     expect(res.status()).toBe(422);
   });
 
+  /**
+   * 部分更新（PATCH）でも期間の整合性を守る。
+   * after_or_equal:start_date は「両方がリクエストにある」前提のルールで、
+   * 片側だけ送ると比較対象が消えて素通りする（issue #83 / docs/07）。
+   */
+  test('部分更新で片側だけ送っても期間の整合性が保たれる', async ({ request }) => {
+    const user = await registerApi(request);
+    const h = authHeaders(user.token);
+    const created = await request.post('/api/tasks', {
+      data: { title: 'partial', start_date: '2026-02-10', end_date: '2026-02-20' },
+      headers: h,
+    });
+    const id = (await created.json()).id;
+
+    // 開始日だけを保存済みの終了日より後へ動かす
+    const badStart = await request.patch(`/api/tasks/${id}`, {
+      data: { start_date: '2026-02-25' },
+      headers: h,
+    });
+    expect(badStart.status()).toBe(422);
+
+    // 終了日だけを保存済みの開始日より前へ動かす
+    const badEnd = await request.patch(`/api/tasks/${id}`, {
+      data: { end_date: '2026-02-01' },
+      headers: h,
+    });
+    expect(badEnd.status()).toBe(422);
+
+    // 期間内への片側更新は通る
+    const ok = await request.patch(`/api/tasks/${id}`, {
+      data: { start_date: '2026-02-15' },
+      headers: h,
+    });
+    expect(ok.status()).toBe(200);
+
+    const task = await (await request.get(`/api/tasks/${id}`, { headers: h })).json();
+    expect(task.start_date).toBe('2026-02-15');
+    expect(task.end_date).toBe('2026-02-20');
+  });
+
   test('他人のタスクは view/update/delete/duplicate/image が 404', async ({ request }) => {
     const owner = await registerApi(request);
     const created = await request.post('/api/tasks', {
