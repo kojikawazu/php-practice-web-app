@@ -32,6 +32,15 @@ test.describe('laminas タスク CRUD（正常系）', () => {
     await expect(page.getByText('Lam dup（コピー）')).toBeVisible();
   });
 
+  test('完了トグルで取り消し線になり、戻せる', async ({ page }) => {
+    await createTaskLaminas(page, 'Lam toggle');
+    await taskItems(page).filter({ hasText: 'Lam toggle' }).getByRole('button', { name: '完了' }).click();
+    await expect(taskItems(page).filter({ hasText: 'Lam toggle' }).locator('span.line-through')).toBeVisible();
+
+    await taskItems(page).filter({ hasText: 'Lam toggle' }).getByRole('button', { name: '未完了に戻す' }).click();
+    await expect(taskItems(page).filter({ hasText: 'Lam toggle' }).getByRole('button', { name: '完了' })).toBeVisible();
+  });
+
   test('タスクを削除できる', async ({ page }) => {
     await createTaskLaminas(page, 'Lam del');
     await taskItems(page).filter({ hasText: 'Lam del' }).getByRole('button', { name: '削除' }).click();

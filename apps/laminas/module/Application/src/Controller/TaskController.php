@@ -9,6 +9,7 @@ use Application\InputFilter\TaskInputFilter;
 use Application\Model\Task;
 use Application\Model\TaskTable;
 use Laminas\Authentication\AuthenticationService;
+use Laminas\Http\Response as HttpResponse;
 use Laminas\Mvc\Controller\AbstractActionController;
 use Laminas\View\Model\ViewModel;
 
@@ -139,6 +140,63 @@ class TaskController extends AbstractActionController
         }
 
         return $this->redirect()->toRoute('tasks');
+    }
+
+    /**
+     * 完了・未完了を切り替える。
+     *
+     * 状態を変えるため POST 限定（GET は 405）。CSRF 検証は Module の一括リスナーが担当する。
+     * 所有者スコープは getForUser（取得）と saveTask の user_id 条件（更新）で二重に効く。
+     *
+     * @psalm-suppress PossiblyUnusedMethod ルーティング（module.config.php の tasks ルート）が
+     *                 action 名から解決して呼ぶため、静的解析からは呼び出し元が見えない
+     *                 （dead-code.md の「フレームワーク規約」例外）。
+     */
+    public function toggleAction(): HttpResponse
+    {
+        if ($response = $this->rejectUnlessPost()) {
+            return $response;
+        }
+
+        if (! $this->auth->hasIdentity()) {
+            return $this->redirect()->toRoute('login');
+        }
+
+        $userId = $this->currentUserId();
+        $task = $this->table->getForUser($this->routeId(), $userId);
+
+        if ($task) {
+            $task->done = ! $task->done;
+            $this->table->saveTask($task);
+        }
+
+        return $this->redirect()->toRoute('tasks');
+    }
+
+    /**
+     * ルートの id を取り出す。
+     * params() プラグインは戻り値が mixed のため、型の付く RouteMatch から取る。
+     */
+    private function routeId(): int
+    {
+        $routeMatch = $this->getEvent()->getRouteMatch();
+        if ($routeMatch === null) {
+            return 0;
+        }
+
+        /** @var mixed $id */
+        $id = $routeMatch->getParam('id', 0);
+
+        return is_numeric($id) ? (int) $id : 0;
+    }
+
+    /** ログイン中のユーザー id（未認証は 0）。identity は AuthController が書き込む stdClass */
+    private function currentUserId(): int
+    {
+        /** @var object{id: int|string, username: string}|null $identity */
+        $identity = $this->auth->getIdentity();
+
+        return $identity === null ? 0 : (int) $identity->id;
     }
 
     /**

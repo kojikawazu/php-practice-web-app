@@ -45,6 +45,31 @@ test.describe('laminas タスク（準正常・異常系）', () => {
     await ctxB.close();
   });
 
+  test('他人のタスクは完了に切り替えられない', async ({ browser }) => {
+    const ctxA = await browser.newContext();
+    const pageA = await ctxA.newPage();
+    await registerLaminas(pageA, { username: uniqueUsername(), password: PASSWORD });
+    await createTaskLaminas(pageA, 'A undone');
+    const action = await taskItems(pageA)
+      .filter({ hasText: 'A undone' })
+      .locator('form[action*="/tasks/toggle/"]')
+      .getAttribute('action');
+    expect(action).not.toBeNull();
+
+    const ctxB = await browser.newContext();
+    const pageB = await ctxB.newPage();
+    await registerLaminas(pageB, { username: uniqueUsername(), password: PASSWORD });
+    // B 自身の正しい CSRF トークンでも、A のタスクには効かない（所有者スコープ）
+    const token = await pageB.locator('input[name="csrf"]').first().inputValue();
+    await pageB.request.post(new URL(action as string, URLS.laminas).pathname, { form: { csrf: token } });
+    await ctxB.close();
+
+    await pageA.goto('/tasks');
+    await expect(taskItems(pageA).filter({ hasText: 'A undone' }).locator('span.line-through')).toHaveCount(0);
+    await expect(taskItems(pageA).filter({ hasText: 'A undone' }).getByRole('button', { name: '完了' })).toBeVisible();
+    await ctxA.close();
+  });
+
   test('他人のタスクは削除できない', async ({ browser }) => {
     const ctxA = await browser.newContext();
     const pageA = await ctxA.newPage();
