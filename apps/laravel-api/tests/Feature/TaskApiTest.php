@@ -328,4 +328,189 @@ class TaskApiTest extends TestCase
         $response->assertNotFound();
         $this->assertDatabaseHas('tasks', ['id' => $othersTask->id]);
     }
+
+    // ---- 部分更新（PATCH）でのタスク期間の整合性 ----
+    //
+    // after_or_equal:start_date は「リクエストに両方の日付がある」前提のルールで、
+    // 片側だけを送ると比較対象が消えて素通りする。更新後に確定する開始日・終了日を
+    // 組み立ててから検証する（issue #83 / docs/07）。
+
+    public function test_update_with_only_title_keeps_stored_dates(): void
+    {
+        $user = $this->actingUser();
+        $task = $user->tasks()->create([
+            'title' => '元のまま',
+            'start_date' => '2026-06-15',
+            'end_date' => '2026-06-20',
+        ]);
+
+        $response = $this->patchJson("/api/tasks/{$task->id}", ['title' => '改題']);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('tasks', [
+            'id' => $task->id,
+            'title' => '改題',
+            'start_date' => '2026-06-15',
+            'end_date' => '2026-06-20',
+        ]);
+    }
+
+    public function test_update_accepts_start_date_within_stored_period(): void
+    {
+        $user = $this->actingUser();
+        $task = $user->tasks()->create([
+            'title' => '期間内へ移動',
+            'start_date' => '2026-06-15',
+            'end_date' => '2026-06-20',
+        ]);
+
+        $response = $this->patchJson("/api/tasks/{$task->id}", ['start_date' => '2026-06-18']);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('tasks', [
+            'id' => $task->id,
+            'start_date' => '2026-06-18',
+            'end_date' => '2026-06-20',
+        ]);
+    }
+
+    public function test_update_can_clear_start_date_with_null(): void
+    {
+        $user = $this->actingUser();
+        $task = $user->tasks()->create([
+            'title' => '開始日を消す',
+            'start_date' => '2026-06-15',
+            'end_date' => '2026-06-20',
+        ]);
+
+        $response = $this->patchJson("/api/tasks/{$task->id}", ['start_date' => null]);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('tasks', [
+            'id' => $task->id,
+            'start_date' => null,
+            'end_date' => '2026-06-20',
+        ]);
+    }
+
+    public function test_update_rejects_start_date_after_stored_end_date(): void
+    {
+        $user = $this->actingUser();
+        $task = $user->tasks()->create([
+            'title' => '逆転させない',
+            'start_date' => '2026-06-15',
+            'end_date' => '2026-06-20',
+        ]);
+
+        $response = $this->patchJson("/api/tasks/{$task->id}", ['start_date' => '2026-06-25']);
+
+        $response->assertStatus(422);
+        // 送ったのは start_date なので、エラーもそのフィールドに載せる
+        $response->assertJsonValidationErrors('start_date');
+        $this->assertDatabaseHas('tasks', [
+            'id' => $task->id,
+            'start_date' => '2026-06-15',
+            'end_date' => '2026-06-20',
+        ]);
+    }
+
+    public function test_update_rejects_end_date_before_stored_start_date(): void
+    {
+        $user = $this->actingUser();
+        $task = $user->tasks()->create([
+            'title' => '逆転させない',
+            'start_date' => '2026-06-15',
+            'end_date' => '2026-06-20',
+        ]);
+
+        $response = $this->patchJson("/api/tasks/{$task->id}", ['end_date' => '2026-06-10']);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('end_date');
+        $this->assertDatabaseHas('tasks', [
+            'id' => $task->id,
+            'start_date' => '2026-06-15',
+            'end_date' => '2026-06-20',
+        ]);
+    }
+
+    public function test_update_rejects_end_date_before_start_date_when_both_sent(): void
+    {
+        $user = $this->actingUser();
+        $task = $user->tasks()->create(['title' => '逆転させない']);
+
+        $response = $this->patchJson("/api/tasks/{$task->id}", [
+            'start_date' => '2026-06-20',
+            'end_date' => '2026-06-10',
+        ]);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('end_date');
+        $this->assertDatabaseHas('tasks', [
+            'id' => $task->id,
+            'start_date' => null,
+            'end_date' => null,
+        ]);
+    }
+
+    public function test_update_allows_start_date_after_stored_end_date_when_end_is_cleared(): void
+    {
+        $user = $this->actingUser();
+        $task = $user->tasks()->create([
+            'title' => '終了日ごと消す',
+            'start_date' => '2026-06-15',
+            'end_date' => '2026-06-20',
+        ]);
+
+        // 終了日を消すなら、開始日が旧終了日より後でも矛盾しない
+        $response = $this->patchJson("/api/tasks/{$task->id}", [
+            'start_date' => '2026-06-25',
+            'end_date' => null,
+        ]);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('tasks', [
+            'id' => $task->id,
+            'start_date' => '2026-06-25',
+            'end_date' => null,
+        ]);
+    }
+
+    public function test_update_allows_end_date_before_stored_start_date_when_start_is_cleared(): void
+    {
+        $user = $this->actingUser();
+        $task = $user->tasks()->create([
+            'title' => '開始日ごと消す',
+            'start_date' => '2026-06-15',
+            'end_date' => '2026-06-20',
+        ]);
+
+        $response = $this->patchJson("/api/tasks/{$task->id}", [
+            'start_date' => null,
+            'end_date' => '2026-06-10',
+        ]);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('tasks', [
+            'id' => $task->id,
+            'start_date' => null,
+            'end_date' => '2026-06-10',
+        ]);
+    }
+
+    public function test_update_rejects_invalid_partial_date(): void
+    {
+        $user = $this->actingUser();
+        $task = $user->tasks()->create([
+            'title' => '不正な日付',
+            'start_date' => '2026-06-15',
+            'end_date' => '2026-06-20',
+        ]);
+
+        $response = $this->patchJson("/api/tasks/{$task->id}", ['start_date' => 'not-a-date']);
+
+        $response->assertStatus(422);
+        $response->assertJsonValidationErrors('start_date');
+        $this->assertDatabaseHas('tasks', ['id' => $task->id, 'start_date' => '2026-06-15']);
+    }
 }

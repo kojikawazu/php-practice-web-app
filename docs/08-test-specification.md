@@ -36,6 +36,7 @@
 | fullstack Task | 一覧/作成/トグル/編集/複製/日付付き作成/画像アップロード・所有者閲覧・差替・複製コピー/2ステップ確認(確認表示・確定まで未作成)/ページネーション(5件)/タイトル検索 | guest→login / 他人タスク非表示 / 空title / 他人のtoggle・destroy・update(確認)・edit・duplicate・image 404 / 非画像422 / 検索ヒットなし / 終了日<開始日 / 不正日付 |
 | fullstack Auth | 登録&自動ログイン / ログイン / ログアウト | 誤パスワード / メール重複 / 確認不一致 / 短パスワード |
 | api Task | 一覧/201作成/更新/複製(201)/日付付き作成/画像アップロード(image_url返却)・所有者取得/ページネーション(meta)/per_page/検索 | guest 401 / title欠落 422 / 長すぎ 422 / 更新時空title 422 / 終了日<開始日 422 / 不正日付 422 / 非画像 422 / 他人タスク view・delete・update・duplicate・image 404 / 検索ヒットなし |
+| api タスク期間の整合性（部分更新・`TaskApiTest`）| タイトルのみ更新で保存済みの日付が保たれる / 期間内への片側更新が通る / `null` で片側を消せる | 片側だけの更新で保存済みの相手側と矛盾すると 422（start_date 側・end_date 側の両方向）/ 両方送っての逆転も 422 / 相手側を同時に `null` 化すれば通る / 日付として不正な値は 422 |
 | api Task model（単体・DB/アプリ不要） | title mass assign / done bool化 / 日付 Carbon 化(Y-m-d) / hidden・appends 設定 | done 既定false / '0'→false / 画像なしで image_url=null / toArray が user_id・image_path を隠す / 非fillable id は無視 |
 | api Auth | register トークン / login トークン / logout | 誤パスワード 422 / メール重複 422 / 短パスワード 422 / token無し 401 |
 | api Token | 一覧(ハッシュ非公開)/発行/期限付き発行/失効 | name必須422 / 不正expiry422 / 他人失効404 / guest401 / 期限切れトークン401 |
@@ -55,7 +56,7 @@
 | laminas CSRF E2E（**Playwright**・実ブラウザ・実セッション）| 全 POST フォームにトークンが埋まっている | 認証済みセッションでも GET の削除・ログアウトは 405 / トークン無し・不正トークンの POST は 403 で状態が変わらない |
 | laminas セッション E2E（**Playwright**・実ブラウザ・実セッション）| ログイン前後・登録前後で `PHPSESSID` が変わる / Cookie が HttpOnly・SameSite=Lax | 攻撃者が仕込んだ ID は被害者ログイン後に使えない（セッション固定の再現）/ ログアウト後は旧 ID で認証状態に戻れない / 未知の ID を仕込んでも採用されない（`use_strict_mode`）|
 | 3アプリ CSP E2E（**Playwright**・実ブラウザ）| ヘッダーが付く / Tailwind が適用される / nonce 付きインライン script が実行され flatpickr が初期化される / CSP 違反 0 件 | nonce 無しで注入したインライン script が実行されない（違反として記録される）|
-| api E2E（**Playwright**・HTTP/Bearer・実MySQL） | register(201) / login(200) / logout(204→401) / CRUD / 複製(201) / 日付Y-m-d / per_pageクランプ / 検索 / 画像image_url→所有者取得(200) | 誤PW422 / メール重複422 / 短PW422 / token無し401 / 無効token401 / title欠落422 / title長すぎ422 / 終了日<開始日422 / 他人タスクview・update・delete・duplicate・image 404 |
+| api E2E（**Playwright**・HTTP/Bearer・実MySQL） | register(201) / login(200) / logout(204→401) / CRUD / 複製(201) / 日付Y-m-d / per_pageクランプ / 検索 / 画像image_url→所有者取得(200) | 誤PW422 / メール重複422 / 短PW422 / token無し401 / 無効token401 / title欠落422 / title長すぎ422 / 終了日<開始日422 / **部分更新で片側だけ送っても保存済みの相手側と矛盾すれば422** / 他人タスクview・update・delete・duplicate・image 404 |
 
 > **CSRF の IT** は実セッション（`session_start`）に依存させず、`AbstractIntegrationTestCase` が配列ストレージのセッションコンテナを注入した `CsrfGuard` を ServiceManager へ差し替える。**検証ロジック自体は本物をそのまま通す**（モックしない）。テストからは `withCsrf()` で正規トークンを付けた POST を送る。
 >
