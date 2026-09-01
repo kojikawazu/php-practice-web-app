@@ -163,3 +163,15 @@ docker compose exec php-laminas composer ...
 | 10 | [miscellaneous-specification](docs/10-miscellaneous-specification.md) | その他（用語集・参照資料・決定事項） |
 | 11 | [tasks](docs/11-tasks.md) | タスク・進捗・マイルストーン |
 | 12 | [code-reading-guide](docs/12-code-reading-guide.md) | コードリーディングガイド（3 アプリの読み比べ） |
+
+## ライセンス
+
+本リポジトリは [MIT License](LICENSE) で公開しています（Copyright (c) 2026 kojikawazu）。
+
+ただし、フレームワークのスケルトン由来のファイルは元のライセンスに従います。
+
+| 対象 | ライセンス | 条文 |
+|---|---|---|
+| リポジトリ全体（自作コード・ドキュメント） | MIT | [`LICENSE`](LICENSE) |
+| `apps/laminas`（Laminas MVC スケルトン由来） | BSD-3-Clause | [`apps/laminas/LICENSE.md`](apps/laminas/LICENSE.md) / [`apps/laminas/COPYRIGHT.md`](apps/laminas/COPYRIGHT.md) |
+| `vendor/`・`node_modules/` の依存パッケージ | 各パッケージのライセンス | 各パッケージ同梱の条文 |

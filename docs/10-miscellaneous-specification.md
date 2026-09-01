@@ -56,7 +56,7 @@
 
 ## 参照資料
 
-- ルート: `README.md`（起動・使い方）、`CLAUDE.md`（Claude Code 向け指示）、`AGENTS.md`（Codex 向け指示）、`.claude/rules/`（開発ルールの正本）
+- ルート: `README.md`（起動・使い方）、`LICENSE`（MIT）、`CLAUDE.md`（Claude Code 向け指示）、`AGENTS.md`（Codex 向け指示）、`.claude/rules/`（開発ルールの正本）
 - 仕様書: `docs/01`〜`docs/11`
 - 外部: Laravel / Laminas / Sanctum / flatpickr の各公式ドキュメント
 
@@ -67,3 +67,4 @@
 - **Laminas 認証は自前 bcrypt 照合 + AuthenticationService 保存**: DbTable アダプタより bcrypt と相性が良いため。
 - **flatpickr は CDN 読み込み（SRI 未設定）**: 学習用トレードオフ（`docs/06`）。
 - **アプリ別 ExampleTest 残置**: スケルトン由来。整理は任意。
+- **ライセンスは MIT（ルート `LICENSE`）**: 学習用に公開するため利用条件を明示する。`apps/laminas` のみスケルトン由来の BSD-3-Clause（`apps/laminas/LICENSE.md`）が併存し、Laminas の著作権表示はそのまま残す。
