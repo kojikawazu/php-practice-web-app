@@ -46,8 +46,10 @@ e2e:
 	cd e2e && npm ci && npx playwright install chromium && npx playwright test
 
 # GitHub Actions ワークフローの静的解析（構文・式・runner ラベル + run: の shellcheck）。
-# CI の actionlint ジョブと同じコマンド・同じバージョンを実行する（手元で先に直せるように）。
-# バージョンを上げるときは .github/workflows/ci.yml も同じタグに揃える。
+# CI の actionlint ジョブがこのターゲットを呼ぶため、コマンドとイメージのタグの定義は
+# ここが唯一の正本（2 箇所に書き写すと、片方だけ上げても CI は緑のまま検査内容がずれる）。
+# 公式イメージを使うのは shellcheck が同梱されているため。バイナリだけ入れると run: の
+# 検査が警告もなく静かにスキップされ、終了コード 0 のまま検査が減ったことに気づけない。
 actionlint:
 	docker run --rm -v "$$PWD":/repo --workdir /repo rhysd/actionlint:1.7.12 -color
 

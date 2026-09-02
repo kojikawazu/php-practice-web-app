@@ -14,7 +14,7 @@ PHP の学習を目的とした練習用 Web アプリケーション
 | documentation.md | 全体 | ドキュメント更新ルール |
 | git.md | 全体 | GitHub Flow・ブランチ命名・push 禁止物 |
 | github-issue.md | 全体 | GitHub issue 運用（ブランチと対で起票・open/close で進捗管理・サブ issue） |
-| github-actions.md | .github/workflows/** | GitHub Actions の発火ルール（変更内容に応じたジョブ実行・パスフィルタ・デプロイ） |
+| github-actions.md | .github/workflows/** | GitHub Actions のルール（actionlint による静的解析・変更内容に応じたジョブ実行・パスフィルタ・デプロイ） |
 | testing.md | 全体 | テスト分類・原則 |
 | security.md | 全体 | セキュリティ最低線（認証・通信・インジェクション対策・シークレット管理） |
 | production-data.md | 全体 | データ保護（共有 MySQL への破壊的操作の禁止・接続先確認・AI エージェント制約） |
