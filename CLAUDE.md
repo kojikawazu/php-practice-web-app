@@ -12,6 +12,7 @@ PHP の学習を目的とした練習用 Web アプリケーション
 | workflow.md | 全体 | 開発フロー（ブランチ運用・テスト必須） |
 | quality-gate.md | 全体 | 品質ゲート（セルフレビュー・設計/実装レビュー） |
 | documentation.md | 全体 | ドキュメント更新ルール |
+| lessons-learned.md | 全体 | 教訓の記録（docs/lessons-learned.md への追記運用・ルールへの昇格） |
 | git.md | 全体 | GitHub Flow・ブランチ命名・push 禁止物 |
 | github-issue.md | 全体 | GitHub issue 運用（ブランチと対で起票・open/close で進捗管理・サブ issue） |
 | pr-description.md | 全体 | PR 本文の必須セクション（変更種別ごとの項目・3 アプリ影響の明示・テンプレートとの関係） |

@@ -8,6 +8,7 @@
 - `.claude/rules/workflow.md`
 - `.claude/rules/quality-gate.md`
 - `.claude/rules/documentation.md`
+- `.claude/rules/lessons-learned.md`
 - `.claude/rules/git.md`
 - `.claude/rules/github-issue.md`
 - `.claude/rules/pr-description.md`
