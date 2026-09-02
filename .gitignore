@@ -1,6 +1,8 @@
 # Dependencies
 /apps/*/vendor/
 /apps/*/node_modules/
+# リポジトリ直下の開発ツール（markdown lint）。package.json / package-lock.json は追跡する。
+/node_modules/
 
 # Environment
 .env

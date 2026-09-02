@@ -15,7 +15,7 @@ PHP フレームワークの学習用モノレポ。3 つのアプリを 1 リ�
 ```
 
 | アプリ | 役割 | フロント | テーブルprefix |
-|--------|------|---------|----------------|
+| -------- | ------ | --------- | ---------------- |
 | `apps/laravel-fullstack` | フルスタック | Blade | `fs_` |
 | `apps/laravel-api` | API 専用 | なし（JSON） | `api_` |
 | `apps/laminas` | Laminas MVC（旧 Zend 後継） | PHTML | `lam_` |
@@ -23,7 +23,7 @@ PHP フレームワークの学習用モノレポ。3 つのアプリを 1 リ�
 ## 技術スタック
 
 | 項目 | 採用 |
-|------|------|
+| ------ | ------ |
 | 言語 | PHP 8.3 |
 | FW（×2） | Laravel 12（12.61.1。当初 11 → CVE-2026-48019 解消のため 12 へ） |
 | FW（×1） | Laminas MVC（PHP 8.3 対応） |
@@ -38,12 +38,12 @@ PHP フレームワークの学習用モノレポ。3 つのアプリを 1 リ�
 Docker Compose のサービス構成:
 
 | サービス | イメージ | 役割 |
-|----------|---------|------|
+| ---------- | --------- | ------ |
 | `mysql` | mysql:8 | 共有 DB。永続ボリューム |
 | `php-fs` | php:8.3-fpm（自前ビルド） | laravel-fullstack |
 | `php-api` | php:8.3-fpm（自前ビルド） | laravel-api |
 | `php-laminas` | php:8.3-fpm（自前ビルド） | laminas |
-| `nginx` | nginx:alpine | リバースプロキシ。ポート 8001/8002/8003（`.env` の `FS_PORT` / `API_PORT` / `LAMINAS_PORT` で上書き可）|
+| `nginx` | nginx:alpine | リバースプロキシ。ポート 8001/8002/8003（`.env` の `FS_PORT` / `API_PORT` / `LAMINAS_PORT` で上書き可） |
 
 PHP 拡張: `pdo_mysql` ほか各 FW が要求するもの。`docker/php/Dockerfile` で導入。PHP の設定上書きは `docker/php/uploads.ini`（アップロードサイズ）を `conf.d/` へ配置する。
 
@@ -52,10 +52,10 @@ PHP 拡張: `pdo_mysql` ほか各 FW が要求するもの。`docker/php/Dockerf
 画像アップロード（最大 2MB）を**アプリのバリデーションで判定させる**ため、各層の上限を **nginx < PHP** の順に並べる。nginx を通ったリクエストは必ず PHP に届き、Laravel が最終判定する（境界の仕様は `docs/07`）。
 
 | 層 | 設定 | 値 | 既定 |
-|---|---|---|---|
-| nginx（fullstack / api）| `client_max_body_size` | 5m | 1m |
-| nginx（laminas）| — | 既定のまま | 1m |
-| PHP（3 アプリ共通イメージ）| `upload_max_filesize` / `post_max_size` | 5M / 6M | 2M / 8M |
+| --- | --- | --- | --- |
+| nginx（fullstack / api） | `client_max_body_size` | 5m | 1m |
+| nginx（laminas） | — | 既定のまま | 1m |
+| PHP（3 アプリ共通イメージ） | `upload_max_filesize` / `post_max_size` | 5M / 6M | 2M / 8M |
 
 laminas はアップロード機能を持たないため既定の 1m のままとし、不要に大きな body を受け付けない。
 
@@ -66,8 +66,8 @@ laminas はアップロード機能を持たないため既定の 1m のまま�
 ホストへ公開するポートは `.env` で上書きできる（既定は MySQL 3306 / 8001 / 8002 / 8003）。
 
 | 変数 | 既定 | 用途 |
-|---|---|---|
-| `MYSQL_PORT` | 3306 | MySQL（ホストの GUI クライアント等から繋ぐ用。**アプリは使わない**）|
+| --- | --- | --- |
+| `MYSQL_PORT` | 3306 | MySQL（ホストの GUI クライアント等から繋ぐ用。**アプリは使わない**） |
 | `FS_PORT` / `API_PORT` / `LAMINAS_PORT` | 8001 / 8002 / 8003 | nginx が各アプリを公開するポート |
 
 **アプリ間は compose ネットワーク（`DB_HOST=mysql`）で繋がるため、公開ポートを変えても動作は変わらない。** 既に MySQL や 8001 番台を使っているマシンで、fresh clone がポート衝突だけで起動できなくなるのを避けるために可変にしている。
@@ -89,7 +89,7 @@ laminas はアップロード機能を持たないため既定の 1m のまま�
   各ツールが実際に読む範囲（設定ファイルで確認済み）:
 
   | ツール | 対象範囲 | 根拠 |
-  |---|---|---|
+  | --- | --- | --- |
   | Larastan | `apps/laravel-*/app` のみ | `phpstan.neon` の `paths` |
   | Pint | プロジェクト全体（`tests/` `database/` `routes/` も整形対象） | `pint.json` なし = 既定 |
   | Psalm | `module` + `config` + `public/index.php`（`module/*/test` を含む） | `psalm.xml` の `projectFiles` |
@@ -99,20 +99,21 @@ laminas はアップロード機能を持たないため既定の 1m のまま�
   ここから導かれる発火条件の差分:
 
   | 変更内容 | test | lint | e2e | markdown-lint | actionlint |
-  |---|---|---|---|---|---|
+  | --- | --- | --- | --- | --- | --- |
   | `apps/**` の PHP / Blade / phtml / config / migration、`composer.lock`、`.env.example` | ✅ | ✅ | ✅ | ❌ | ❌ |
   | テストコードのみ（`apps/*/tests/**`、`apps/laminas/module/*/test/**`） | ✅ | ✅ | ❌ | ❌ | ❌ |
   | 静的解析の設定のみ（`phpstan.neon` / `psalm.xml` / `phpcs.xml` / 各 baseline） | ❌ | ✅ | ❌ | ❌ | ❌ |
   | PHPUnit の設定のみ（`phpunit.xml` / `phpunit.xml.dist`） | ✅ | ❌ | ❌ | ❌ | ❌ |
   | `compose.yaml` / `docker/**` / `e2e/**` | ❌ | ❌ | ✅ | ❌ | ❌ |
   | md ドキュメント / `.claude/**` / `.markdownlint-cli2.jsonc` | ❌ | ❌ | ❌ | ✅ | ❌ |
+  | ルート直下の `package.json` / `package-lock.json`（markdown lint の実行環境） | ❌ | ❌ | ❌ | ✅ | ❌ |
   | `.github/workflows/**` | ✅ | ✅ | ✅ | ❌ | ✅ |
   | 上記に当てはまらない変更（新規ディレクトリ等） | ✅ | ✅ | ✅ | ❌ | ❌ |
 
-  `test` が Docker 系（`compose.yaml` / `docker/**`）に依存しないのは、`shivammathur/setup-php` で動き Docker を使わないため。`Makefile` はどのジョブも参照しない（CI は各コマンドを直接叩く）ため全フィルタで除外している。
+  `test` が Docker 系（`compose.yaml` / `docker/**`）に依存しないのは、`shivammathur/setup-php` で動き Docker を使わないため。`Makefile` はどのジョブも参照しない（CI は各コマンドを直接叩く）ため全フィルタで除外している。 ルート直下の `package*.json` は markdown lint 専用のため PHP 系 3 ジョブから除外している（`e2e/package*.json` は別パスで、従来どおり `e2e` を発火させる）。
 
 - **actionlint**: `if: workflows == 'true'` で `.github/workflows/**` の変更時のみ実行。workflow の構文・式（`${{ }}`）・runner ラベル・action の入力に加え、**`run:` の中身を shellcheck に流す**（`.claude/rules/github-actions.md` が要求する品質ゲートの実体）。取得は公式 Docker イメージ `rhysd/actionlint` のバージョン固定タグで、`make actionlint` と**同一コマンド**のため手元と CI で結果が一致する。バージョンを上げる際は `Makefile` と `ci.yml` の両方を揃える。
-- **markdown-lint**: `if: docs == 'true'` で md 変更時のみ実行（`markdownlint-cli2`）。対象と無効化ルールの理由は `.markdownlint-cli2.jsonc` に記載し、**警告ゼロを維持**する（`.claude/rules/static-analysis.md`）。ローカルは `make md-lint` / `make md-fix`。
+- **markdown-lint**: `if: docs == 'true'` で md 変更時のみ実行（`markdownlint-cli2`）。対象と無効化ルールの理由は `.markdownlint-cli2.jsonc` に記載し、**警告ゼロを維持**する（`.claude/rules/static-analysis.md`）。ローカルは `make md-lint` / `make md-fix`。バージョンはルートの `package.json` の devDependency で完全固定し（`npm ci`）、更新は Dependabot（`.github/dependabot.yml`・npm / weekly）が PR で上げる。**`run:` に `npx pkg@x.y.z` と直書きするとマニフェストではないため Dependabot から見えず、更新契機が生まれない**（actionlint の Docker タグ固定には同じ制約が残っている）。
 - **test**: `needs: changes` + `if: test == 'true'` で実行。`shivammathur/setup-php`（PHP 8.3）で各アプリをセットアップ（Docker 不使用）、matrix で 3 アプリを並行ジョブ実行（`fail-fast: false`）。Laravel ×2 は `php artisan test`（テスト DB は SQLite in-memory のため MySQL サービス不要）、Laminas は `vendor/bin/phpunit`。
 - **lint**: `if: lint == 'true'` で実行する静的チェックジョブ（matrix で 3 アプリ並行）。Laravel ×2 は `vendor/bin/pint --test`（整形の差分検査）+ `composer analyse`（Larastan/PHPStan・`level: max`）、Laminas は `composer cs-check`（phpcs / Laminas Coding Standard）+ `vendor/bin/psalm`（型解析・`errorLevel=1`）。静的解析の既存指摘は baseline（Laravel=`apps/laravel-*/phpstan-baseline.neon` / Laminas=`apps/laminas/psalm-baseline.xml`）に記録済みで、CI は**新規に増えた指摘のみ**で失敗する（baseline 運用）。ローカルでの自動修正は Laravel=`vendor/bin/pint`、Laminas=`composer cs-fix`。
 - **e2e**: `if: e2e == 'true'` で実行。compose で app + 実 MySQL を起動し、migrate → Playwright で 3 アプリ横断の E2E を検証する（詳細は `docs/08`）。失敗時は Playwright レポートを artifact に上げ、compose ログを出力する。

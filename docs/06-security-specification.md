@@ -5,9 +5,9 @@
 ## 認証
 
 | アプリ | 方式 | 実装 |
-|--------|------|------|
+| -------- | ------ | ------ |
 | laravel-fullstack | セッション認証 | 自前 `AuthController`（`Auth::attempt` / `Auth::login`）、`auth`/`guest` ミドルウェア |
-| laravel-api | トークン認証 | Laravel Sanctum（personal access token、`auth:sanctum`）|
+| laravel-api | トークン認証 | Laravel Sanctum（personal access token、`auth:sanctum`） |
 | laminas | セッション認証 | `laminas-authentication`（identity を Session Storage に保持）+ bcrypt 照合 |
 
 - パスワードは全アプリ bcrypt でハッシュ化（Laravel は `'password' => 'hashed'` キャスト、Laminas は `PasswordHasher`）。
@@ -52,7 +52,7 @@
 GET で状態が変わると、`<img src="http://host/tasks/delete/1">` を含むページを開かせるだけで操作が成立する（トークン以前の問題）。
 
 | アプリ | ログアウト | 複製 | 削除 |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | laravel-fullstack | POST | POST | DELETE |
 | laminas | POST | POST | POST |
 
@@ -61,7 +61,7 @@ laminas は POST 以外を **405 Method Not Allowed**（`Allow: POST` 付き）�
 ### 2. 全 POST に CSRF トークンを要求する
 
 | アプリ | 発行 | 検証 |
-|---|---|---|
+| --- | --- | --- |
 | laravel-fullstack | Blade の `@csrf` | `VerifyCsrfToken` ミドルウェア（フレームワーク標準・419） |
 | laminas | ビューヘルパー `$this->csrfInput()` | `Module::onBootstrap` の `MvcEvent::EVENT_ROUTE` リスナー（**403**） |
 
@@ -81,7 +81,7 @@ laminas-validator / laminas-session の `Csrf` バリデータは使わない。
 ### 拒否時の応答
 
 | 状況 | 応答 |
-|---|---|
+| --- | --- |
 | 状態変更を GET で叩く | 405 Method Not Allowed |
 | CSRF トークンが無い / 不正 | 403 Forbidden |
 
@@ -98,24 +98,24 @@ Laravel が CSRF 不一致に 419（フレームワーク独自）を返すの�
 攻撃者があらかじめ用意した ID を被害者のブラウザに持たせ、被害者がその ID のままログインすると、同じ ID で認証済みセッションに相乗りできる。**仕込ませない**対策と**仕込まれた後に無効化する**対策の 2 段で塞ぐ。
 
 | 段 | 対策 | 実装 |
-|---|---|---|
+| --- | --- | --- |
 | 1. 仕込ませない | 未知のセッション ID を採用せず、常にサーバーが発行した ID だけを使う | `session.use_strict_mode = 1` |
-| 2. 無効化する | 認証に成功した瞬間に ID を振り直し、旧 ID のセッションを削除する | 下表「再生成のタイミング」|
+| 2. 無効化する | 認証に成功した瞬間に ID を振り直し、旧 ID のセッションを削除する | 下表「再生成のタイミング」 |
 
 ### 再生成のタイミング
 
 | 契機 | 動作 |
-|---|---|
+| --- | --- |
 | ログイン成功 | ID を再生成（データは引き継ぐ）→ その後に identity を書き込む |
-| 登録＝自動ログイン | 同上（登録直後の自動ログインも「認証成功」として扱う）|
-| ログアウト | セッションの中身を破棄し、ID も作り直す（CSRF トークンも失効する）|
+| 登録＝自動ログイン | 同上（登録直後の自動ログインも「認証成功」として扱う） |
+| ログアウト | セッションの中身を破棄し、ID も作り直す（CSRF トークンも失効する） |
 
 **identity を書き込む前に再生成する。** この順序なら「認証済み状態は、必ず新しい ID の下でだけ存在する」と言い切れる。再生成では旧 ID のデータを削除し（`deleteOldSession = true` 相当）、仕込まれた ID が生き残らないようにする。
 
 ### アプリごとの実装
 
 | アプリ | 実装 |
-|---|---|
+| --- | --- |
 | laravel-fullstack | フレームワーク任せ。`Auth::attempt()` / `Auth::login()` が内部で `SessionGuard::updateSession()` → `session()->migrate(true)` を実行する。ログアウトは `session()->invalidate()` + `session()->regenerateToken()` |
 | laminas | `Application\Service\AuthSessionInterface`（本番実装 `AuthSession`）に集約し、`AuthController` から呼ぶ。実体は laminas-session の `SessionManager::regenerateId(true)` |
 
@@ -128,11 +128,11 @@ CSRF のように `Module::onBootstrap` のリスナーで一括処理はしな�
 `module/Application/config/module.config.php` の `session_config` で指定する。
 
 | 設定 | 値 | 理由 |
-|---|---|---|
-| `use_strict_mode` | `true` | 未知の ID を採用しない（上記 1 段目）|
+| --- | --- | --- |
+| `use_strict_mode` | `true` | 未知の ID を採用しない（上記 1 段目） |
 | `cookie_httponly` | `true` | JavaScript から読めなくし、XSS でのセッション持ち出しを防ぐ |
-| `cookie_samesite` | `Lax` | 外部サイト起点のリクエストに Cookie を載せない（CSRF の多層防御）|
-| `cookie_secure` | 未設定 | ローカルが HTTP のため。本番では有効化が必須（下記「既知の注意点」）|
+| `cookie_samesite` | `Lax` | 外部サイト起点のリクエストに Cookie を載せない（CSRF の多層防御） |
+| `cookie_secure` | 未設定 | ローカルが HTTP のため。本番では有効化が必須（下記「既知の注意点」） |
 
 `SessionManager` はコンテナ経由の単一インスタンスとし、CSRF トークン・identity・ID 再生成のすべてが同じセッションを見るようにする。既定の `Container::getDefaultManager()` に任せると、設定の効いていない暗黙のインスタンスを掴む。
 
@@ -147,9 +147,9 @@ XSS 対策の出力エスケープが 1 箇所漏れても即被害にならな�
 ### 適用箇所（アプリごとに実装層が違う）
 
 | アプリ | 実装 | 理由 |
-|---|---|---|
-| laravel-fullstack | `App\Http\Middleware\ContentSecurityPolicy`（グローバルミドルウェア）| リクエストごとに nonce を発行し `View::share` で Blade へ渡す |
-| laravel-api | `App\Http\Middleware\ContentSecurityPolicy`（グローバルミドルウェア）| JSON のみのため nonce を持たない |
+| --- | --- | --- |
+| laravel-fullstack | `App\Http\Middleware\ContentSecurityPolicy`（グローバルミドルウェア） | リクエストごとに nonce を発行し `View::share` で Blade へ渡す |
+| laravel-api | `App\Http\Middleware\ContentSecurityPolicy`（グローバルミドルウェア） | JSON のみのため nonce を持たない |
 | laminas | `Application\Service\ContentSecurityPolicy` + `Module::onBootstrap` の `MvcEvent::EVENT_FINISH` リスナー | ミドルウェア層が無いため MVC ライフサイクル終端で付与する。nonce は ServiceManager の共有インスタンスで、ヘッダーと PHTML の値を一致させる |
 
 **nginx では設定しない。** nonce はリクエストごとにアプリが生成して HTML へ埋め込む必要があり、nginx 側で同じ値を作れない。両方で設定するとヘッダーが重複し、ブラウザは全ポリシーの積を適用するため意図が読めなくなる。
@@ -159,7 +159,7 @@ XSS 対策の出力エスケープが 1 箇所漏れても即被害にならな�
 fullstack / laminas（HTML）:
 
 | ディレクティブ | 値 | 意図 |
-|---|---|---|
+| --- | --- | --- |
 | `default-src` | `'self'` | 既定は自ホストのみ |
 | `script-src` | `'self' 'nonce-<リクエストごと>' https://cdn.tailwindcss.com https://cdn.jsdelivr.net` | インライン script は nonce でのみ許可。`'unsafe-inline'`・`'unsafe-eval'` は付けない |
 | `style-src` | `'self' 'unsafe-inline' https://cdn.jsdelivr.net` | Tailwind Play CDN が実行時に `<style>` を注入するため（下記の妥協） |

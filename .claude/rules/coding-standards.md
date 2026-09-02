@@ -23,7 +23,7 @@ PHP 8 の型宣言を第一とし、PHPDoc は**言語の型システムで表�
 ## Lint / Format（アプリ別）
 
 | アプリ | ツール | 実行 |
-|--------|--------|------|
+| -------- | -------- | ------ |
 | laravel-fullstack / laravel-api | Laravel Pint（フォーマッタ）+ Larastan/PHPStan（静的解析・`level: max`） | `composer exec pint`（`pint --test` で差分検査）/ `composer analyse` |
 | laminas | phpcs / phpcbf（Laminas Coding Standard）+ Psalm（静的解析） | `composer cs-check` / `composer cs-fix` / `vendor/bin/psalm` |
 

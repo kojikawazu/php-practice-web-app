@@ -23,14 +23,14 @@ grep -rn "読み比べ" apps/ --include="*.php"   # 対比マップを一覧す�
 ## プロジェクト構成の対比
 
 | 観点 | laravel-fullstack | laravel-api | laminas |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | ディレクトリ | `apps/laravel-fullstack/` | `apps/laravel-api/` | `apps/laminas/` |
-| フレームワーク | Laravel 12 + Blade | Laravel 12（JSON API）| Laminas MVC |
-| レスポンス | HTML（Blade）| JSON | HTML（PHTML）|
-| 認証方式 | セッション（`Auth::attempt`）| Sanctum トークン（Bearer）| `laminas-authentication`（Session Storage）|
-| DB アクセス | Eloquent ORM | Eloquent ORM | TableGateway（Table Data Gateway）|
+| フレームワーク | Laravel 12 + Blade | Laravel 12（JSON API） | Laminas MVC |
+| レスポンス | HTML（Blade） | JSON | HTML（PHTML） |
+| 認証方式 | セッション（`Auth::attempt`） | Sanctum トークン（Bearer） | `laminas-authentication`（Session Storage） |
+| DB アクセス | Eloquent ORM | Eloquent ORM | TableGateway（Table Data Gateway） |
 | バリデーション | `$request->validate()` | `$request->validate()` | InputFilter クラス |
-| ルーティング | `routes/web.php` | `routes/api.php` | `config/module.config.php`（配列）|
+| ルーティング | `routes/web.php` | `routes/api.php` | `config/module.config.php`（配列） |
 | テーブル prefix | `fs_` | `api_` | `lam_` |
 | URL | http://localhost:8001 | http://localhost:8002 | http://localhost:8003 |
 
@@ -99,7 +99,7 @@ Route::middleware('auth:sanctum')->group(function () {
 **laravel-fullstack（セッション認証）**
 
 | ファイル | 役割 |
-|---|---|
+| --- | --- |
 | `app/Http/Controllers/AuthController.php` | 登録・ログイン・ログアウト |
 | `routes/web.php` の `middleware('auth'/'guest')` | 認証境界 |
 
@@ -112,10 +112,10 @@ Route::middleware('auth:sanctum')->group(function () {
 **laravel-api（Sanctum トークン認証）**
 
 | ファイル | 役割 |
-|---|---|
+| --- | --- |
 | `app/Http/Controllers/AuthController.php` | 登録/ログイン → トークン発行 |
 | `app/Http/Controllers/TokenController.php` | トークンの一覧・発行・失効 |
-| `app/Models/User.php`（`HasApiTokens`）| `createToken()` を提供 |
+| `app/Models/User.php`（`HasApiTokens`） | `createToken()` を提供 |
 
 読むポイント:
 
@@ -127,7 +127,7 @@ Route::middleware('auth:sanctum')->group(function () {
 **laminas（laminas-authentication + 自前 bcrypt）**
 
 | ファイル | 役割 |
-|---|---|
+| --- | --- |
 | `module/Application/src/Controller/AuthController.php` | ログイン・登録・ログアウト |
 | `module/Application/src/Service/PasswordHasher.php` | bcrypt ハッシュ/照合 |
 | `module/Application/src/Service/AuthSession.php` | 認証遷移時のセッション ID 再生成・破棄 |
@@ -225,9 +225,9 @@ $task = $this->table->getForUser($id, (int) $user->id); // スコープは Table
 ### Step 5: バリデーションを読む
 
 | アプリ | 方式 | 場所 |
-|---|---|---|
+| --- | --- | --- |
 | laravel-fullstack | `$request->validate([...])` | 各コントローラーメソッド内 |
-| laravel-api | `$request->validate([...])` | 同上（失敗時 422 JSON）|
+| laravel-api | `$request->validate([...])` | 同上（失敗時 422 JSON） |
 | laminas | InputFilter クラス | `src/InputFilter/*.php` |
 
 読むポイント:
@@ -245,8 +245,8 @@ $task = $this->table->getForUser($id, (int) $user->id); // スコープは Table
 **laravel-fullstack 固有**
 
 | ファイル | 内容 |
-|---|---|
-| `app/Services/LinkPreviewService.php` | URL の OGP プレビュー。**SSRF 対策の核**（`isPublicIp()` / `CURLOPT_RESOLVE` ピン留め）|
+| --- | --- |
+| `app/Services/LinkPreviewService.php` | URL の OGP プレビュー。**SSRF 対策の核**（`isPublicIp()` / `CURLOPT_RESOLVE` ピン留め） |
 | `app/Services/BlockedUrlException.php` | 拒否時の例外 |
 | `TaskController` の `storeConfirm` / `updateConfirm` / `duplicateConfirm` | 2 ステップ確認画面 |
 
@@ -255,13 +255,13 @@ $task = $this->table->getForUser($id, (int) $user->id); // スコープは Table
 **laravel-api 固有**
 
 | ファイル | 内容 |
-|---|---|
+| --- | --- |
 | `app/Http/Controllers/TokenController.php` | トークンの一覧/発行/失効、`expires_in_days` |
 
 **laminas 固有**
 
 | ファイル | 内容 |
-|---|---|
+| --- | --- |
 | `src/Model/TaskTable.php` / `UserTable.php` | TableGateway による明示的 DB アクセス |
 | `src/Controller/*Factory.php` | コントローラーの DI ファクトリ |
 | `src/Service/PasswordHasher.php` | bcrypt ラッパ |
@@ -275,53 +275,53 @@ $task = $this->table->getForUser($id, (int) $user->id); // スコープは Table
 テストは **単体 / IT（統合）/ E2E** の 3 粒度で構成する。文書の役割分担は次のとおりで、本書は「どのファイルを開くか」だけを扱う。
 
 | 文書 | 扱う内容 |
-|---|---|
-| 本書（`docs/12`）| どのテストファイルを、どの順で読むか |
+| --- | --- |
+| 本書（`docs/12`） | どのテストファイルを、どの順で読むか |
 | `docs/08` | テスト戦略・粒度の定義・ケース一覧 |
-| `docs/11` | 実測のケース数と進捗（変動する事実の置き場）|
+| `docs/11` | 実測のケース数と進捗（変動する事実の置き場） |
 
 **laravel-fullstack** — `tests/Feature/`（=IT）, `tests/Unit/`
 
 | ファイル | 粒度 | 内容 |
-|---|---|---|
+| --- | --- | --- |
 | `tests/Feature/AuthTest.php` | IT | 登録&自動ログイン / ログアウト / 誤パスワード / メール重複 |
 | `tests/Feature/TaskTest.php` | IT | 一覧/作成/トグル/編集/複製/画像/2ステップ確認/検索/ページネーション、他人タスク 404 |
-| `tests/Feature/TaskImageIntegrityTest.php` | IT | 失敗注入。ファイルと DB の失敗境界（順序と補償）|
-| `tests/Feature/CspHeaderTest.php` | IT | CSP ヘッダーの内容（nonce の一致・`'unsafe-inline'` の混入検出）|
+| `tests/Feature/TaskImageIntegrityTest.php` | IT | 失敗注入。ファイルと DB の失敗境界（順序と補償） |
+| `tests/Feature/CspHeaderTest.php` | IT | CSP ヘッダーの内容（nonce の一致・`'unsafe-inline'` の混入検出） |
 | `tests/Unit/LinkPreviewServiceTest.php` | 単体 | SSRF: public 許可 / private・loopback・link-local 拒否 |
 
 **laravel-api** — `tests/Feature/`（=IT）, `tests/Unit/`
 
 | ファイル | 粒度 | 内容 |
-|---|---|---|
+| --- | --- | --- |
 | `tests/Feature/AuthApiTest.php` | IT | register/login のトークン返却、token 無し 401 |
 | `tests/Feature/TaskApiTest.php` | IT | JSON CRUD、境界値（`per_page` クランプ等）、他人タスク 404 |
 | `tests/Feature/TokenApiTest.php` | IT | トークンの発行 / 一覧（ハッシュ非公開）/ 失効 |
-| `tests/Feature/TaskImageIntegrityTest.php` | IT | 失敗注入。ファイルと DB の失敗境界（順序と補償）|
-| `tests/Feature/CspHeaderTest.php` | IT | CSP ヘッダーの内容（`default-src 'none'` の維持）|
+| `tests/Feature/TaskImageIntegrityTest.php` | IT | 失敗注入。ファイルと DB の失敗境界（順序と補償） |
+| `tests/Feature/CspHeaderTest.php` | IT | CSP ヘッダーの内容（`default-src 'none'` の維持） |
 | `tests/Unit/TaskModelTest.php` | 単体 | `$fillable` / `$casts` / `$hidden` と `image_url` アクセサ |
 
 **laminas** — `module/Application/test/`
 
 | ファイル | 粒度 | 内容 |
-|---|---|---|
+| --- | --- | --- |
 | `test/Model/TaskTest.php` | 単体 | `exchangeArray` の型整形 |
-| `test/Model/TaskTableTest.php` | 単体 | SQL レベルの所有者スコープ（他人タスクを取得・更新・削除できない）|
+| `test/Model/TaskTableTest.php` | 単体 | SQL レベルの所有者スコープ（他人タスクを取得・更新・削除できない） |
 | `test/Service/PasswordHasherTest.php` | 単体 | hash→verify、bcrypt 形式、ソルト差異 |
 | `test/InputFilter/*Test.php` | 単体 | Task/Register/Login の有効/無効入力 |
 | `test/Integration/AuthControllerIntegrationTest.php` | IT | 登録 → ログイン → ログアウトを dispatch で通し検証 |
 | `test/Integration/TaskControllerIntegrationTest.php` | IT | CRUD・完了トグルと、他人タスクの編集・削除・複製・トグルが弾かれること |
-| `test/Integration/CspHeaderIntegrationTest.php` | IT | CSP ヘッダーの内容（nonce の一致・`'unsafe-inline'` の混入検出）|
+| `test/Integration/CspHeaderIntegrationTest.php` | IT | CSP ヘッダーの内容（nonce の一致・`'unsafe-inline'` の混入検出） |
 | `test/Integration/CsrfProtectionIntegrationTest.php` | IT | GET での状態変更が 405 / トークン不正が 403 / 正規トークンは成功 |
 
 **3 アプリ横断** — `e2e/`（Playwright / TypeScript）
 
 | ファイル | 粒度 | 内容 |
-|---|---|---|
+| --- | --- | --- |
 | `e2e/tests/fullstack/`, `e2e/tests/laminas/` | E2E | 実ブラウザで 登録 → ログイン → CRUD → ログアウト と異常系 |
 | `e2e/tests/api/` | E2E | HTTP（Bearer）で同じフローと 401/404/422 を検証 |
-| `e2e/tests/*/csp.spec.ts` | E2E | CSP の実挙動（違反ゼロ・nonce 無しインライン script が動かない）|
-| `e2e/tests/laminas/csrf.spec.ts` | E2E | 実セッションでの CSRF（GET は 405・トークン無しは 403）|
+| `e2e/tests/*/csp.spec.ts` | E2E | CSP の実挙動（違反ゼロ・nonce 無しインライン script が動かない） |
+| `e2e/tests/laminas/csrf.spec.ts` | E2E | 実セッションでの CSRF（GET は 405・トークン無しは 403） |
 
 読むポイント:
 
@@ -338,11 +338,11 @@ $task = $this->table->getForUser($id, (int) $user->id); // スコープは Table
 同じ「全リクエスト・全応答に一律で何かをする」要件を、フレームワークの構造差でどう実現するかの対比。
 
 | | laravel-fullstack | laravel-api | laminas |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 実装 | `app/Http/Middleware/ContentSecurityPolicy.php` | 同左（同名） | `src/Service/ContentSecurityPolicy.php` + `src/Module.php` |
 | 付与する場所 | グローバルミドルウェア | グローバルミドルウェア | `MvcEvent::EVENT_FINISH` リスナー |
-| nonce の受け渡し | `View::share()` → Blade の `{{ $cspNonce }}` | 不要（JSON のみ）| ServiceManager の共有サービス → ビューヘルパー `$this->cspNonce()` |
-| ポリシー | CDN + nonce + `img-src https:`（OGP）| `default-src 'none'` | CDN + nonce（`img-src` は self のみ）|
+| nonce の受け渡し | `View::share()` → Blade の `{{ $cspNonce }}` | 不要（JSON のみ） | ServiceManager の共有サービス → ビューヘルパー `$this->cspNonce()` |
+| ポリシー | CDN + nonce + `img-src https:`（OGP） | `default-src 'none'` | CDN + nonce（`img-src` は self のみ） |
 
 読むポイント:
 
@@ -353,11 +353,11 @@ $task = $this->table->getForUser($id, (int) $user->id); // スコープは Table
 **CSRF**（セッション認証の 2 アプリのみ。api は Bearer トークンで Cookie を使わないため不要）
 
 | | laravel-fullstack | laminas |
-|---|---|---|
-| トークンの発行 | Blade の `@csrf` | ビューヘルパー `$this->csrfInput()`（`src/View/Helper/CsrfInput.php`）|
-| トークンの検証 | `VerifyCsrfToken` ミドルウェア（フレームワーク標準）| `Module::onBootstrap` の `EVENT_ROUTE` リスナー |
-| トークンの実体 | `session('_token')` | `src/Service/CsrfGuard.php`（`random_bytes(32)` + `hash_equals`）|
-| 拒否時 | 419 | 403（GET で状態変更は 405）|
+| --- | --- | --- |
+| トークンの発行 | Blade の `@csrf` | ビューヘルパー `$this->csrfInput()`（`src/View/Helper/CsrfInput.php`） |
+| トークンの検証 | `VerifyCsrfToken` ミドルウェア（フレームワーク標準） | `Module::onBootstrap` の `EVENT_ROUTE` リスナー |
+| トークンの実体 | `session('_token')` | `src/Service/CsrfGuard.php`（`random_bytes(32)` + `hash_equals`） |
+| 拒否時 | 419 | 403（GET で状態変更は 405） |
 
 読むポイント:
 
@@ -370,13 +370,13 @@ $task = $this->table->getForUser($id, (int) $user->id); // スコープは Table
 ## 重要な差分まとめ
 
 | 観点 | laravel-fullstack | laravel-api | laminas |
-|---|---|---|---|
-| **ルート定義** | `web.php`（名前付き + middleware グループ）| `api.php`（`apiResource` + `auth:sanctum`）| `module.config.php`（配列 Segment）|
-| **認証の維持** | サーバーセッション | DB のトークン（ステートレス）| Session Storage（identity）|
+| --- | --- | --- | --- |
+| **ルート定義** | `web.php`（名前付き + middleware グループ） | `api.php`（`apiResource` + `auth:sanctum`） | `module.config.php`（配列 Segment） |
+| **認証の維持** | サーバーセッション | DB のトークン（ステートレス） | Session Storage（identity） |
 | **未認証時** | `guest`/`auth` ミドルウェアでリダイレクト | `auth:sanctum` → 401 | 各アクションで `hasIdentity()` 判定 → login へ |
-| **DB アクセス** | Eloquent ORM | Eloquent ORM | TableGateway（明示 SQL）|
-| **所有者スコープ** | `Auth::user()->tasks()` + `abort_if 404` | `$request->user()->tasks()` + `abort_if 404` | `getForUser($id, $userId)`（Table 層）|
-| **バリデーション** | `$request->validate()` | `$request->validate()`（422 JSON）| InputFilter クラス |
+| **DB アクセス** | Eloquent ORM | Eloquent ORM | TableGateway（明示 SQL） |
+| **所有者スコープ** | `Auth::user()->tasks()` + `abort_if 404` | `$request->user()->tasks()` + `abort_if 404` | `getForUser($id, $userId)`（Table 層） |
+| **バリデーション** | `$request->validate()` | `$request->validate()`（422 JSON） | InputFilter クラス |
 | **レスポンス** | Blade + `redirect()->route()` | `response()->json()` | PHTML / `redirect()->toRoute()` |
 | **DI** | コンテナ自動解決 | コンテナ自動解決 | `*Factory` を明示 |
 | **固有機能** | 2 ステップ確認 / OGP プレビュー(SSRF) / 画像 | トークン管理 / Sanctum | TableGateway / InputFilter |

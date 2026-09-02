@@ -19,7 +19,7 @@ globs:
 「どのドキュメントだっけ？」を考えさせないための逆引き表。3 アプリ（laravel-fullstack / laravel-api / laminas）共通の仕様書を対象とする。
 
 | 変更種別 | 更新必須ドキュメント |
-|---|---|
+| --- | --- |
 | 業務要求・スコープの変更 | docs/01-business-requirements.md |
 | 要件（やること/やらないこと）の変更 | docs/02-requirements-specification.md |
 | 機能の挙動・ユーザーフロー・UI/UX・バリデーションの変更 | docs/03-functional-specification.md |
