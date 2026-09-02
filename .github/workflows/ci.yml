@@ -138,24 +138,36 @@ jobs:
           filters: |
             workflows:
               - '.github/workflows/**'
+              # actionlint のコマンド定義（イメージのタグを含む）。CI がこれを呼ぶため、
+              # 変更したら検査対象に含める。
+              - 'Makefile'
+              # actionlint の設定ファイル（現在は未設置。追加された時点で拾う）
+              - '.github/actionlint.yaml'
 
   # GitHub Actions ワークフロー自身の静的解析。
   # .claude/rules/github-actions.md が workflow 変更時の actionlint 実行を要求するため、
   # その品質ゲートを CI 上で強制する。構文・式（${{ }}）・runner ラベル・action 入力に加え、
   # run: の中身を shellcheck に流すため、shell の不具合もここで落ちる。
   #
-  # 取得は公式 Docker イメージのバージョン固定タグ。Makefile の `make actionlint` と
-  # 同一コマンドで、手元と CI で同じ検査結果になる（バージョンを上げるときは両方直す）。
+  # 取得は公式 Docker イメージのバージョン固定タグ（shellcheck 同梱）。定義は Makefile が
+  # 唯一の正本で、CI もそれを呼ぶため手元と CI で同じ検査結果になる。
   actionlint:
     name: actionlint
     needs: changes
     if: needs.changes.outputs.workflows == 'true'
     runs-on: ubuntu-latest
+    # ワークフローを読むだけ。シークレットを渡さず最小権限に絞る
+    # （ワークフローレベルの pull-requests: read は changes ジョブ用で、ここでは不要）。
+    permissions:
+      contents: read
     steps:
+      # actionlint は .git からリポジトリルートを判定するため checkout を先に置く。
       - uses: actions/checkout@v4
 
+      # コマンドとイメージのタグは Makefile 1 箇所で定義し、手元と CI で同一のものを実行する
+      # （2 箇所に書き写すと、片方だけ上げても CI は緑のまま検査内容がずれる）。
       - name: Lint workflows (actionlint)
-        run: docker run --rm -v "$PWD":/repo --workdir /repo rhysd/actionlint:1.7.12 -color
+        run: make actionlint
 
   # ドキュメント（md）変更時の軽量チェック。
   # github-actions.md の「ドキュメント変更でも『何も動かさない』にはしない」に対応する。

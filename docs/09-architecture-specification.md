@@ -108,11 +108,12 @@ laminas はアップロード機能を持たないため既定の 1m のまま�
   | md ドキュメント / `.claude/**` / `.markdownlint-cli2.jsonc` | ❌ | ❌ | ❌ | ✅ | ❌ |
   | ルート直下の `package.json` / `package-lock.json`（markdown lint の実行環境） | ❌ | ❌ | ❌ | ✅ | ❌ |
   | `.github/workflows/**` | ✅ | ✅ | ✅ | ❌ | ✅ |
+  | `Makefile`（actionlint のコマンド定義） | ❌ | ❌ | ❌ | ❌ | ✅ |
   | 上記に当てはまらない変更（新規ディレクトリ等） | ✅ | ✅ | ✅ | ❌ | ❌ |
 
-  `test` が Docker 系（`compose.yaml` / `docker/**`）に依存しないのは、`shivammathur/setup-php` で動き Docker を使わないため。`Makefile` はどのジョブも参照しない（CI は各コマンドを直接叩く）ため全フィルタで除外している。 ルート直下の `package*.json` は markdown lint 専用のため PHP 系 3 ジョブから除外している（`e2e/package*.json` は別パスで、従来どおり `e2e` を発火させる）。
+  `test` が Docker 系（`compose.yaml` / `docker/**`）に依存しないのは、`shivammathur/setup-php` で動き Docker を使わないため。`Makefile` は PHP 系 3 ジョブが参照しない（CI は各コマンドを直接叩く）ため、それらのフィルタでは除外している。**例外は actionlint ジョブ**で、イメージのタグを 2 箇所に書き写さないために `make actionlint` を呼ぶ。そのため `workflows` フィルタは `Makefile` も対象に含める。 ルート直下の `package*.json` は markdown lint 専用のため PHP 系 3 ジョブから除外している（`e2e/package*.json` は別パスで、従来どおり `e2e` を発火させる）。
 
-- **actionlint**: `if: workflows == 'true'` で `.github/workflows/**` の変更時のみ実行。workflow の構文・式（`${{ }}`）・runner ラベル・action の入力に加え、**`run:` の中身を shellcheck に流す**（`.claude/rules/github-actions.md` が要求する品質ゲートの実体）。取得は公式 Docker イメージ `rhysd/actionlint` のバージョン固定タグで、`make actionlint` と**同一コマンド**のため手元と CI で結果が一致する。バージョンを上げる際は `Makefile` と `ci.yml` の両方を揃える。
+- **actionlint**: `if: workflows == 'true'` で `.github/workflows/**` または `Makefile` の変更時のみ実行。workflow の構文・式（`${{ }}`）・runner ラベル・action の入力・**スクリプトインジェクション**に加え、**`run:` の中身を shellcheck に流す**（`.claude/rules/github-actions.md` が要求する品質ゲートの実体）。取得は公式 Docker イメージ `rhysd/actionlint` のバージョン固定タグ。**CI は `make actionlint` を呼ぶ**ため、コマンドとタグの定義は `Makefile` の 1 箇所だけになり、手元と CI が構造的に一致する（バージョンを上げるときも `Makefile` を変えるだけでよい）。公式イメージを使う理由は **shellcheck が同梱されている**こと。バイナリだけ入れると `run:` の検査が警告もなく静かにスキップされ、終了コード 0 のまま検査が減ったことに気づけない。ジョブは `permissions: contents: read` に絞る。
 - **markdown-lint**: `if: docs == 'true'` で md 変更時のみ実行（`markdownlint-cli2`）。対象と無効化ルールの理由は `.markdownlint-cli2.jsonc` に記載し、**警告ゼロを維持**する（`.claude/rules/static-analysis.md`）。ローカルは `make md-lint` / `make md-fix`。バージョンはルートの `package.json` の devDependency で完全固定し（`npm ci`）、更新は Dependabot（`.github/dependabot.yml`・npm / weekly）が PR で上げる。**`run:` に `npx pkg@x.y.z` と直書きするとマニフェストではないため Dependabot から見えず、更新契機が生まれない**（actionlint の Docker タグ固定には同じ制約が残っている）。
 - **test**: `needs: changes` + `if: test == 'true'` で実行。`shivammathur/setup-php`（PHP 8.3）で各アプリをセットアップ（Docker 不使用）、matrix で 3 アプリを並行ジョブ実行（`fail-fast: false`）。Laravel ×2 は `php artisan test`（テスト DB は SQLite in-memory のため MySQL サービス不要）、Laminas は `vendor/bin/phpunit`。
 - **lint**: `if: lint == 'true'` で実行する静的チェックジョブ（matrix で 3 アプリ並行）。Laravel ×2 は `vendor/bin/pint --test`（整形の差分検査）+ `composer analyse`（Larastan/PHPStan・`level: max`）、Laminas は `composer cs-check`（phpcs / Laminas Coding Standard）+ `vendor/bin/psalm`（型解析・`errorLevel=1`）。静的解析の既存指摘は baseline（Laravel=`apps/laravel-*/phpstan-baseline.neon` / Laminas=`apps/laminas/psalm-baseline.xml`）に記録済みで、CI は**新規に増えた指摘のみ**で失敗する（baseline 運用）。ローカルでの自動修正は Laravel=`vendor/bin/pint`、Laminas=`composer cs-fix`。
@@ -120,7 +121,7 @@ laminas はアップロード機能を持たないため既定の 1m のまま�
 
 > 補足: 必須チェックの落とし穴を避けるため、**ワークフローレベルの `paths` / `paths-ignore` は使わない**。ワークフロー自体が起動しないと必須チェックが `pending` のまま完了せず PR がマージ不能になるため、「常に起動してジョブレベル `if:` でスキップする（= skipped は成功扱い）」形を採る（`.claude/rules/github-actions.md`）。
 >
-> `Makefile` のみを変更した PR では**どのジョブも実行されない**（CI は Makefile を経由しないため検査手段がない）。意図的なトレードオフとして受け入れている。検査が必要になった場合は `make -n` の dry-run 等を軽量チェックとして追加する。なお初期化手順の実体は `scripts/setup.sh` にあり、こちらは e2e ジョブが実際に実行するため CI で検査される（`Makefile` の `setup` ターゲットはそれを呼ぶだけ）。
+> `Makefile` のみを変更した PR では **actionlint ジョブだけが実行される**（CI が `make actionlint` を呼ぶため）。他のターゲット（`test` / `md-lint` 等）は CI が Makefile を経由しないため検査されない。意図的なトレードオフとして受け入れている。なお初期化手順の実体は `scripts/setup.sh` にあり、こちらは e2e ジョブが実際に実行するため CI で検査される（`Makefile` の `setup` ターゲットはそれを呼ぶだけ）。
 >
 > branch protection（必須チェック）導入時は、マトリクスを `if` でスキップすると `test (app)` 個別の check run が生成されない点に注意。その際は `if: always()` の集約ゲートジョブを追加し、それ 1 つを必須チェックに指定する設計が必要になる。現状このリポジトリは private 無料プランで branch protection を利用できないため、集約ゲートは導入していない。
 
