@@ -71,11 +71,11 @@ make down               # 停止
 
 ```bash
 make setup               # 実環境を起動（初回・再実行可）
-make e2e                 # e2e/ で npm ci → chromium 導入 → playwright test（3 projects）
+make e2e                 # e2e/ で npm ci → chromium 導入 → playwright test（guard + 3 projects）
 # 個別: cd e2e && npx playwright test --project=api
 ```
 
-対象 URL は既定で compose のポート（8001/8002/8003）。`E2E_FS_URL` / `E2E_LAMINAS_URL` / `E2E_API_URL` で上書きできる。CI では push/PR 時に専用 `e2e` ジョブが compose 起動 → migrate → Playwright を実行する。
+対象 URL は既定で compose のポート（8001/8002/8003）。`E2E_FS_URL` / `E2E_LAMINAS_URL` / `E2E_API_URL` で上書きできるが、**上書き先はローカル（`localhost` / `127.0.0.1` / `::1`）に限る**。E2E は登録・作成・削除を実行するため、それ以外のホストを指した場合はテストが 1 件も走る前に落ちる（`e2e/helpers/config.ts`・`.claude/rules/testing.md`）。CI では push/PR 時に専用 `e2e` ジョブが compose 起動 → migrate → Playwright を実行する。
 
 ### markdown lint
 

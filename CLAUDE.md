@@ -17,6 +17,7 @@ PHP の学習を目的とした練習用 Web アプリケーション
 | github-actions.md | .github/workflows/** | GitHub Actions の発火ルール（変更内容に応じたジョブ実行・パスフィルタ・デプロイ） |
 | testing.md | 全体 | テスト分類・原則 |
 | security.md | 全体 | セキュリティ最低線（認証・通信・インジェクション対策・シークレット管理） |
+| production-data.md | 全体 | データ保護（共有 MySQL への破壊的操作の禁止・接続先確認・AI エージェント制約） |
 | static-analysis.md | 全体 | 静的解析の運用（役割分担・CI 必須・baseline・抑制コメント） |
 | duplication.md | 全体 | 重複と共通化の判断基準（3 アプリ間は共通化しない） |
 | dead-code.md | 全体 | デッドコード禁止（削除対象・フレームワーク規約の例外・検出手段） |
