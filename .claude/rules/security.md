@@ -15,6 +15,7 @@ globs:
 | 所有者スコープの実装・SQL バインド・認証の作法 | [php.md](./php.md) |
 | バリデーション・HTTP ステータス・404 隠蔽・ログのマスキング | [error-handling.md](./error-handling.md) |
 | `.env` 管理・シークレットのハードコード禁止 | [coding-standards.md](./coding-standards.md) |
+| 破壊的操作からのデータ保護（共有 MySQL・接続先確認・エージェント制約） | [production-data.md](./production-data.md) |
 | SSRF 対策・脅威分析などの設計判断 | `docs/06-security-specification.md` |
 
 ## 認証・認可

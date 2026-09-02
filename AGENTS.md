@@ -12,6 +12,7 @@
 - `.claude/rules/github-issue.md`
 - `.claude/rules/testing.md`
 - `.claude/rules/security.md`
+- `.claude/rules/production-data.md`
 - `.claude/rules/static-analysis.md`
 - `.claude/rules/duplication.md`
 - `.claude/rules/dead-code.md`

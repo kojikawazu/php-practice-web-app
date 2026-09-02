@@ -24,8 +24,11 @@
 | laravel-api | PHPUnit（`php artisan test`） | SQLite in-memory（Unit は DB 不要） | Feature（JSON API）=**IT** + Unit（Task モデル） |
 | laminas | PHPUnit（`vendor/bin/phpunit`） | IT・認可テストは SQLite in-memory（他はモデル/サービス/InputFilter 単体で DB 不要） | Unit（Task / PasswordHasher / InputFilter×3 / **TaskTable 所有者スコープ**）+ **IT（TaskController / AuthController を dispatch）**。実セッション永続は E2E がカバー |
 | 3アプリ横断（E2E） | Playwright（`make e2e` / `npx playwright test`） | 実 MySQL（compose） | **E2E**: fullstack / laminas（ブラウザ）+ api（HTTP/Bearer）。登録→ログイン→CRUD→ログアウトの実フローと認可・境界値・不正入力を実環境で検証 |
+| 接続先ガード（guard） | Playwright（`--project=guard`） | 不要（純関数の検証） | **Unit**: E2E の対象 URL を解決する `e2e/helpers/config.ts` の allowlist 検証。ブラウザも起動中のアプリも要らない |
 
 > テストを SQLite in-memory にしている理由: `RefreshDatabase` は `migrate:fresh`（全テーブル DROP）を行うため、共有 MySQL に対して実行すると他アプリのテーブルを巻き込む。テストは隔離された in-memory DB で実行し、prefix 動作は実 DB へのマイグレーションで確認する。
+>
+> E2E の対象 URL を allowlist で検証している理由: E2E は登録・作成・削除を繰り返すため、`E2E_FS_URL` 等がローカル以外を指すとその環境を書き換えてしまう。`e2e/helpers/config.ts` に解決を集約し、ホストが `localhost` / `127.0.0.1` / `::1` 以外なら**テストが 1 件も走る前に**落とす（`playwright.config.ts` が読み込み時に解決するため、config のロードで失敗する）。ガード自体は `guard` project で検証する（`.claude/rules/testing.md`「テスト対象・テスト DB の接続先（破壊防止）」）。
 
 ## テストケース（CRUD + 認証）
 
@@ -79,8 +82,9 @@ E2E（Playwright・実環境に対して実行）:
 
 ```bash
 make setup                # 実環境を起動（.env・vendor・APP_KEY・migrate まで一括・冪等）
-make e2e                  # e2e/ で npm ci → chromium 導入 → playwright test（3 projects）
+make e2e                  # e2e/ で npm ci → chromium 導入 → playwright test（guard + 3 projects）
 # 個別実行例: cd e2e && npx playwright test --project=api
+# 接続先ガードのみ: cd e2e && npx playwright test --project=guard（アプリの起動は不要）
 ```
 
 ## カバレッジ目標
