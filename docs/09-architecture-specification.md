@@ -105,7 +105,7 @@ laminas はアップロード機能を持たないため既定の 1m のまま�
   | 静的解析の設定のみ（`phpstan.neon` / `psalm.xml` / `phpcs.xml` / 各 baseline） | ❌ | ✅ | ❌ | ❌ | ❌ |
   | PHPUnit の設定のみ（`phpunit.xml` / `phpunit.xml.dist`） | ✅ | ❌ | ❌ | ❌ | ❌ |
   | `compose.yaml` / `docker/**` / `e2e/**` | ❌ | ❌ | ✅ | ❌ | ❌ |
-  | md ドキュメント / `.claude/**` / `.markdownlint-cli2.jsonc` | ❌ | ❌ | ❌ | ✅ | ❌ |
+  | md ドキュメント（`.github/PULL_REQUEST_TEMPLATE/**` を含む） / `.claude/**` / markdown lint の設定（`.markdownlint-cli2.jsonc` と入れ子の `.markdownlint.jsonc`） | ❌ | ❌ | ❌ | ✅ | ❌ |
   | ルート直下の `package.json` / `package-lock.json`（markdown lint の実行環境） | ❌ | ❌ | ❌ | ✅ | ❌ |
   | `.github/workflows/**` | ✅ | ✅ | ✅ | ❌ | ✅ |
   | `Makefile`（actionlint のコマンド定義） | ❌ | ❌ | ❌ | ❌ | ✅ |

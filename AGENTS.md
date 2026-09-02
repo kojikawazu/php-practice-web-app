@@ -10,6 +10,7 @@
 - `.claude/rules/documentation.md`
 - `.claude/rules/git.md`
 - `.claude/rules/github-issue.md`
+- `.claude/rules/pr-description.md`
 - `.claude/rules/testing.md`
 - `.claude/rules/security.md`
 - `.claude/rules/production-data.md`

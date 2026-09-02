@@ -65,6 +65,8 @@ jobs:
               - '!.claude/**'
               # markdown lint の設定のみに影響するファイル（下の docs フィルタ側で拾う）
               - '!.markdownlint-cli2.jsonc'
+              # 入れ子の markdown lint 設定（.github/PULL_REQUEST_TEMPLATE/ 等）も同じ扱い
+              - '!**/.markdownlint.jsonc'
               # ルート直下の package*.json は markdown lint 専用（PHPUnit は読まない）
               - '!package.json'
               - '!package-lock.json'
@@ -84,6 +86,8 @@ jobs:
               - '!**/*.md'
               - '!.claude/**'
               - '!.markdownlint-cli2.jsonc'
+              # 入れ子の markdown lint 設定（.github/PULL_REQUEST_TEMPLATE/ 等）も同じ扱い
+              - '!**/.markdownlint.jsonc'
               # ルート直下の package*.json は markdown lint 専用（Pint / phpcs / Psalm / Larastan は読まない）
               - '!package.json'
               - '!package-lock.json'
@@ -100,6 +104,8 @@ jobs:
               - '!**/*.md'
               - '!.claude/**'
               - '!.markdownlint-cli2.jsonc'
+              # 入れ子の markdown lint 設定（.github/PULL_REQUEST_TEMPLATE/ 等）も同じ扱い
+              - '!**/.markdownlint.jsonc'
               # ルート直下の package*.json は markdown lint 専用（Playwright が読むのは e2e/package*.json）
               - '!package.json'
               - '!package-lock.json'
@@ -125,6 +131,7 @@ jobs:
             docs:
               - '**/*.md'
               - '.markdownlint-cli2.jsonc'
+              - '**/.markdownlint.jsonc'
               # markdownlint-cli2 のバージョン更新（Dependabot の PR）でも検査を走らせる
               - 'package.json'
               - 'package-lock.json'
