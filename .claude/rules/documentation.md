@@ -31,6 +31,7 @@ globs:
 | アーキテクチャ・モノレポ構成・Docker/nginx 構成の変更 | docs/09-architecture-specification.md |
 | 上記に収まらない運用・補足事項の変更 | docs/10-miscellaneous-specification.md |
 | 開発タスク・マイルストーン・進捗の変化 | docs/11-tasks.md |
+| 誤り・失敗・ハマりから得た教訓 | docs/lessons-learned.md（運用の正本は .claude/rules/lessons-learned.md） |
 | ルートの構成・セットアップ・起動手順の変更 | README.md |
 | 規約本文の変更（`.claude/rules/`） | 原則不要（正本のルールファイルのみ） |
 | 規約ファイルの追加・削除・改名・適用範囲変更 | CLAUDE.md / AGENTS.md 群 / README.md（AI エージェント向けルール表） |

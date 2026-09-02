@@ -165,6 +165,7 @@ docker compose exec php-laminas composer ...
 | 10 | [miscellaneous-specification](docs/10-miscellaneous-specification.md) | その他（用語集・参照資料・決定事項） |
 | 11 | [tasks](docs/11-tasks.md) | タスク・進捗・マイルストーン |
 | 12 | [code-reading-guide](docs/12-code-reading-guide.md) | コードリーディングガイド（3 アプリの読み比べ） |
+| — | [lessons-learned](docs/lessons-learned.md) | 教訓ログ（誤り・失敗・ハマりの記録。追記のみ・新しいものを上） |
 
 ## ライセンス
 
