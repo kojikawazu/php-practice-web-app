@@ -9,10 +9,10 @@ PHP の学習を目的とした練習用 Web アプリケーション
 3 つの PHP フレームワークを 1 リポジトリ（モノレポ）で学べる構成。共有 MySQL に対し、アプリごとにテーブルプレフィックスで名前空間を分離する。
 
 | アプリ | パス | フレームワーク | URL | prefix |
-|--------|------|----------------|-----|--------|
+| -------- | ------ | ---------------- | ----- | -------- |
 | フルスタック | `apps/laravel-fullstack` | Laravel 12 + Blade | http://localhost:8001 | `fs_` |
-| API | `apps/laravel-api` | Laravel 12（JSON API）| http://localhost:8002 | `api_` |
-| Laminas | `apps/laminas` | Laminas MVC（旧 Zend 後継）| http://localhost:8003 | `lam_` |
+| API | `apps/laravel-api` | Laravel 12（JSON API） | http://localhost:8002 | `api_` |
+| Laminas | `apps/laminas` | Laminas MVC（旧 Zend 後継） | http://localhost:8003 | `lam_` |
 
 スタック: PHP 8.3 / MySQL 8 / nginx / Docker Compose。各アプリにサンプルの「タスク CRUD」とテストを同梱。
 
@@ -83,8 +83,10 @@ make e2e                 # e2e/ で npm ci → chromium 導入 → playwright te
 
 ```bash
 make md-lint            # 検査（CI の markdown-lint ジョブと同じコマンド）
-make md-fix             # 自動修正できる指摘（空行の過不足など）を直す
+make md-fix             # 自動修正できる指摘（テーブルの列スタイル・空行の過不足など）を直す
 ```
+
+バージョンはルートの `package.json`（devDependency・キャレット無しの完全固定）で管理し、`make` と CI が同じものを実行する。更新は Dependabot（`.github/dependabot.yml`）が PR で上げる。ルート直下の `package.json` / `package-lock.json` はこの markdown lint 専用で、3 アプリ（PHP）は Node に依存しない。
 
 ### GitHub Actions ワークフローの検査（actionlint）
 
@@ -101,7 +103,7 @@ CI: push / Pull Request 時に GitHub Actions（`.github/workflows/ci.yml`）が
 発火は変更内容で制御される（`.claude/rules/github-actions.md`）。`test` / `lint` / `e2e` / `markdown-lint` / `actionlint` はそれぞれ読むファイルが違うため、条件も分けている。
 
 | 変更内容 | 実行されるジョブ |
-|---|---|
+| --- | --- |
 | md ドキュメント / `.claude/**` | `markdown-lint` |
 | `apps/**` のコード | `test` + `lint` + `e2e` |
 | テストコードのみ | `test` + `lint` |
@@ -128,7 +130,7 @@ docker compose exec php-laminas composer ...
 開発ルールの正本は [`.claude/rules/`](.claude/rules/) です。Claude Code は [`CLAUDE.md`](CLAUDE.md) から、Codex はリポジトリ階層の [`AGENTS.md`](AGENTS.md) から同じルールを参照します。ルール本文は複製せず、変更対象に最も近い `AGENTS.md` が指定する追加ルールも適用します。
 
 | 対象 | Codex 向け指示ファイル | 追加で参照するルール |
-|---|---|---|
+| --- | --- | --- |
 | リポジトリ全体 | [`AGENTS.md`](AGENTS.md) | 共通ルール |
 | `apps/**` | [`apps/AGENTS.md`](apps/AGENTS.md) | PHP 共通・3 アプリ横断 |
 | `apps/laravel-fullstack/**` | [`apps/laravel-fullstack/AGENTS.md`](apps/laravel-fullstack/AGENTS.md) | Laravel・Blade・セッション認証 |
@@ -138,9 +140,9 @@ docker compose exec php-laminas composer ...
 ### よくある探し物（クイックリンク）
 
 | 知りたいこと | 参照先 |
-|---|---|
+| --- | --- |
 | **3 アプリの構成・アーキテクチャ**（nginx / php-fpm / 共有 MySQL） | [docs/09-architecture-specification.md](docs/09-architecture-specification.md) |
-| **ポート番号**（fullstack 8001 / api 8002 / laminas 8003 / MySQL 3306）| [docs/09-architecture-specification.md](docs/09-architecture-specification.md) |
+| **ポート番号**（fullstack 8001 / api 8002 / laminas 8003 / MySQL 3306） | [docs/09-architecture-specification.md](docs/09-architecture-specification.md) |
 | **DB（ER 図・テーブルスキーマ・prefix 分離）** | [docs/05-data-specification.md](docs/05-data-specification.md) |
 | **セキュリティ**（認証・認可・SSRF 対策） | [docs/06-security-specification.md](docs/06-security-specification.md) |
 | **API エンドポイント一覧**（laravel-api / Sanctum） | [docs/07-api-specification.md](docs/07-api-specification.md) |
@@ -150,7 +152,7 @@ docker compose exec php-laminas composer ...
 ### ドキュメント一覧
 
 | # | ファイル | 内容 |
-|---|---|---|
+| --- | --- | --- |
 | 01 | [business-requirements](docs/01-business-requirements.md) | 要求仕様（背景・目標・スコープ） |
 | 02 | [requirements-specification](docs/02-requirements-specification.md) | 要件仕様（機能要件一覧・受け入れ条件・優先度） |
 | 03 | [functional-specification](docs/03-functional-specification.md) | 機能仕様（各機能詳細・ユーザーフロー・確認画面・バリデーション） |
@@ -171,7 +173,7 @@ docker compose exec php-laminas composer ...
 ただし、フレームワークのスケルトン由来のファイルは元のライセンスに従います。
 
 | 対象 | ライセンス | 条文 |
-|---|---|---|
+| --- | --- | --- |
 | リポジトリ全体（自作コード・ドキュメント） | MIT | [`LICENSE`](LICENSE) |
 | `apps/laminas`（Laminas MVC スケルトン由来） | BSD-3-Clause | [`apps/laminas/LICENSE.md`](apps/laminas/LICENSE.md) / [`apps/laminas/COPYRIGHT.md`](apps/laminas/COPYRIGHT.md) |
 | `vendor/`・`node_modules/` の依存パッケージ | 各パッケージのライセンス | 各パッケージ同梱の条文 |

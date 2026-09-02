@@ -5,19 +5,19 @@
 ## マイルストーン
 
 | マイルストーン | 内容 | 状態 |
-|----------------|------|------|
-| M1 基盤 | モノレポ + Docker + MySQL + テスト（PR #1〜3）| 完了 |
-| M2 認証 | 3アプリ認証 + ユーザー毎タスク（PR #4）| 完了 |
-| M3 機能拡充 | 編集 / 検索・ページ / トークン管理 / バリデーション / 複製（PR #5〜9）| 完了 |
-| M4 CI | GitHub Actions 自動テスト（PR #10）| 完了 |
-| M5 日付 | 開始日・終了日（カレンダー）（PR #11）| 完了 |
-| M6 UI/UX拡充 | 仕様同期 / Tailwind / 画像アップロード / URL プレビュー(SSRF対策) / 2ステップ確認画面（PR #12〜16）| 完了 |
-| M7 テスト拡充 | IT 導入（PR #28）/ E2E 導入（Playwright・3アプリ横断・CI）| 進行中 |
+| ---------------- | ------ | ------ |
+| M1 基盤 | モノレポ + Docker + MySQL + テスト（PR #1〜3） | 完了 |
+| M2 認証 | 3アプリ認証 + ユーザー毎タスク（PR #4） | 完了 |
+| M3 機能拡充 | 編集 / 検索・ページ / トークン管理 / バリデーション / 複製（PR #5〜9） | 完了 |
+| M4 CI | GitHub Actions 自動テスト（PR #10） | 完了 |
+| M5 日付 | 開始日・終了日（カレンダー）（PR #11） | 完了 |
+| M6 UI/UX拡充 | 仕様同期 / Tailwind / 画像アップロード / URL プレビュー(SSRF対策) / 2ステップ確認画面（PR #12〜16） | 完了 |
+| M7 テスト拡充 | IT 導入（PR #28）/ E2E 導入（Playwright・3アプリ横断・CI） | 進行中 |
 
 ## タスク一覧
 
 | ID | タスク | 状態 | 担当 | 期日 |
-|----|--------|------|------|------|
+| ---- | -------- | ------ | ------ | ------ |
 | 1 | モノレポ初期構築（3アプリ + Docker + MySQL共有 + テスト） | DONE | - | - |
 | 2 | Laravel 依存をパッチ版へ更新し `composer audit` をクリーンに（→ Laravel 12.61.1 へアップグレードで解消） | DONE | - | - |
 | 3 | laminas スキャフォールド同梱の Dockerfile / docker-compose.yml（未使用）の整理判断 | DONE | - | - |
@@ -37,16 +37,17 @@
 | 15 | 共通ルール整備: `.claude/rules/` に横断ルール 6 件（github-issue / github-actions / security / static-analysis / duplication / dead-code）を追加し CLAUDE.md と同期 | DONE | - | - |
 | 16 | **CI の発火制御を整備**: パスフィルタを除外リスト方式（fail-open 解消）に変更し、md 変更時のみ走る `markdown-lint` ジョブと `concurrency` を追加 | DONE | - | - |
 | 17 | CI の発火条件を `test` / `lint` / `e2e` に分離（各ツールが実際に読む範囲に基づき、無関係な変更で片方を走らせない） | DONE | - | - |
-| 28 | **`make setup` が作業ツリーを汚さないようにする**: `chmod -R 777` を `a+rwX` に変え、追跡ファイルの実行ビットが立つのを防ぐ（issue #112）| DONE | - | - |
-| 27 | **2MB の画像をアプリの仕様どおり受け付ける**: nginx / PHP の上限を引き上げ、アプリのバリデーションを最終判定にする（issue #87）| DONE | - | - |
-| 26 | **親 issue の進捗集約を GitHub のサブ issue 機能へ移行**: 手書きチェックリストを廃止し、進捗を自動集計させる（issue #109）| DONE | - | - |
-| 25 | **fresh clone から 3 アプリを起動できる初期化手順**: `scripts/setup.sh`（冪等）を新設し `make setup` と CI の e2e ジョブで共有。ホスト側ポートも上書き可能にする（issue #84）| DONE | - | - |
-| 24 | **api の部分更新でもタスク期間の整合性を検証**: 更新後に確定する開始日・終了日を組み立ててから「終了日 ≥ 開始日」を判定する（issue #83）| DONE | - | - |
-| 23 | **laminas の認証成功時にセッション ID を再生成**: セッション固定攻撃対策。`use_strict_mode` と Cookie 属性（HttpOnly / SameSite=Lax）も併せて明示（issue #85）| DONE | - | - |
-| 22 | **laminas に完了・未完了の切替を追加**: 要件 F-06 が未実装だった箇所を、#21 で整えた POST + CSRF の土台に載せて実装（issue #89）| DONE | - | - |
-| 21 | **laminas の状態変更を POST + CSRF で保護**: ログアウト・複製・削除を POST 限定（GET は 405）にし、全 POST を一括で CSRF 検証（不正は 403）（issue #82）| DONE | - | - |
-| 20 | **3 アプリへ CSP を導入**: nonce ベース（script-src に `'unsafe-inline'` を付けない）で全応答にヘッダーを付与し、ヘッダー内容と実挙動の両方をテストで固定（issue #90）| DONE | - | - |
-| 19 | **画像ファイルと DB の整合性を担保**: 両 Laravel アプリで「ファイルは早く作り遅く消す」順序と補償削除を導入し、失敗注入テストを追加（issue #91）| DONE | - | - |
+| 29 | **markdown lint のバージョンを更新契機ごと整備**: `markdownlint-cli2` を 0.18.1 → 0.23.2 に更新し、ルートの `package.json`（devDependency）+ Dependabot で更新が PR として上がる形にする（issue #114） | DONE | - | - |
+| 28 | **`make setup` が作業ツリーを汚さないようにする**: `chmod -R 777` を `a+rwX` に変え、追跡ファイルの実行ビットが立つのを防ぐ（issue #112） | DONE | - | - |
+| 27 | **2MB の画像をアプリの仕様どおり受け付ける**: nginx / PHP の上限を引き上げ、アプリのバリデーションを最終判定にする（issue #87） | DONE | - | - |
+| 26 | **親 issue の進捗集約を GitHub のサブ issue 機能へ移行**: 手書きチェックリストを廃止し、進捗を自動集計させる（issue #109） | DONE | - | - |
+| 25 | **fresh clone から 3 アプリを起動できる初期化手順**: `scripts/setup.sh`（冪等）を新設し `make setup` と CI の e2e ジョブで共有。ホスト側ポートも上書き可能にする（issue #84） | DONE | - | - |
+| 24 | **api の部分更新でもタスク期間の整合性を検証**: 更新後に確定する開始日・終了日を組み立ててから「終了日 ≥ 開始日」を判定する（issue #83） | DONE | - | - |
+| 23 | **laminas の認証成功時にセッション ID を再生成**: セッション固定攻撃対策。`use_strict_mode` と Cookie 属性（HttpOnly / SameSite=Lax）も併せて明示（issue #85） | DONE | - | - |
+| 22 | **laminas に完了・未完了の切替を追加**: 要件 F-06 が未実装だった箇所を、#21 で整えた POST + CSRF の土台に載せて実装（issue #89） | DONE | - | - |
+| 21 | **laminas の状態変更を POST + CSRF で保護**: ログアウト・複製・削除を POST 限定（GET は 405）にし、全 POST を一括で CSRF 検証（不正は 403）（issue #82） | DONE | - | - |
+| 20 | **3 アプリへ CSP を導入**: nonce ベース（script-src に `'unsafe-inline'` を付けない）で全応答にヘッダーを付与し、ヘッダー内容と実挙動の両方をテストで固定（issue #90） | DONE | - | - |
+| 19 | **画像ファイルと DB の整合性を担保**: 両 Laravel アプリで「ファイルは早く作り遅く消す」順序と補償削除を導入し、失敗注入テストを追加（issue #91） | DONE | - | - |
 | 18 | **actionlint を CI に導入**: workflow 自身の静的解析（構文・式・shellcheck）を `.github/workflows/**` 変更時に強制。`make actionlint` で手元と CI を同一コマンドに揃える | DONE | - | - |
 
 ## 進捗メモ
@@ -64,6 +65,7 @@
 - #16（CI 発火制御）DONE: `changes` ジョブのパスフィルタを対象リスト → **除外リスト**方式に変更（新しいトップレベルディレクトリ追加時にテストが黙ってスキップされる fail-open を解消）。`dorny/paths-filter` は既定 OR 評価のため否定パターンが打ち消される点に対処し `predicate-quantifier: every` を使用、肯定形の `docs` 判定は別ステップに分離。md 変更時のみ走る `markdown-lint` ジョブ（`markdownlint-cli2` + `.markdownlint-cli2.jsonc`）と `concurrency` を追加。既存 md の指摘 279 件は「文体系ルールを無効化（理由を設定ファイルに明記）+ 整形崩れ 28 件を修正」で警告ゼロにした。フレームワーク雛形の md（Laravel デフォルト README / Laminas の LICENSE・COPYRIGHT）は lint 対象外。
 - #17（発火条件の分離）DONE: `changes` ジョブの出力を `code` 単一から `test` / `lint` / `e2e` に分割。各ツールが実際に読む範囲を設定ファイルで確認（Larastan=`app` のみ / Pint=全体 / Psalm=`module`+`config` / phpcs=`config`+`module`）し、**そのジョブが読まないと確認できたファイルだけ**を除外した。結果、静的解析の設定のみの変更 → `lint` だけ、`phpunit.xml` のみ → `test` だけ、`compose.yaml`・`docker/**`・`e2e/**` → `e2e` だけが走る。除外リスト方式は維持（未知のファイルは全ジョブ発火）。判定は picomatch で 34 ケース検証。既知のトレードオフとして `Makefile` のみの変更ではどのジョブも走らない（CI が Makefile を経由しないため検査手段がない・`docs/09` に明記）。
 - #18（actionlint 導入）DONE: `.claude/rules/github-actions.md` が要求しながら CI に存在しなかった actionlint を `actionlint` ジョブとして追加（issue #92）。取得は公式 Docker イメージのバージョン固定タグ（`rhysd/actionlint:1.7.12`）で、`make actionlint` と CI が同一コマンド。`changes` ジョブに肯定リストの `workflows` フィルタを追加し `.github/workflows/**` 変更時のみ発火させる。導入時に既存 `ci.yml` の shellcheck 指摘 2 件（SC2034: `for i in $(seq ...)` のループ変数が未使用）を検出し `for _` に修正した。
+- #29（markdown lint のバージョン更新）DONE: `markdownlint-cli2` が 9 リリース前の 0.18.1 に固定されたままで、新しいルールが効いていなかった（issue #114）。0.23.2 へ上げると 583 件（22 ファイル）の指摘が出たが、**すべて新ルール `MD060`（テーブルの列スタイル）由来で、他の 9 リリース分の新規指摘は 0 件**だった（＝既存 md は実際に綺麗で、警告ゼロが検査の緩さによるものではなかったことの確認になった）。`MD060` は既定 `style: "any"` だとテーブルごとに最も近いスタイルを推測し、推測が `aligned` になった表は自動修正が効かない（1 セルの修正に表全体の再整形が要るため markdownlint が非対応）。実際 `--fix` 後に 10 件が残ったため **`style: "compact"` に固定**し、全件を `make md-fix` で解消できる状態にした（CJK の桁合わせを人手で維持する運用を避ける）。md の差分は空白のみ。**本質的な問題はバージョンそのものではなく更新契機が無かったこと**で、`run:` の `npx pkg@x.y.z` はマニフェストではないため Dependabot から見えない。ルートに `package.json`（devDependency・完全固定）を置き、`.github/dependabot.yml`（npm / weekly）で更新 PR が上がる形にした。併せて `changes` ジョブのフィルタも修正している（ルート直下に新しいマニフェストを置くと、除外リスト方式では「コード変更」と判定され、**バージョン更新 PR で PHP のテストが全部走るのに肝心の markdown lint は走らない**という逆転が起きるため）。フィルタの判定は picomatch で 7 ケース（ルート/`e2e/` の package.json 弁別・未知ファイルの fail-safe を含む）を実測して確認した。`actionlint` の Docker タグ固定にも同じ「更新契機が無い」問題が残っている（Dependabot の対象外・フォロー候補）。
 - #28（`make setup` のモード変更）DONE: `scripts/setup.sh` の `chmod -R 777` が、対象ディレクトリに含まれる追跡ファイル（`.gitignore` / `.gitkeep` 計 24 件）の実行ビットまで立て、`make setup` のたびに `100644 => 100755` のモード変更で作業ツリーが汚れていた（issue #112）。「冪等なので何度でも実行してよい」と案内しているのに実行するたび差分が出る状態で、無関係な変更が PR へ紛れ込みかけた（#87 の作業中に検出）。`chmod -R a+rwX` に変更して解消。`X`（大文字）はディレクトリにだけ実行権を付けるため、ファイルは 666 止まりで実行ビットが立たない。ディレクトリは 777 相当のままなので www-data の書き込みには影響しない（3 アプリで実際に touch できること、ビューキャッシュを削除しての再描画が 200 になることを確認）。#25（fresh clone の初期化手順）で **「CI で実績がある」を根拠に粗い `777` をそのまま持ち込んだ判断**が原因。CI は毎回チェックアウトが新品で直後に破棄されるため表面化しなかった。**なお `a+rwX` は既に立っている実行ビットを落とさない**ため、既存の作業ツリーでモードが変わってしまっている場合は一度 `git restore` が要る。
 - #27（アップロードサイズの整合）DONE: nginx に `client_max_body_size` の指定が無く**既定の 1m** が先に効くため、アプリが許可している 1MB 超〜2MB の正当な画像が 413 で弾かれ、Laravel の検証に到達しなかった（issue #87）。設計の要点は「**アプリのバリデーションを最終判定にする**」こと。前段（nginx / PHP）で弾くと統一エラー形式（`{message, errors}`）を返せないため、各層の上限を **nginx（5m）< PHP（5M / 6M）** の順に並べ、nginx を通ったリクエストは必ず Laravel が判定する構成にした。PHP 側は `docker/php/uploads.ini` を `conf.d/` へ配置して既定（2M / 8M）を上書きする（既定の `upload_max_filesize=2M` は Laravel の `max:2048` とちょうど同値で境界に張り付いていた）。laminas はアップロード機能を持たないため既定の 1m のままとし、不要に大きな body を受け付けない。境界（≤2MiB=成功 / >2MiB=422 / >5MiB=413）を `docs/07` に表で明文化。E2E 5 件を追加し、実 HTTP で 201 / 201（2MiB ちょうど）/ 422 / 413 を確認した。修正前は 4 件が失敗する（413 のケースは上限 1m でも 5m でも 413 のため弁別しないが、「外側のガードが存在すること」を守るテストとして残した）。任意サイズの有効な PNG を作る `pngOfSize()` を追加（ランダムなバイト列だと `image` ルールで落ちてサイズ検証にならないため、tEXt チャンクを詰めて画像として妥当なまま太らせる）。付随して、E2E 失敗時に生成される `e2e/test-results/**` の md が `make md-lint` を落としていたため lint の対象外に追加した。
 - #26（サブ issue 機能への移行）DONE: 親 issue の本文に手書きしたチェックリスト（`- [ ] #<番号>`）が実態とずれる問題を解消（issue #109）。`Closes #<番号>` で子 issue は自動クローズされるのに、**親本文のチェックボックスは誰も更新しない**ため、#94 は 12 件中 9 件がクローズ済みなのに全項目が未チェックのまま放置されていた。「`pr-approved` の手順に親 issue 更新を足す」案は人が手順を守る前提になるため採らず、#82（CSRF の一括リスナー）・#84（初期化手順の一本化）と同じく**構造で壊れなくする**方針にした。親 issue 3 件（#94 / #70 / #106・子 20 件）に GitHub のサブ issue を紐付け、本文からチェックリストを削除。優先度・深刻度・着手順はサブ issue 機能で表現できないため本文に残した。実装上の落とし穴として、API の `sub_issue_id` は issue 番号ではなく**内部 id**（`#82` → `5024698109`）を要求する点を `.claude/rules/github-issue.md` に記録した。紐付け後は本文のチェックリスト件数とサブ issue 件数を突き合わせて検証している（取りこぼしは「進捗が少なく見える」形でしか現れない）。

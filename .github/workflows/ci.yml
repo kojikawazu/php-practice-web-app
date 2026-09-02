@@ -65,6 +65,9 @@ jobs:
               - '!.claude/**'
               # markdown lint の設定のみに影響するファイル（下の docs フィルタ側で拾う）
               - '!.markdownlint-cli2.jsonc'
+              # ルート直下の package*.json は markdown lint 専用（PHPUnit は読まない）
+              - '!package.json'
+              - '!package-lock.json'
               # PHPUnit は compose / Playwright / Makefile を使わない
               - '!e2e/**'
               - '!docker/**'
@@ -81,6 +84,9 @@ jobs:
               - '!**/*.md'
               - '!.claude/**'
               - '!.markdownlint-cli2.jsonc'
+              # ルート直下の package*.json は markdown lint 専用（Pint / phpcs / Psalm / Larastan は読まない）
+              - '!package.json'
+              - '!package-lock.json'
               # Pint / phpcs / Psalm / Larastan は compose / Playwright / Makefile を読まない
               - '!e2e/**'
               - '!docker/**'
@@ -94,6 +100,9 @@ jobs:
               - '!**/*.md'
               - '!.claude/**'
               - '!.markdownlint-cli2.jsonc'
+              # ルート直下の package*.json は markdown lint 専用（Playwright が読むのは e2e/package*.json）
+              - '!package.json'
+              - '!package-lock.json'
               # ユニット/IT のテストコードだけの変更で重い compose 起動をしない
               - '!apps/*/tests/**'
               - '!apps/laminas/module/*/test/**'
@@ -116,6 +125,9 @@ jobs:
             docs:
               - '**/*.md'
               - '.markdownlint-cli2.jsonc'
+              # markdownlint-cli2 のバージョン更新（Dependabot の PR）でも検査を走らせる
+              - 'package.json'
+              - 'package-lock.json'
 
       # 肯定リスト: actionlint は workflow ファイルだけを読むため、対象を明示して絞る。
       # （除外リストにしないのは、検査対象が .github/workflows/** で閉じており
@@ -160,10 +172,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: npm
+
+      # バージョンは package.json の devDependency で完全固定する（npx の版直書きは
+      # マニフェストではないため Dependabot から見えず、更新契機が生まれない）。
+      - name: Install dev tooling
+        run: npm ci
 
       # 設定ファイル（.markdownlint-cli2.jsonc）の globs / ignores を使うため引数は渡さない。
       - name: Lint markdown
-        run: npx --yes markdownlint-cli2@0.18.1
+        run: npm run lint:md
 
   test:
     name: test (${{ matrix.app }})

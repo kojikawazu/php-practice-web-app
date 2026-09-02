@@ -1,0 +1,13 @@
+{
+  "name": "php-practice-web-app-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Repository-level dev tooling (markdown lint). The 3 apps are PHP and do not depend on Node.",
+  "scripts": {
+    "lint:md": "markdownlint-cli2",
+    "lint:md:fix": "markdownlint-cli2 --fix"
+  },
+  "devDependencies": {
+    "markdownlint-cli2": "0.23.2"
+  }
+}

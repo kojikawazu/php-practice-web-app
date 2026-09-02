@@ -52,10 +52,17 @@ actionlint:
 	docker run --rm -v "$$PWD":/repo --workdir /repo rhysd/actionlint:1.7.12 -color
 
 # markdown lint。対象と無効化ルールの理由は .markdownlint-cli2.jsonc に記載。
-# CI の markdown-lint ジョブと同じコマンドを実行する（手元で先に直せるように）。
-md-lint:
-	npx --yes markdownlint-cli2@0.18.1
+# CI の markdown-lint ジョブと同じコマンド・同じバージョンを実行する（手元で先に直せるように）。
+# バージョンは package.json の devDependency で完全固定し、更新は Dependabot の PR で上がる
+# （run: に npx で直書きするとマニフェストではないため Dependabot から見えない）。
+md-lint: node_modules
+	npm run lint:md
 
-# 自動修正できる指摘（空行の過不足など）を直す。MD040 等は手で直す必要がある。
-md-fix:
-	npx --yes markdownlint-cli2@0.18.1 --fix
+# 自動修正できる指摘（テーブルの列スタイル・空行の過不足など）を直す。MD040 等は手で直す。
+md-fix: node_modules
+	npm run lint:md:fix
+
+# package-lock.json より古いときだけ入れ直す（毎回 npm ci を走らせない）。
+node_modules: package-lock.json
+	npm ci
+	@touch node_modules

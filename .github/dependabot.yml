@@ -1,0 +1,14 @@
+# 外部ツールのバージョン更新を PR として上げる設定。
+#
+# Dependabot が見るのは「マニフェストに書かれた依存」だけで、workflow の run: に直接書いた
+# `npx pkg@x.y.z` や `docker run image:tag` は検出できない。そのため markdownlint-cli2 は
+# ルートの package.json に devDependency として置き、完全固定（キャレット無し）している。
+version: 2
+updates:
+  # リポジトリ直下の開発ツール（markdown lint）
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
