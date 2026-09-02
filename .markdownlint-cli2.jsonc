@@ -24,6 +24,8 @@
     "apps/laminas/LICENSE.md",
     "apps/laminas/COPYRIGHT.md"
   ],
+  // 一部ディレクトリには入れ子の設定ファイルを置き、そこだけルールを緩めている
+  // （.github/PULL_REQUEST_TEMPLATE/.markdownlint.jsonc = MD041 のみ無効）。
   "config": {
     "default": true,
 
