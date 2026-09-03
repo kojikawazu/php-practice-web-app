@@ -151,6 +151,95 @@ jobs:
               # actionlint の設定ファイル（現在は未設置。追加された時点で拾う）
               - '.github/actionlint.yaml'
 
+  # 秘匿ファイルが Git の追跡対象に入った時点で落とすガード。
+  #
+  # .gitignore は「混入させない」側の対策でしかない。未追跡ファイルにしか効かないため、
+  # 一度追跡されたファイルや git add -f、新規ディレクトリでの書き漏れは止められない。
+  # そして Git の履歴は追記型なので、push 済みの秘匿ファイルは追跡除外しても履歴に残り、
+  # 対処は鍵・トークンのローテーションしかない（不可逆）。だから検出側を CI に置く。
+  #
+  # git ls-files はインデックスを読むだけで、履歴もワーキングツリーも走査しない。
+  # 混入はどの変更種別でも起こりうるため、changes ジョブに依存させず常に実行する
+  # （needs: を持たないのは意図。ドキュメントだけの PR でも走る）。
+  secret-scan:
+    name: secret scan
+    runs-on: ubuntu-latest
+    # 追跡ファイルの「パス名」を読むだけ。シークレットを渡さず最小権限に絞る
+    # （ワークフローレベルの pull-requests: read は changes ジョブ用で、ここでは不要）。
+    permissions:
+      contents: read
+    env:
+      # 検出対象: .env 系・秘密鍵・証明書・サービスアカウント鍵。
+      SECRET_PATTERN: '(^|/)(\.env(\..+)?|[^/]+\.(key|pem|p12|pfx|jks|keystore)|id_rsa|id_ed25519|id_dsa|credentials\.json|serviceAccountKey\.json)$'
+      # 除外対象: 雛形（*.example 等）と型定義（.env.d.ts）。中身を持たないため誤検知になる。
+      ALLOW_PATTERN: '\.(example|sample|template|dist)$|\.env\.d\.ts$'
+    steps:
+      - uses: actions/checkout@v4
+
+      # 自己検証と本走査を 1 ステップに置くのは、判定式を 1 か所にするため
+      # （run: ごとにシェルが分かれるので、複数ステップだと式を書き写すことになる）。
+      - name: Assert no secret files are tracked
+        run: |
+          # 追跡パスを stdin で受け、秘匿ファイルとみなすものだけを出力する。
+          #
+          # ここで grep を使わないのは終了コードの都合。grep は「マッチ 0 件」でも 1 を返し、
+          # run: は bash -e で動くため、tracked=$(... | grep ...) と書くと
+          # 「1 件も見つからない = 正常」のときにスクリプトごと落ちる（しかも無言で）。
+          # awk は出力の有無に関わらず 0 で終わるため、この罠を構造的に避けられる。
+          #
+          # パターンは -v ではなく ENVIRON 経由で渡す。-v は値のエスケープを再解釈するため
+          # \. が . に化け、任意 1 文字にマッチする別物の正規表現になってしまう。
+          scan() {
+            awk 'BEGIN { s = ENVIRON["SECRET_PATTERN"]; a = ENVIRON["ALLOW_PATTERN"] }
+                 $0 ~ s && $0 !~ a'
+          }
+
+          # --- 1. ガード自体の検証 ---
+          # ガードが壊れると「常に緑」になり、検査が止まったことに誰も気づけない
+          # （.claude/rules/testing.md「ガード自体をテストする」）。
+          # 本走査の前に、検出すべきパスと素通りすべきパスの分類を突き合わせる。
+          must_detect='config/master.key
+          .env
+          front/.env.local
+          base/.env.production
+          certs/server.pem
+          secrets/id_rsa
+          gcp/serviceAccountKey.json
+          apps/laravel-fullstack/storage/oauth-private.key'
+
+          must_pass='front/.env.example
+          front/.env.local.example
+          apps/laravel-api/.env.example
+          e2e/.env.example
+          src/env.d.ts
+          front/.env.d.ts
+          docs/keyboard.md
+          src/apiKey.ts
+          README.md'
+
+          # 複数行文字列の 2 行目以降は YAML のインデントを含むため、落としてから流す。
+          detected=$(printf '%s\n' "$must_detect" | sed 's/^ *//' | scan | wc -l | tr -d ' ')
+          expected=$(printf '%s\n' "$must_detect" | sed 's/^ *//' | wc -l | tr -d ' ')
+          leaked=$(printf '%s\n' "$must_pass" | sed 's/^ *//' | scan)
+
+          if [ "$detected" != "$expected" ] || [ -n "$leaked" ]; then
+            echo "::error::secret scan の判定が壊れています。SECRET_PATTERN / ALLOW_PATTERN を確認してください。"
+            echo "検出できたはずの件数: $detected / $expected"
+            [ -n "$leaked" ] && { echo "誤検知（素通りすべきなのに検出された）:"; echo "$leaked"; }
+            exit 1
+          fi
+          echo "self-test OK: 検出 $detected/$expected 件・誤検知 0 件"
+
+          # --- 2. 本走査 ---
+          tracked=$(git ls-files | scan)
+
+          if [ -n "$tracked" ]; then
+            echo "::error::秘匿ファイルが Git 管理下にあります。.gitignore への追加や git rm --cached では履歴から消えないため、鍵・トークンのローテーションが必要になります。"
+            echo "$tracked"
+            exit 1
+          fi
+          echo "OK: 追跡対象に秘匿ファイルはありません"
+
   # GitHub Actions ワークフロー自身の静的解析。
   # .claude/rules/github-actions.md が workflow 変更時の actionlint 実行を要求するため、
   # その品質ゲートを CI 上で強制する。構文・式（${{ }}）・runner ラベル・action 入力に加え、
