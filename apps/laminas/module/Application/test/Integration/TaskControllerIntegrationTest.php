@@ -224,4 +224,78 @@ class TaskControllerIntegrationTest extends AbstractIntegrationTestCase
         $this->assertResponseStatusCode(302);
         $this->assertRedirectTo('/tasks');
     }
+
+    // ---- 監査列（created_at / updated_at）----
+    //
+    // 単体（TaskTableTest）は TaskTable を直接叩くため「集約先が正しく書く」ことしか見ない。
+    // ここでは実際のリクエスト経路（ルーティング → コントローラ → 認証 → TaskTable）を
+    // 通して、業務コード側で何も詰めていなくても監査列が入ることを確認する
+    // （.claude/rules/php.md「監査列は単一の層で自動設定し、業務ロジックから手で書かない」）。
+
+    public function testCreateActionSetsAuditColumns(): void
+    {
+        $this->prepareServices($this->identity(self::USER_A));
+        $this->dispatch('/tasks', 'POST', $this->withCsrf(['title' => '牛乳を買う']));
+
+        $this->assertResponseStatusCode(302);
+
+        $id    = $this->latestTaskId(self::USER_A);
+        $audit = $this->auditColumns($id);
+
+        $this->assertNotNull($audit['created_at']);
+        $this->assertNotNull($audit['updated_at']);
+        $this->assertSame($audit['created_at'], $audit['updated_at']);
+    }
+
+    public function testEditActionKeepsCreatedAtAndAdvancesUpdatedAt(): void
+    {
+        $past = '2020-01-01 00:00:00';
+        $id   = $this->seedTask(self::USER_A, '変更前');
+        $this->adapter->query(
+            'UPDATE lam_tasks SET created_at = ?, updated_at = ? WHERE id = ?',
+            [$past, $past, $id]
+        );
+
+        $this->prepareServices($this->identity(self::USER_A));
+        $this->dispatch('/tasks/edit/' . $id, 'POST', $this->withCsrf(['title' => '変更後']));
+
+        $this->assertResponseStatusCode(302);
+
+        $audit = $this->auditColumns($id);
+        $this->assertSame($past, $audit['created_at'], 'created_at は更新処理で変えてはならない');
+        $this->assertNotSame($past, $audit['updated_at'], 'updated_at は更新されなければならない');
+    }
+
+    /** 指定ユーザーの最新タスク id（fetchAllByUser は id DESC） */
+    private function latestTaskId(int $userId): int
+    {
+        foreach ($this->taskTable->fetchAllByUser($userId) as $row) {
+            return (int) $row->id;
+        }
+
+        self::fail("user_id={$userId} のタスクが見つからない");
+    }
+
+    /**
+     * 監査列を raw SQL で読む（Task モデルは監査列を持たない）。
+     *
+     * @return array{created_at: ?string, updated_at: ?string}
+     */
+    private function auditColumns(int $id): array
+    {
+        /** @var iterable<\ArrayAccess<string, mixed>> $rows */
+        $rows = $this->adapter->query(
+            'SELECT created_at, updated_at FROM lam_tasks WHERE id = ?',
+            [$id]
+        );
+
+        foreach ($rows as $row) {
+            return [
+                'created_at' => isset($row['created_at']) ? (string) $row['created_at'] : null,
+                'updated_at' => isset($row['updated_at']) ? (string) $row['updated_at'] : null,
+            ];
+        }
+
+        self::fail("id={$id} の行が見つからない");
+    }
 }
