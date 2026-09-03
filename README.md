@@ -98,7 +98,7 @@ make actionlint         # 検査（CI の actionlint ジョブと同じコマン
 
 Docker イメージ `rhysd/actionlint` をバージョン固定で使うため、ホストへのインストールは不要。バージョンを上げるときは `Makefile` と `.github/workflows/ci.yml` の両方を同じタグに揃える。
 
-CI: push / Pull Request 時に GitHub Actions（`.github/workflows/ci.yml`）が 3 アプリの **テスト**（PHPUnit）と **静的チェック**（Laravel=Pint + Larastan / Laminas=phpcs + Psalm）、および **markdown lint** / **actionlint** を自動実行する。ローカルでの自動修正は Laravel=`vendor/bin/pint`、Laminas=`composer cs-fix`、md=`make md-fix`。
+CI: push / Pull Request 時に GitHub Actions（`.github/workflows/ci.yml`）が 3 アプリの **テスト**（PHPUnit）と **静的チェック**（Laravel=Pint + Larastan / Laminas=phpcs + Psalm）、および **markdown lint** / **actionlint** / **secret scan**（鍵・`.env` の Git 混入検出）を自動実行する。ローカルでの自動修正は Laravel=`vendor/bin/pint`、Laminas=`composer cs-fix`、md=`make md-fix`。
 
 発火は変更内容で制御される（`.claude/rules/github-actions.md`）。`test` / `lint` / `e2e` / `markdown-lint` / `actionlint` はそれぞれ読むファイルが違うため、条件も分けている。
 
@@ -111,6 +111,8 @@ CI: push / Pull Request 時に GitHub Actions（`.github/workflows/ci.yml`）が
 | `phpunit.xml` のみ | `test` |
 | `compose.yaml` / `docker/**` / `e2e/**` | `e2e` |
 | `.github/workflows/**` | `actionlint` + `test` + `lint` + `e2e` |
+
+`secret-scan` は上表の対象外で、**すべての変更で常に実行**される（秘匿ファイルの混入はどの変更種別でも起こりうるため）。
 
 詳細（各ツールが読む範囲の根拠を含む）は `docs/09`。
 

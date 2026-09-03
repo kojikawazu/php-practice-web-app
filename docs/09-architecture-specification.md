@@ -76,7 +76,7 @@ laminas はアップロード機能を持たないため既定の 1m のまま�
 
 ## CI（継続的インテグレーション）
 
-`.github/workflows/ci.yml` が push（main）/ Pull Request 時に実行される。6 ジョブ構成。`GITHUB_TOKEN` は最小権限（`contents: read` / `pull-requests: read`）を明示する（`pull-requests: read` は `dorny/paths-filter` が PR の変更ファイルを GitHub API で取得するために必要）。`concurrency`（`cancel-in-progress: true`）で同一 PR の連続 push 時に古い実行をキャンセルする。
+`.github/workflows/ci.yml` が push（main）/ Pull Request 時に実行される。7 ジョブ構成。`GITHUB_TOKEN` は最小権限（`contents: read` / `pull-requests: read`）を明示する（`pull-requests: read` は `dorny/paths-filter` が PR の変更ファイルを GitHub API で取得するために必要）。`concurrency`（`cancel-in-progress: true`）で同一 PR の連続 push 時に古い実行をキャンセルする。
 
 発火制御の方針は `.claude/rules/github-actions.md` に従い、**変更内容に関係のあるジョブだけを動かす**（ドキュメント変更でテストを回さない／逆にコード変更でテストを取りこぼさない）。
 
@@ -113,6 +113,14 @@ laminas はアップロード機能を持たないため既定の 1m のまま�
 
   `test` が Docker 系（`compose.yaml` / `docker/**`）に依存しないのは、`shivammathur/setup-php` で動き Docker を使わないため。`Makefile` は PHP 系 3 ジョブが参照しない（CI は各コマンドを直接叩く）ため、それらのフィルタでは除外している。**例外は actionlint ジョブ**で、イメージのタグを 2 箇所に書き写さないために `make actionlint` を呼ぶ。そのため `workflows` フィルタは `Makefile` も対象に含める。 ルート直下の `package*.json` は markdown lint 専用のため PHP 系 3 ジョブから除外している（`e2e/package*.json` は別パスで、従来どおり `e2e` を発火させる）。
 
+  **`secret-scan` は本表の対象外**（`changes` に依存せず常に実行する）。秘匿ファイルの混入はどの変更種別でも起こりうるため、発火制御をかけない。
+
+- **secret-scan**: `changes` に依存せず**常に実行**する。`git ls-files`（インデックスを読むだけで履歴もワーキングツリーも走査しない）に対し、`.env` 系・秘密鍵・証明書・サービスアカウント鍵のパターンを照合し、1 件でも追跡されていればジョブを失敗させる。`.gitignore` は**未追跡ファイルにしか効かない**ため「混入させない」側しか担保できず、`git add -f` や新規ディレクトリでの書き漏れを止められない。加えて Git の履歴は追記型なので、push 済みの秘匿ファイルは追跡除外しても履歴に残り、対処は**鍵・トークンのローテーションしかない**（不可逆）。だから「追跡された時点で落とす」検出側を CI に置く。
+  - 判定式は `run:` にインラインで書く。`scripts/*.sh` へ切り出すと actionlint 経由の **shellcheck の検査対象から外れる**ため（同じ理由で actionlint は shellcheck 同梱の公式イメージを使っている）。
+  - 照合は `grep` ではなく `awk` で行う。`grep` は**マッチ 0 件でも終了コード 1** を返し、`run:` は `bash -e` で動くため `tracked=$(... | grep ...)` と書くと「1 件も見つからない = 正常」のときにスクリプトごと無言で落ちる。`awk` は出力の有無に関わらず 0 で終わるためこの罠を構造的に避けられる。パターンは `-v` ではなく `ENVIRON` 経由で渡す（`-v` は値のエスケープを再解釈し `\.` が `.` に化けて別物の正規表現になる）。
+  - **ガード自体を同じステップで自己検証する**。検出すべき 8 パス・素通りすべき 9 パスの分類を本走査の前に突き合わせ、食い違えば失敗させる。ガードが壊れると「常に緑」になり検査の停止に誰も気づけないため（`.claude/rules/testing.md`）。
+  - 除外は `*.example` / `*.sample` / `*.template` / `*.dist` と `.env.d.ts`。本リポジトリの `.env.example` 4 件（ルート / laravel-api / laravel-fullstack / e2e）はここで素通りする。
+  - **ファイル名だけを見る検査**であり、中身は読まない。ソースコードへ直書きされた認証情報は検出できない（`docs/06` の「既知の注意点」を参照）。ジョブは `permissions: contents: read` に絞る。
 - **actionlint**: `if: workflows == 'true'` で `.github/workflows/**` または `Makefile` の変更時のみ実行。workflow の構文・式（`${{ }}`）・runner ラベル・action の入力・**スクリプトインジェクション**に加え、**`run:` の中身を shellcheck に流す**（`.claude/rules/github-actions.md` が要求する品質ゲートの実体）。取得は公式 Docker イメージ `rhysd/actionlint` のバージョン固定タグ。**CI は `make actionlint` を呼ぶ**ため、コマンドとタグの定義は `Makefile` の 1 箇所だけになり、手元と CI が構造的に一致する（バージョンを上げるときも `Makefile` を変えるだけでよい）。公式イメージを使う理由は **shellcheck が同梱されている**こと。バイナリだけ入れると `run:` の検査が警告もなく静かにスキップされ、終了コード 0 のまま検査が減ったことに気づけない。ジョブは `permissions: contents: read` に絞る。
 - **markdown-lint**: `if: docs == 'true'` で md 変更時のみ実行（`markdownlint-cli2`）。対象と無効化ルールの理由は `.markdownlint-cli2.jsonc` に記載し、**警告ゼロを維持**する（`.claude/rules/static-analysis.md`）。ローカルは `make md-lint` / `make md-fix`。バージョンはルートの `package.json` の devDependency で完全固定し（`npm ci`）、更新は Dependabot（`.github/dependabot.yml`・npm / weekly）が PR で上げる。**`run:` に `npx pkg@x.y.z` と直書きするとマニフェストではないため Dependabot から見えず、更新契機が生まれない**（actionlint の Docker タグ固定には同じ制約が残っている）。
 - **test**: `needs: changes` + `if: test == 'true'` で実行。`shivammathur/setup-php`（PHP 8.3）で各アプリをセットアップ（Docker 不使用）、matrix で 3 アプリを並行ジョブ実行（`fail-fast: false`）。Laravel ×2 は `php artisan test`（テスト DB は SQLite in-memory のため MySQL サービス不要）、Laminas は `vendor/bin/phpunit`。
