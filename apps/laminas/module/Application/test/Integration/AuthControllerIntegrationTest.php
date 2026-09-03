@@ -251,4 +251,47 @@ class AuthControllerIntegrationTest extends AbstractIntegrationTestCase
         $this->assertRedirectTo('/tasks');
         $this->assertSame([], $this->authSession->calls());
     }
+
+    // ---- 監査列（created_at）----
+    //
+    // 単体（UserTableTest）は UserTable を直接叩くため「集約先が正しく書く」ことしか見ない。
+    // ここでは実際のリクエスト経路（ルーティング → AuthController → InputFilter → UserTable）を
+    // 通して、コントローラが何も詰めていなくても監査列が入ることを確認する
+    // （.claude/rules/php.md「監査列は単一の層で自動設定し、業務ロジックから手で書かない」）。
+
+    public function testRegisterActionSetsCreatedAt(): void
+    {
+        $this->prepareServices(null);
+        $this->dispatch('/register', 'POST', $this->withCsrf([
+            'username' => 'bob',
+            'password' => 'password123',
+        ]));
+
+        $this->assertResponseStatusCode(302);
+
+        $createdAt = $this->createdAtOf('bob');
+        $this->assertNotNull($createdAt);
+        // 'Y-m-d H:i:s' でないと本番の MySQL（TIMESTAMP）で落ちる
+        $this->assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $createdAt);
+    }
+
+    /**
+     * 監査列を raw SQL で読む（UserTable の戻り値ではなく列の実体を見る）。
+     *
+     * @return ?string 行が無ければ fail する
+     */
+    private function createdAtOf(string $username): ?string
+    {
+        /** @var iterable<\ArrayAccess<string, mixed>> $rows */
+        $rows = $this->adapter->query(
+            'SELECT created_at FROM lam_users WHERE username = ?',
+            [$username]
+        );
+
+        foreach ($rows as $row) {
+            return isset($row['created_at']) ? (string) $row['created_at'] : null;
+        }
+
+        self::fail("username={$username} の行が見つからない");
+    }
 }

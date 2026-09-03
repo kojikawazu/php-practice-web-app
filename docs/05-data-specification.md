@@ -41,13 +41,24 @@ Laravel は `config/database.php` の接続設定で `prefix` と `migrations` �
 | アプリ | 設定する層 |
 | --- | --- |
 | laravel-fullstack / laravel-api | Eloquent の自動タイムスタンプ（マイグレーションの `$table->timestamps()`）。`$fillable` には含めない |
-| laminas | `TaskTable::saveTask()`（TableGateway には自動機構がないため Table 層に集約）。insert は両列、update は `updated_at` のみを設定する |
+| laminas | `TaskTable::saveTask()` / `UserTable::create()`（TableGateway には自動機構がないため Table 層に集約）。タスクは insert で両列・update で `updated_at` のみ、ユーザーは insert で `created_at` を設定する |
 
 laminas は DB 側の `DEFAULT CURRENT_TIMESTAMP` / `ON UPDATE CURRENT_TIMESTAMP` を採らない。値の生成元が MySQL サーバの時計になり、**アプリの時計で書く Laravel 2 アプリと値の作られ方が非対称**になるため（3 アプリとも PHP の既定タイムゾーンは UTC）。書式は MySQL の `TIMESTAMP` と、テストで使う SQLite の `TEXT` の双方が解釈できる `'Y-m-d H:i:s'` に固定する。
 
 > 監査列を「保存後に別の UPDATE で進める」実装にしてはならない。`saveTask()` の update は `id` + `user_id` で所有者スコープを掛けており、監査列だけを別クエリに分けると**その条件が抜けて他人のタスクの `updated_at` を動かせる**。認可と監査列は同じ 1 本の UPDATE に載せる。
 
-この対応より前に作成された `lam_tasks` の既存行は、監査列が NULL のまま残る。共有 MySQL への一括 UPDATE によるバックフィルは行わない（`.claude/rules/production-data.md`）。
+この対応より前に作成された `lam_tasks` / `lam_users` の既存行は、監査列が NULL のまま残る。共有 MySQL への一括 UPDATE によるバックフィルは行わない（`.claude/rules/production-data.md`）。
+
+### ユーザーテーブルの監査列（3 アプリ差分）
+
+| アプリ | テーブル | `created_at` | `updated_at` |
+| --- | --- | --- | --- |
+| laravel-fullstack / laravel-api | `fs_users` / `api_users` | あり | あり（`$table->timestamps()` が両方作る） |
+| laminas | `lam_users` | あり | **持たない** |
+
+laminas のユーザーは登録後に更新される契機が無い（プロフィール編集・パスワード変更の機能を持たない）ため、`updated_at` 列を作らない。使われない列を「将来のため」に持たない方針による（`.claude/rules/dead-code.md`）。Laravel 側に列があるのは、`$table->timestamps()` が両方をまとめて作る規約のため（意図的に片方だけ落とすとフレームワークの既定から外れる）。
+
+将来 laminas にユーザー情報の更新機能を追加する場合は、`lam_users` へ `updated_at` を足したうえで、**`UserTable` の更新メソッドに設定を集約する**（`TaskTable::saveTask()` と同じ形）。既存ローカル DB への `ALTER TABLE` 手順が必要になる点に注意する（`docker/mysql/init/` は初回起動時にしか実行されない）。
 
 ## ER 図
 

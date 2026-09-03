@@ -48,6 +48,8 @@
 | laminas TaskController（**IT**・dispatch・SQLite） | 認証済み一覧が本人分のみ描画 / POST作成→302+user_idスコープ / 編集POST→更新 / **完了トグル（双方向）** / 複製→「（コピー）」作成 / 削除→消える | ゲストは index・作成・削除・**トグル**で /login へ / 他人タスクの編集・削除・複製・**トグル**が無効 / 空title は未作成で再描画 / 不在id編集は一覧へ |
 | laminas 監査列（`TaskTableTest`・SQLite） | 作成で `created_at` / `updated_at` が同値で入る / 形式が `'Y-m-d H:i:s'`（MySQL の TIMESTAMP と SQLite の TEXT の双方が解釈できる）/ 更新で `updated_at` のみ前進し `created_at` は不変 / 複製は自分の `created_at` を持ち複製元は不変 | `user_id` 偽装の update は他人の監査列も動かさない（認可と監査列を同じ 1 本の UPDATE に載せていることの検証） |
 | laminas 監査列（**IT**・`TaskControllerIntegrationTest`） | 作成 POST で監査列が入る（コントローラ・InputFilter は何も詰めない）/ 編集 POST で `created_at` 不変・`updated_at` 前進 | —（設定漏れは「保存はできるが日時だけ NULL」という静かな形で出るため、正常系で値の存在を固定する） |
+| laminas UserTable（`UserTableTest`・SQLite） | 登録でユーザー名と bcrypt ハッシュが保存される / 監査列 `created_at` が入る / 形式が `'Y-m-d H:i:s'` / 後から作ったユーザーが既存行の `created_at` を引き継がない | 未登録のユーザー名を引くと `null` |
+| laminas ユーザー監査列（**IT**・`AuthControllerIntegrationTest`） | 登録 POST で `created_at` が入る（コントローラ・InputFilter は何も詰めない） | —（登録が弾かれる異常系は同ファイルの既存ケースが担保する） |
 | laminas AuthController（**IT**・dispatch・SQLite） | 登録→ユーザー作成+302 / 正パスワードでログイン→/tasks / ログアウト→/login | 重複ユーザー名は拒否（既存PW不変） / 短パスワードは未作成 / 誤パスワード拒否 / 未登録ユーザー拒否 |
 | laminas セッション再生成（**IT**・`AuthControllerIntegrationTest`） | ログイン・登録で `regenerate()` が 1 回・**identity 書き込み前**に呼ばれる / ログアウトで `invalidate()` が呼ばれる | 誤パスワード・未登録ユーザー・短パスワード・ユーザー名重複・CSRF 403・GET ログアウト 405・ログイン済みでの /login 再訪では呼ばれない |
 | fullstack / api 画像整合性（**失敗注入**・`TaskImageIntegrityTest`） | 差し替えは DB コミット後に旧画像を削除 / 削除でタスクと画像がともに消える | DB create 失敗で孤児ファイルを残さない（作成・複製）/ DB update 失敗で旧画像を失わない / DB delete 失敗でタスクと画像を残し再試行可能にする / ファイルの move・copy 失敗時にタスクを作らない |
