@@ -56,6 +56,7 @@
 | laminas CSRF（**IT**・`CsrfProtectionIntegrationTest`） | 正しいトークンで作成・削除・ログアウトが通る / 全 POST フォームにトークンが埋まる / 状態変更の導線が POST フォームである | GET での削除・複製・トグル・ログアウトは 405 で実行されない / トークン無し・不正トークンの POST は 403（作成・削除・トグル・ログイン・登録） |
 | 3アプリ CSP（`CspHeaderTest` / `CspHeaderIntegrationTest`） | HTML 応答にヘッダーが付く / ヘッダーの nonce と HTML の nonce が一致 / nonce がリクエストごとに変わる / 実際に使う CDN だけを許可 | script-src に `'unsafe-inline'`・`'unsafe-eval'` が無い / ワイルドカードが無い / api は script-src を持たない / エラー応答にもヘッダーが付く |
 | fullstack LinkPreview(SSRF) | public IP 許可 / title・og:image 抽出 | private・loopback・link-local・予約IP 拒否 / 非http拒否 / 内部ホスト拒否 / og:image非http除外 |
+| fullstack プレビュー失敗のログ（**IT**・`LinkPreviewLoggingTest`） | 通信エラー・2xx 以外・`Location` 欠落・リダイレクト上限のそれぞれで warning が出る（`reason` と切り分け情報つき）/ ログにホストのみを残し URL 全体を残さない | `\Error`（実装バグ）は握りつぶさず伝播する |
 | laminas PasswordHasher | hash→verify / bcrypt形式 | 誤パスワード / 空 / 不正ハッシュ / ソルトで毎回異なる |
 | laminas InputFilter | Task/Register/Login の有効入力通過・StringTrim 整形・日付任意通過 | 必須欠落 / 空 / 空白のみ / 長すぎ(255超) / 短パスワード(8未満) / 不正日付 / 終了日<開始日 |
 | アップロードサイズ境界 E2E（**Playwright**・nginx 経由） | 1MB 超 2MB 以下の画像が api で 201・fullstack で確認画面へ進める（nginx 既定 1m だと 413 になる箇所） | 2MB 超は **Laravel の 422**（`errors.image` 付き。nginx/PHP ではなくアプリが判定）/ fullstack はエラー表示で確認画面へ進まない / nginx の上限超（5MB 超）は 413 |
