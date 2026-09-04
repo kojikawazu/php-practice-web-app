@@ -28,15 +28,28 @@ test.describe('fullstack タスク（準正常・異常系）', () => {
     await expect(page.locator('.bg-red-100')).toBeVisible();
   });
 
-  test('確認画面でキャンセルすると作成されない', async ({ page }) => {
+  test('確認画面でキャンセルすると作成されず、あとから確定もできない', async ({ page }) => {
     await registerFullstack(page, { name: 'User', email: uniqueEmail(), password: PASSWORD });
     await page.goto('/tasks');
     await page.fill('input[name="title"]', 'Cancelled task');
     await page.getByRole('button', { name: '追加' }).click();
     await expect(page.getByRole('button', { name: 'この内容で登録' })).toBeVisible();
 
-    await page.getByRole('link', { name: 'キャンセル' }).click();
+    // キャンセルは保留（セッション + 一時画像）を破棄するため POST フォーム（issue #86）
+    await page.getByRole('button', { name: 'キャンセル' }).click();
     await expect(page).toHaveURL(/\/tasks/);
+    await expect(page.getByText('Cancelled task')).toHaveCount(0);
+
+    // キャンセル後に確定 POST を再送しても作成されない。
+    // 以前はセッションの保留が残っていたため、この再送でタスクが作られてしまった。
+    const token = await page.locator('input[name="_token"]').first().inputValue();
+    const response = await page.request.post('/tasks', {
+      form: { _token: token },
+      maxRedirects: 0,
+    });
+    expect(response.status()).toBe(302);
+
+    await page.reload();
     await expect(page.getByText('Cancelled task')).toHaveCount(0);
   });
 

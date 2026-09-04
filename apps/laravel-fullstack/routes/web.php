@@ -22,6 +22,8 @@ Route::middleware('auth')->group(function () {
     // 新規登録: 確認 → 確定
     Route::post('/tasks/confirm', [TaskController::class, 'storeConfirm'])->name('tasks.store.confirm');
     Route::post('/tasks', [TaskController::class, 'store'])->name('tasks.store');
+    // 確認画面のキャンセル。保留の破棄を伴うため GET ではなく POST + CSRF にする。
+    Route::post('/tasks/confirm/cancel', [TaskController::class, 'cancelConfirm'])->name('tasks.confirm.cancel');
     Route::get('/tasks/{task}/edit', [TaskController::class, 'edit'])->name('tasks.edit');
     Route::get('/tasks/{task}/image', [TaskController::class, 'image'])->name('tasks.image');
     // 編集: 確認 → 確定

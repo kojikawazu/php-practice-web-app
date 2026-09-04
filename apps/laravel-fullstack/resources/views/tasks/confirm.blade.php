@@ -72,7 +72,16 @@
                 </form>
             @endif
 
-            <a href="{{ $mode === 'edit' ? route('tasks.edit', $task) : route('tasks.index') }}" class="text-sm text-gray-500 hover:underline">キャンセル</a>
+            {{-- 複製は保留状態を持たないため従来どおりリンクで戻る。
+                 新規・編集は保留（セッション + 一時画像）を破棄するので POST + CSRF にする。 --}}
+            @if ($mode === 'duplicate')
+                <a href="{{ route('tasks.index') }}" class="text-sm text-gray-500 hover:underline">キャンセル</a>
+            @else
+                <form method="POST" action="{{ route('tasks.confirm.cancel') }}">
+                    @csrf
+                    <button type="submit" class="text-sm text-gray-500 hover:underline">キャンセル</button>
+                </form>
+            @endif
         </div>
 
         @if ($mode !== 'duplicate')
