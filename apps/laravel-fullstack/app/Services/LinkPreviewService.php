@@ -2,8 +2,11 @@
 
 namespace App\Services;
 
+use GuzzleHttp\Exception\RequestException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Psr\Http\Message\StreamInterface;
 
 /**
  * URL の OGP プレビュー（title / og:image）をサーバー側で安全に取得する。
@@ -13,7 +16,7 @@ use Illuminate\Support\Facades\Log;
  *  - ホストを DNS 解決し、public IP 以外（private/loopback/link-local/予約）は拒否
  *  - 検証した IP に接続をピン留め（CURLOPT_RESOLVE）して DNS リバインディングを封じる
  *  - リダイレクトは自動追従せず、各ホップを再検証
- *  - 接続/読み込みタイムアウトと本文サイズ上限
+ *  - 接続/読み込みタイムアウトと、受信そのものを打ち切る本文サイズ上限（512KB）
  *  - 取得 HTML はそのまま出さず title / og:image だけ抽出（表示側でエスケープ）
  *
  * 読み比べ（docs/12-code-reading-guide.md Step 6）: 本アプリ固有で、他 2 アプリに対応物はない。
@@ -48,19 +51,35 @@ class LinkPreviewService
         $ip = $this->resolveSafeIp($host);
         $port = $parts['port'] ?? ($scheme === 'https' ? 443 : 80);
 
+        // 応答本文の書き込み先を上限付きにして、上限を超えた時点で転送を中断させる。
+        // ここが「512KB を超えて受信しない」ことの実体（SizeCappedSink の DocBlock 参照）。
+        $sink = new SizeCappedSink(self::MAX_BYTES);
+
         try {
             $response = Http::timeout(5)
                 ->connectTimeout(3)
                 ->withoutRedirecting()
                 ->withHeaders(['User-Agent' => 'TaskPreviewBot/1.0', 'Accept' => 'text/html'])
-                ->withOptions(['curl' => [CURLOPT_RESOLVE => ["{$host}:{$port}:{$ip}"]]])
+                ->withOptions([
+                    'sink' => $sink,
+                    'curl' => [CURLOPT_RESOLVE => ["{$host}:{$port}:{$ip}"]],
+                ])
                 ->get($url);
         } catch (\Exception $e) {
-            // ネットワークエラー等はプレビュー無しで継続する（ユーザー操作は止めない）。
-            // \Throwable ではなく \Exception を捕まえるのは、Error（TypeError 等の
-            // プログラミングバグ）まで飲み込むと自分たちのバグが「プレビューが付かない」
-            // という無害な見た目に化けて、誰も気づけなくなるため。Error は伝播させる。
-            return $this->giveUp('request_failed', $host, ['exception' => $e]);
+            // 上限で中断させた場合、cURL は転送エラーとして例外を投げるが、これは失敗ではない。
+            // 応答ヘッダーは受信済みで、Guzzle が組み立てた応答（本文 = ここまでに書けた分）が
+            // 例外にぶら下がっているので、それを通常の応答として扱って解析を続ける。
+            $partial = $e instanceof RequestException ? $e->getResponse() : null;
+
+            if (! $sink->capReached() || $partial === null) {
+                // ネットワークエラー等はプレビュー無しで継続する（ユーザー操作は止めない）。
+                // \Throwable ではなく \Exception を捕まえるのは、Error（TypeError 等の
+                // プログラミングバグ）まで飲み込むと自分たちのバグが「プレビューが付かない」
+                // という無害な見た目に化けて、誰も気づけなくなるため。Error は伝播させる。
+                return $this->giveUp('request_failed', $host, ['exception' => $e]);
+            }
+
+            $response = new Response($partial);
         }
 
         // リダイレクトは追従せず、Location を再検証して手動で辿る
@@ -77,12 +96,63 @@ class LinkPreviewService
             return $this->giveUp('http_error', $host, ['status' => $response->status()]);
         }
 
-        $html = substr((string) $response->body(), 0, self::MAX_BYTES);
+        // 2 層で上限を守る。sink は「転送を止める」担当（本命）、readCapped は「解析に使う
+        // 長さを保証する」担当。sink を通らない経路（テストのフェイク等）でも後者は成立する。
+        [$html, $readTruncated] = $this->readCapped($response->toPsrResponse()->getBody());
+        $truncated = $sink->capReached() || $readTruncated;
+
+        if ($truncated) {
+            // 失敗ではない（title / og:image は <head> にあるため先頭 512KB で足りるのが通常）。
+            // ただし「プレビューが変」と言われたときに切り詰めを疑えるよう記録は残す。
+            Log::info('URL preview body truncated', ['host' => $host, 'limit' => self::MAX_BYTES]);
+        }
 
         return [
             'title' => $this->extractTitle($html),
             'image' => $this->extractOgImage($html),
         ];
+    }
+
+    /**
+     * 本文を最大 MAX_BYTES バイトまで読み、超過したかどうかと併せて返す。
+     *
+     * 上限は Content-Length を見て判断しない。**あのヘッダーは取得先が自己申告する値**で、
+     * 偽ればいくらでも送り込めるため、上限の担保は「読む側が読むのをやめる」ことでしか
+     * 成立しない（chunked 応答のようにヘッダーが無い場合も同じ理屈で守れる）。
+     *
+     * 超過を検出するために上限より 1 バイト多く読む。読めた長さが MAX_BYTES を超えていれば
+     * 「まだ続きがある」と判定できる（eof フラグの立ち方に依存せず判定できる）。
+     *
+     * @return array{0: string, 1: bool} 読み取った本文と、上限で切り詰めたかどうか
+     */
+    private function readCapped(StreamInterface $body): array
+    {
+        $limit = self::MAX_BYTES + 1;
+        $html = '';
+
+        // sink へ書き込んだ直後は位置が末尾にあるため巻き戻す（Laravel の body() も同じことをする）
+        if ($body->isSeekable()) {
+            $body->rewind();
+        }
+
+        try {
+            while (strlen($html) < $limit && ! $body->eof()) {
+                $chunk = $body->read($limit - strlen($html));
+                if ($chunk === '') {
+                    break; // eof が立たないストリームで無限ループにしない
+                }
+                $html .= $chunk;
+            }
+        } finally {
+            // 残りを受信しきる前に接続を捨てる（打ち切りを転送量に反映させる）
+            $body->close();
+        }
+
+        if (strlen($html) > self::MAX_BYTES) {
+            return [substr($html, 0, self::MAX_BYTES), true];
+        }
+
+        return [$html, false];
     }
 
     /**

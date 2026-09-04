@@ -56,6 +56,8 @@
 | laminas CSRF（**IT**・`CsrfProtectionIntegrationTest`） | 正しいトークンで作成・削除・ログアウトが通る / 全 POST フォームにトークンが埋まる / 状態変更の導線が POST フォームである | GET での削除・複製・トグル・ログアウトは 405 で実行されない / トークン無し・不正トークンの POST は 403（作成・削除・トグル・ログイン・登録） |
 | 3アプリ CSP（`CspHeaderTest` / `CspHeaderIntegrationTest`） | HTML 応答にヘッダーが付く / ヘッダーの nonce と HTML の nonce が一致 / nonce がリクエストごとに変わる / 実際に使う CDN だけを許可 | script-src に `'unsafe-inline'`・`'unsafe-eval'` が無い / ワイルドカードが無い / api は script-src を持たない / エラー応答にもヘッダーが付く |
 | fullstack LinkPreview(SSRF) | public IP 許可 / title・og:image 抽出 | private・loopback・link-local・予約IP 拒否 / 非http拒否 / 内部ホスト拒否 / og:image非http除外 |
+| fullstack 本文サイズ上限の実体（`SizeCappedSinkTest`） | 上限内の書き込みは全量受理 / 上限ちょうどは中断扱いにしない | 上限をまたぐ書き込みは**短い値を返す**（cURL に転送を中断させる合図）/ 上限到達後の書き込みは 0 を返す / 超過分を保持しない / 一度到達した状態は戻らない |
+| fullstack プレビュー本文の切り詰め（**IT**・`LinkPreviewSizeLimitTest`） | 上限内の解析は従来どおり / 境界ちょうどは切り詰め扱いにしない | 上限を超えた位置の内容は解析に使われない / 切り詰めを info で記録 / 偽の `Content-Length` で上限を迂回できない |
 | fullstack プレビュー失敗のログ（**IT**・`LinkPreviewLoggingTest`） | 通信エラー・2xx 以外・`Location` 欠落・リダイレクト上限のそれぞれで warning が出る（`reason` と切り分け情報つき）/ ログにホストのみを残し URL 全体を残さない | `\Error`（実装バグ）は握りつぶさず伝播する |
 | laminas PasswordHasher | hash→verify / bcrypt形式 | 誤パスワード / 空 / 不正ハッシュ / ソルトで毎回異なる |
 | laminas InputFilter | Task/Register/Login の有効入力通過・StringTrim 整形・日付任意通過 | 必須欠落 / 空 / 空白のみ / 長すぎ(255超) / 短パスワード(8未満) / 不正日付 / 終了日<開始日 |
