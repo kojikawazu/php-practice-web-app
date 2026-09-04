@@ -83,6 +83,8 @@ make test          # 3アプリ一括
 make test-fs       # laravel-fullstack
 make test-api      # laravel-api
 make test-laminas  # laminas
+
+make coverage      # 3アプリのカバレッジ計測 + 下限判定（CI と同じスクリプトを使う）
 ```
 
 E2E（Playwright・実環境に対して実行）:
@@ -97,3 +99,32 @@ make e2e                  # e2e/ で npm ci → chromium 導入 → playwright t
 ## カバレッジ目標
 
 学習用のためサンプル機能（Task CRUD）を最低限カバーする。新機能追加時も上のケース表へ追記し、**異常系（準正常系含む）が正常系を上回る**配分を維持する（比率の数値目標は置かない。`.claude/rules/testing.md` 準拠）。
+
+### 計測と下限
+
+| 項目 | 内容 |
+| --- | --- |
+| 計測ドライバ | **pcov**（手元は `docker/php/Dockerfile` で導入、CI は `setup-php` の `coverage: pcov`）。Xdebug ではなく計測専用で軽い pcov を使う |
+| 計測対象 | 各 `phpunit.xml` の `<source>`（Laravel = `app/`、Laminas = `module/*/src`）。テストコード自体は対象外 |
+| 下限 | **行カバレッジ 90%**。判定は `scripts/coverage-threshold.php` が Clover を読んで行う |
+| 実行 | 手元 = `make coverage` / CI = `test` ジョブ（3 アプリの matrix で並行） |
+
+- **下限値は `scripts/coverage-threshold.php` の 1 箇所にだけ置く。** 手元（`Makefile`）と CI（`ci.yml`）の双方が同じスクリプトを呼ぶため、数値を書き写して「手元と CI で違う基準を見ている」状態にならない（actionlint のバージョン固定と同じ考え方）。
+- **PHPUnit には fail-under 相当の機能がない。** Laravel の `test --coverage --min=` は使えるが laminas に同等の手段が無く、アプリごとに基準や計算方法が変わるのを避けて自前スクリプトへ統一している。
+- **レポートが無い場合も失敗させる。** 計測ドライバが入っていないと PHPUnit は計測を黙ってスキップするため、「検査できなかった」を合格として扱うと、計測が壊れた日から**ずっと緑**になる（`.claude/rules/testing.md`「ガード自体をテストする」）。
+- 下限を下回ったらテストを追加する。下限そのものを下げる場合は、スクリプトを変更したうえで**理由を PR に書く**（静的解析の baseline と同じ扱い）。
+
+計測時点の実測値（`docs/11` の進捗メモが件数の正本、ここは下限を決めた根拠として残す）:
+
+| アプリ | 行カバレッジ |
+| --- | --- |
+| laravel-fullstack | 94.57% (261/276) |
+| laravel-api | 98.05% (151/154) |
+| laminas | 95.66% (419/438) |
+
+### 未カバー行はデッドコードの候補として読む
+
+`.claude/rules/dead-code.md` のとおり、カバレッジ 0% の行は「使われていないコード」の手がかりになる。`make coverage` の出力（Laravel はファイル別、Laminas はクラス別）を、機能追加時だけでなく**棚卸しの入口**としても使う。
+
+- ただし**フレームワーク規約で呼ばれるコードは 0% に見える**（Eloquent のリレーションメソッド、`*Factory` 経由で生成されるクラス、PHTML から呼ばれるビューヘルパー等）。同ルールの「例外」と突き合わせてから判断する。
+- 実例: 両 Laravel の `Task::user()` リレーションはどこからも呼ばれていない（所有者スコープを `$user->tasks()` 側から張っているため）。これは上記の例外に当たるため削除せず、3 アプリの読み比べ用に残す（issue #69 に記録）。

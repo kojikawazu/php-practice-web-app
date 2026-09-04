@@ -10,6 +10,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN docker-php-ext-configure intl \
     && docker-php-ext-install -j"$(nproc)" pdo_mysql mysqli zip intl bcmath
 
+# カバレッジ計測ドライバ（pcov）。ドライバが無いと PHPUnit は計測を黙ってスキップするため、
+# 手元でも CI と同じように `make coverage` が動くようにイメージへ入れる。
+# Xdebug ではなく pcov を選ぶのは、計測専用で軽く、デバッガ機能を持たないぶん
+# 通常のリクエストへの影響が小さいため（CI も setup-php の coverage: pcov で揃える）。
+RUN pecl install pcov \
+    && docker-php-ext-enable pcov
+
 # アップロードのサイズ上限（既定の 2M / 8M を上書き。理由は uploads.ini に記載）
 COPY uploads.ini /usr/local/etc/php/conf.d/uploads.ini
 
