@@ -61,6 +61,7 @@ LAMINAS_PORT=18003
 
 ```bash
 make test               # 3アプリのテストを一括実行（ローカル / Docker）
+make coverage           # 3アプリのカバレッジ計測 + 下限判定（CI と同じスクリプト）
 make logs               # ログ追従
 make down               # 停止
 ```

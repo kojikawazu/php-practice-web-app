@@ -45,7 +45,7 @@ Docker Compose のサービス構成:
 | `php-laminas` | php:8.3-fpm（自前ビルド） | laminas |
 | `nginx` | nginx:alpine | リバースプロキシ。ポート 8001/8002/8003（`.env` の `FS_PORT` / `API_PORT` / `LAMINAS_PORT` で上書き可） |
 
-PHP 拡張: `pdo_mysql` ほか各 FW が要求するもの。`docker/php/Dockerfile` で導入。PHP の設定上書きは `docker/php/uploads.ini`（アップロードサイズ）を `conf.d/` へ配置する。
+PHP 拡張: `pdo_mysql` ほか各 FW が要求するものに加え、カバレッジ計測用の `pcov`（手元で `make coverage` を CI と同じ形で動かすため。CI 側は `setup-php` の `coverage: pcov` で入る）。`docker/php/Dockerfile` で導入。PHP の設定上書きは `docker/php/uploads.ini`（アップロードサイズ）を `conf.d/` へ配置する。
 
 ### リクエストサイズの上限
 
@@ -105,13 +105,14 @@ laminas はアップロード機能を持たないため既定の 1m のまま�
   | 静的解析の設定のみ（`phpstan.neon` / `psalm.xml` / `phpcs.xml` / 各 baseline） | ❌ | ✅ | ❌ | ❌ | ❌ |
   | PHPUnit の設定のみ（`phpunit.xml` / `phpunit.xml.dist`） | ✅ | ❌ | ❌ | ❌ | ❌ |
   | `compose.yaml` / `docker/**` / `e2e/**` | ❌ | ❌ | ✅ | ❌ | ❌ |
+  | `scripts/**`（`setup.sh` / `coverage-threshold.php`） | ✅ | ✅ | ✅ | ❌ | ❌ |
   | md ドキュメント（`.github/PULL_REQUEST_TEMPLATE/**` を含む） / `.claude/**` / markdown lint の設定（`.markdownlint-cli2.jsonc` と入れ子の `.markdownlint.jsonc`） | ❌ | ❌ | ❌ | ✅ | ❌ |
   | ルート直下の `package.json` / `package-lock.json`（markdown lint の実行環境） | ❌ | ❌ | ❌ | ✅ | ❌ |
   | `.github/workflows/**` | ✅ | ✅ | ✅ | ❌ | ✅ |
   | `Makefile`（actionlint のコマンド定義） | ❌ | ❌ | ❌ | ❌ | ✅ |
   | 上記に当てはまらない変更（新規ディレクトリ等） | ✅ | ✅ | ✅ | ❌ | ❌ |
 
-  `test` が Docker 系（`compose.yaml` / `docker/**`）に依存しないのは、`shivammathur/setup-php` で動き Docker を使わないため。`Makefile` は PHP 系 3 ジョブが参照しない（CI は各コマンドを直接叩く）ため、それらのフィルタでは除外している。**例外は actionlint ジョブ**で、イメージのタグを 2 箇所に書き写さないために `make actionlint` を呼ぶ。そのため `workflows` フィルタは `Makefile` も対象に含める。 ルート直下の `package*.json` は markdown lint 専用のため PHP 系 3 ジョブから除外している（`e2e/package*.json` は別パスで、従来どおり `e2e` を発火させる）。
+  `test` が Docker 系（`compose.yaml` / `docker/**`）に依存しないのは、`shivammathur/setup-php` で動き Docker を使わないため（カバレッジドライバも setup-php が入れるので、`docker/php/Dockerfile` への pcov 追加は CI に影響しない）。逆に **`scripts/**` は除外しない**。`test` ジョブがカバレッジ下限の判定に `scripts/coverage-threshold.php` を実行するため、ここを除外すると下限を変更しても検証されないまま通ってしまう。`Makefile` は PHP 系 3 ジョブが参照しない（CI は各コマンドを直接叩く）ため、それらのフィルタでは除外している。**例外は actionlint ジョブ**で、イメージのタグを 2 箇所に書き写さないために `make actionlint` を呼ぶ。そのため `workflows` フィルタは `Makefile` も対象に含める。 ルート直下の `package*.json` は markdown lint 専用のため PHP 系 3 ジョブから除外している（`e2e/package*.json` は別パスで、従来どおり `e2e` を発火させる）。
 
   **`secret-scan` は本表の対象外**（`changes` に依存せず常に実行する）。秘匿ファイルの混入はどの変更種別でも起こりうるため、発火制御をかけない。
 
@@ -123,7 +124,7 @@ laminas はアップロード機能を持たないため既定の 1m のまま�
   - **ファイル名だけを見る検査**であり、中身は読まない。ソースコードへ直書きされた認証情報は検出できない（`docs/06` の「既知の注意点」を参照）。ジョブは `permissions: contents: read` に絞る。
 - **actionlint**: `if: workflows == 'true'` で `.github/workflows/**` または `Makefile` の変更時のみ実行。workflow の構文・式（`${{ }}`）・runner ラベル・action の入力・**スクリプトインジェクション**に加え、**`run:` の中身を shellcheck に流す**（`.claude/rules/github-actions.md` が要求する品質ゲートの実体）。取得は公式 Docker イメージ `rhysd/actionlint` のバージョン固定タグ。**CI は `make actionlint` を呼ぶ**ため、コマンドとタグの定義は `Makefile` の 1 箇所だけになり、手元と CI が構造的に一致する（バージョンを上げるときも `Makefile` を変えるだけでよい）。公式イメージを使う理由は **shellcheck が同梱されている**こと。バイナリだけ入れると `run:` の検査が警告もなく静かにスキップされ、終了コード 0 のまま検査が減ったことに気づけない。ジョブは `permissions: contents: read` に絞る。
 - **markdown-lint**: `if: docs == 'true'` で md 変更時のみ実行（`markdownlint-cli2`）。対象と無効化ルールの理由は `.markdownlint-cli2.jsonc` に記載し、**警告ゼロを維持**する（`.claude/rules/static-analysis.md`）。ローカルは `make md-lint` / `make md-fix`。バージョンはルートの `package.json` の devDependency で完全固定し（`npm ci`）、更新は Dependabot（`.github/dependabot.yml`・npm / weekly）が PR で上げる。**`run:` に `npx pkg@x.y.z` と直書きするとマニフェストではないため Dependabot から見えず、更新契機が生まれない**（actionlint の Docker タグ固定には同じ制約が残っている）。
-- **test**: `needs: changes` + `if: test == 'true'` で実行。`shivammathur/setup-php`（PHP 8.3）で各アプリをセットアップ（Docker 不使用）、matrix で 3 アプリを並行ジョブ実行（`fail-fast: false`）。Laravel ×2 は `php artisan test`（テスト DB は SQLite in-memory のため MySQL サービス不要）、Laminas は `vendor/bin/phpunit`。
+- **test**: `needs: changes` + `if: test == 'true'` で実行。`shivammathur/setup-php`（PHP 8.3・`coverage: pcov`）で各アプリをセットアップ（Docker 不使用）、matrix で 3 アプリを並行ジョブ実行（`fail-fast: false`）。Laravel ×2 は `php artisan test --coverage`（テスト DB は SQLite in-memory のため MySQL サービス不要）、Laminas は `vendor/bin/phpunit --coverage-text`。いずれも Clover を出力し、続く手順で `scripts/coverage-threshold.php` が**行カバレッジの下限**を判定する（下限値の正本はそのスクリプト。手元の `make coverage` も同じものを呼ぶ。詳細は `docs/08`）。**ガード自体も同じジョブで自己検証する**（下限割れ・レポート不在の 2 経路で確実に落ちること）。判定が壊れると「常に緑」になり検査の停止に気づけないため、`secret-scan` と同じ考え方で自己検証を置いている。
 - **lint**: `if: lint == 'true'` で実行する静的チェックジョブ（matrix で 3 アプリ並行）。Laravel ×2 は `vendor/bin/pint --test`（整形の差分検査）+ `composer analyse`（Larastan/PHPStan・`level: max`）、Laminas は `composer cs-check`（phpcs / Laminas Coding Standard）+ `vendor/bin/psalm`（型解析・`errorLevel=1`）。静的解析の既存指摘は baseline（Laravel=`apps/laravel-*/phpstan-baseline.neon` / Laminas=`apps/laminas/psalm-baseline.xml`）に記録済みで、CI は**新規に増えた指摘のみ**で失敗する（baseline 運用）。ローカルでの自動修正は Laravel=`vendor/bin/pint`、Laminas=`composer cs-fix`。
 - **e2e**: `if: e2e == 'true'` で実行。compose で app + 実 MySQL を起動し、migrate → Playwright で 3 アプリ横断の E2E を検証する（詳細は `docs/08`）。失敗時は Playwright レポートを artifact に上げ、compose ログを出力する。
 

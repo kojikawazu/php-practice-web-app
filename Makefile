@@ -1,4 +1,4 @@
-.PHONY: setup up down build logs ps migrate test test-fs test-api test-laminas e2e actionlint md-lint md-fix
+.PHONY: setup up down build logs ps migrate test test-fs test-api test-laminas coverage coverage-fs coverage-api coverage-laminas e2e actionlint md-lint md-fix
 
 # 初回セットアップ（fresh clone から 3 アプリが応答する状態まで）。
 # .env・vendor・APP_KEY・書き込み権限・マイグレーションまでを一括で用意する。
@@ -39,6 +39,25 @@ test-api:
 
 test-laminas:
 	docker compose exec php-laminas ./vendor/bin/phpunit
+
+# カバレッジ計測（3 アプリ）。計測ドライバ（pcov）は docker/php/Dockerfile で入れている。
+# 下限の判定は scripts/coverage-threshold.php に集約しており、CI（test ジョブ）も同じ
+# スクリプトを呼ぶ。下限値を Makefile と ci.yml の両方に書き写すと、片方だけ変えても
+# 気づけないため、数値はスクリプト側の 1 箇所だけに置く。
+# 使い方: 未カバーの行はデッドコードの候補でもある（.claude/rules/dead-code.md）。
+coverage: coverage-fs coverage-api coverage-laminas
+
+coverage-fs:
+	docker compose exec php-fs php artisan test --coverage --coverage-clover=coverage.xml
+	docker compose exec php-fs php /var/www/scripts/coverage-threshold.php coverage.xml
+
+coverage-api:
+	docker compose exec php-api php artisan test --coverage --coverage-clover=coverage.xml
+	docker compose exec php-api php /var/www/scripts/coverage-threshold.php coverage.xml
+
+coverage-laminas:
+	docker compose exec php-laminas ./vendor/bin/phpunit --coverage-text --only-summary-for-coverage-text --coverage-clover=coverage.xml
+	docker compose exec php-laminas php /var/www/scripts/coverage-threshold.php coverage.xml
 
 # E2E（Playwright）。事前に `make up && make migrate` で実環境を起動しておくこと。
 # 3アプリ（fullstack/laminas=ブラウザ, api=HTTP）を 1 ランナーで実行する。

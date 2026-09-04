@@ -71,10 +71,13 @@ jobs:
               - '!package.json'
               - '!package-lock.json'
               # PHPUnit は compose / Playwright / Makefile を使わない
+              # （pcov は setup-php が入れるため、docker/php/Dockerfile への追加も CI には影響しない）
               - '!e2e/**'
               - '!docker/**'
               - '!compose.yaml'
               - '!Makefile'
+              # scripts/** は除外しない。test ジョブが scripts/coverage-threshold.php を
+              # 実行するため、ここを除外すると下限を変更しても検証されないまま通る。
               # 静的解析のみに影響する設定（lint 側で拾う）
               - '!**/phpstan.neon'
               - '!**/phpstan-baseline.neon'
@@ -312,7 +315,10 @@ jobs:
         with:
           php-version: '8.3'
           extensions: mbstring, intl, bcmath, pdo_sqlite, dom, xml, curl, zip, fileinfo, tokenizer
-          coverage: none
+          # カバレッジ計測ドライバ。none のままだと PHPUnit は計測を黙ってスキップし、
+          # Clover が出力されないまま「テストは緑」になる（下限判定はそれを失敗として扱う）。
+          # Xdebug ではなく pcov を使うのは計測専用で速いため（手元の Docker イメージも pcov）。
+          coverage: pcov
 
       - name: Install dependencies
         uses: ramsey/composer-install@v3
@@ -330,12 +336,35 @@ jobs:
       - name: Run tests (Laravel)
         if: ${{ matrix.laravel }}
         working-directory: apps/${{ matrix.app }}
-        run: php artisan test
+        run: php artisan test --coverage --coverage-clover=coverage.xml
 
       - name: Run tests (Laminas)
         if: ${{ !matrix.laravel }}
         working-directory: apps/${{ matrix.app }}
-        run: ./vendor/bin/phpunit
+        run: ./vendor/bin/phpunit --coverage-text --only-summary-for-coverage-text --coverage-clover=coverage.xml
+
+      # ガード自体を自己検証する。下限判定が壊れると「常に緑」になり、検査が止まったことに
+      # 誰も気づけない（.claude/rules/testing.md）。落ちるべき 2 経路を確認する。
+      # if で受けているのは、失敗を期待するコマンドで bash -e に止められないため。
+      - name: Verify coverage guard
+        run: |
+          low='<?xml version="1.0"?><coverage><project><metrics statements="100" coveredstatements="50"/></project></coverage>'
+          printf '%s' "$low" > "${RUNNER_TEMP}/low-coverage.xml"
+          if php scripts/coverage-threshold.php "${RUNNER_TEMP}/low-coverage.xml"; then
+            echo '下限割れを検出できていない（ガードが機能していない）' >&2
+            exit 1
+          fi
+          if php scripts/coverage-threshold.php "${RUNNER_TEMP}/does-not-exist.xml"; then
+            echo 'レポート不在を検出できていない（計測の停止を見逃す）' >&2
+            exit 1
+          fi
+
+      # 下限の判定は scripts/coverage-threshold.php に集約している（下限値の正本はそのファイル）。
+      # 手元の `make coverage` も同じスクリプトを呼ぶため、基準が 2 箇所に分かれない。
+      # レポートが無い場合も失敗させる（計測が壊れた日に「ずっと緑」になるのを防ぐ）。
+      - name: Check coverage threshold
+        working-directory: apps/${{ matrix.app }}
+        run: php ../../scripts/coverage-threshold.php coverage.xml
 
   # 静的チェック（整形・コーディング標準・型解析）。lint フィルタが true のときのみ実行する。
   # test とは発火条件を分けており、静的解析の設定（phpstan.neon / psalm.xml / phpcs.xml /

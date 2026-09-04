@@ -4,6 +4,9 @@
 # リポジトリ直下の開発ツール（markdown lint）。package.json / package-lock.json は追跡する。
 /node_modules/
 
+# カバレッジレポート（make coverage / CI が生成する中間成果物）
+/apps/*/coverage.xml
+
 # Environment
 .env
 /apps/*/.env
