@@ -84,10 +84,10 @@
 
 GET で状態が変わると、`<img src="http://host/tasks/delete/1">` を含むページを開かせるだけで操作が成立する（トークン以前の問題）。
 
-| アプリ | ログアウト | 複製 | 削除 |
-| --- | --- | --- | --- |
-| laravel-fullstack | POST | POST | DELETE |
-| laminas | POST | POST | POST |
+| アプリ | ログアウト | 複製 | 削除 | 確認画面のキャンセル |
+| --- | --- | --- | --- | --- |
+| laravel-fullstack | POST | POST | DELETE | POST |
+| laminas | POST | POST | POST | —（確認画面なし） |
 
 laminas は POST 以外を **405 Method Not Allowed**（`Allow: POST` 付き）で拒否する。実装は `Application\Controller\RequiresPostTrait`。
 

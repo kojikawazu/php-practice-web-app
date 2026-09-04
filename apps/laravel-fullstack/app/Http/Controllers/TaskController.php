@@ -75,6 +75,33 @@ class TaskController extends Controller
         return redirect()->route('tasks.index');
     }
 
+    /**
+     * 確認画面のキャンセル。保留中の操作（セッション）と一時画像を破棄する。
+     *
+     * GET のリンクで一覧へ戻るだけだと、セッションの保留ペイロードが残るため
+     * **キャンセルしたはずの確定 POST を後から実行できてしまう**（ブラウザバックや
+     * 別タブからの再送）。破棄を伴う操作なので POST + CSRF にしている。
+     *
+     * 保留が無い状態で呼ばれても何もせずリダイレクトする（二重送信・再読み込みで
+     * エラーにしない）。
+     */
+    public function cancelConfirm(): RedirectResponse
+    {
+        $payload = session(self::CONFIRM_KEY);
+        $payload = is_array($payload) ? $payload : [];
+
+        $this->clearPendingTemp();
+        session()->forget(self::CONFIRM_KEY);
+
+        // 戻り先はセッションの内容だけで決める。リクエストから受け取った URL へ
+        // リダイレクトすると、任意の URL へ誘導できる口を作ってしまうため。
+        if (($payload['mode'] ?? null) === 'edit' && ! empty($payload['task_id'])) {
+            return redirect()->route('tasks.edit', $payload['task_id']);
+        }
+
+        return redirect()->route('tasks.index');
+    }
+
     // ---- 編集（2ステップ）----
 
     public function edit(Task $task): View
