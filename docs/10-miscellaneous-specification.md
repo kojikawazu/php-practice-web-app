@@ -66,5 +66,5 @@
 - **テストは SQLite in-memory**: 共有 MySQL を `RefreshDatabase` の全 DROP から守るため。prefix 動作は実 DB マイグレーションで確認。
 - **Laminas 認証は自前 bcrypt 照合 + AuthenticationService 保存**: DbTable アダプタより bcrypt と相性が良いため。
 - **flatpickr は CDN 読み込み（SRI 未設定）**: 学習用トレードオフ（`docs/06`）。
-- **アプリ別 ExampleTest 残置**: スケルトン由来。整理は任意。
+- **アプリ別 ExampleTest は削除済み**（issue #69）: スケルトン由来の 3 件（`assertTrue(true)` ×2 と、api の `/` が Laravel の welcome を返すことの確認）は**何も守っていなかった**ため削除した。fullstack の Feature 版だけは `/` → `/tasks` のリダイレクトという実挙動を検証していたため、意図が分かる名前（`RootRedirectTest`）へ移して残している。
 - **ライセンスは MIT（ルート `LICENSE`）**: 学習用に公開するため利用条件を明示する。`apps/laminas` のみスケルトン由来の BSD-3-Clause（`apps/laminas/LICENSE.md`）が併存し、Laminas の著作権表示はそのまま残す。
