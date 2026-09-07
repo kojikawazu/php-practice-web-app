@@ -85,6 +85,7 @@ laminas はアップロード機能を持たないため既定の 1m のまま�
   - `every` は肯定形フィルタを壊すため、`docs`（`**/*.md`）の判定は既定の OR 評価の**別ステップ**に分けている。
   - 出力は `test` / `lint` / `e2e` / `docs` / `workflows` の 5 つ。**ジョブが読まないと確認できたファイルのみを除外する**方針で、3 つのコード系フィルタを個別に持つ。
   - `workflows` だけは**肯定リスト**（`.github/workflows/**`）で書く。actionlint の検査対象がこのディレクトリで閉じており、未知のファイルが増えても検査すべき対象は増えないため、対象リスト方式でも fail-open にならない。
+  - **AND 評価が効いていること自体を、同ジョブ内で自己検証する**（`Verify predicate-quantifier is AND`）。`every` が効かなくなると否定パターンが互いを打ち消して**全フィルタが常に true** になるが、その壊れ方は「必要なジョブは走り続ける」ため CI は緑のままで気づけない。同時には満たせない 2 条件（`'**'` と `'!**'`）を評価し、AND なら false・OR なら true になる差で判定する。変更ファイル 0 件で空振りするのを防ぐため、単独の `'**'` を対照に置き、**検査できなかった場合も失敗させる**（`.claude/rules/testing.md`「ガード自体をテストする」）。Dependabot が `dorny/paths-filter` のメジャー更新を PR で上げるようになったため（`.github/dependabot.yml`）、この自己検証が更新 PR の合否根拠になる。
 
   各ツールが実際に読む範囲（設定ファイルで確認済み）:
 
@@ -127,6 +128,17 @@ laminas はアップロード機能を持たないため既定の 1m のまま�
 - **test**: `needs: changes` + `if: test == 'true'` で実行。`shivammathur/setup-php`（PHP 8.3・`coverage: pcov`）で各アプリをセットアップ（Docker 不使用）、matrix で 3 アプリを並行ジョブ実行（`fail-fast: false`）。Laravel ×2 は `php artisan test --coverage`（テスト DB は SQLite in-memory のため MySQL サービス不要）、Laminas は `vendor/bin/phpunit --coverage-text`。いずれも Clover を出力し、続く手順で `scripts/coverage-threshold.php` が**行カバレッジの下限**を判定する（下限値の正本はそのスクリプト。手元の `make coverage` も同じものを呼ぶ。詳細は `docs/08`）。**ガード自体も同じジョブで自己検証する**（下限割れ・レポート不在の 2 経路で確実に落ちること）。判定が壊れると「常に緑」になり検査の停止に気づけないため、`secret-scan` と同じ考え方で自己検証を置いている。
 - **lint**: `if: lint == 'true'` で実行する静的チェックジョブ（matrix で 3 アプリ並行）。Laravel ×2 は `vendor/bin/pint --test`（整形の差分検査）+ `composer analyse`（Larastan/PHPStan・`level: max`）、Laminas は `composer cs-check`（phpcs / Laminas Coding Standard）+ `vendor/bin/psalm`（型解析・`errorLevel=1`）。静的解析の既存指摘は baseline（Laravel=`apps/laravel-*/phpstan-baseline.neon` / Laminas=`apps/laminas/psalm-baseline.xml`）に記録済みで、CI は**新規に増えた指摘のみ**で失敗する（baseline 運用）。ローカルでの自動修正は Laravel=`vendor/bin/pint`、Laminas=`composer cs-fix`。
 - **e2e**: `if: e2e == 'true'` で実行。compose で app + 実 MySQL を起動し、migrate → Playwright で 3 アプリ横断の E2E を検証する（詳細は `docs/08`）。失敗時は Playwright レポートを artifact に上げ、compose ログを出力する。
+
+依存更新の追跡範囲（`.github/dependabot.yml`・いずれも weekly）:
+
+| 対象 | エコシステム | 備考 |
+| --- | --- | --- |
+| ルート `package.json`（markdownlint-cli2） | `npm` | 完全固定（キャレット無し）。#114 で導入 |
+| `ci.yml` の `uses:` で参照する GitHub Actions | `github-actions` | #125 で追加。登録漏れにより 4 アクションが Node.js 20 ランタイムのまま取り残されていた |
+| `Makefile` の `rhysd/actionlint:<tag>` | **追跡不可** | `run:` 内の `docker run` はマニフェストではないため、`github-actions` でも `docker`（Dockerfile / compose を読む）でも検出されない。**手動更新**（手順は README） |
+| 3 アプリの `composer.json` | 未登録 | 更新は手動で行い、`composer audit` で脆弱性を監視する（`.claude/rules/coding-standards.md`） |
+
+**「マニフェストに書かれた依存だけが追跡される」**という制約が共通の判断軸になる。`uses:` は追跡できる形式なのに登録し忘れていたのが #125 の原因で、構造としては #114（`npx pkg@x.y.z` の直書き）と同じ欠陥だった。追跡できないものは、**追跡できないと明記して手動更新の手順を残す**（黙って放置しない）。
 
 > 補足: 必須チェックの落とし穴を避けるため、**ワークフローレベルの `paths` / `paths-ignore` は使わない**。ワークフロー自体が起動しないと必須チェックが `pending` のまま完了せず PR がマージ不能になるため、「常に起動してジョブレベル `if:` でスキップする（= skipped は成功扱い）」形を採る（`.claude/rules/github-actions.md`）。
 >

@@ -99,6 +99,8 @@ make actionlint         # 検査（CI の actionlint ジョブと同じコマン
 
 Docker イメージ `rhysd/actionlint` をバージョン固定で使うため、ホストへのインストールは不要。バージョンを上げるときは **`Makefile` の `actionlint` ターゲットだけ**を変更する。CI は `make actionlint` を呼ぶため、タグは `Makefile` の 1 箇所にしか存在しない（2 箇所に書き写すと、片方だけ上げても CI は緑のまま検査内容がずれる）。
 
+**このタグは Dependabot が追跡できない**（`run:` 内の `docker run` はマニフェストではないため、`github-actions` でも `docker` エコシステムでも検出されない）。更新契機が自動では生まれないので、**手動で最新タグを確認して上げる**（`ci.yml` の `uses:` で参照するアクションは Dependabot が PR を上げる）。
+
 CI: push / Pull Request 時に GitHub Actions（`.github/workflows/ci.yml`）が 3 アプリの **テスト**（PHPUnit）と **静的チェック**（Laravel=Pint + Larastan / Laminas=phpcs + Psalm）、および **markdown lint** / **actionlint** / **secret scan**（鍵・`.env` の Git 混入検出）を自動実行する。ローカルでの自動修正は Laravel=`vendor/bin/pint`、Laminas=`composer cs-fix`、md=`make md-fix`。
 
 発火は変更内容で制御される（`.claude/rules/github-actions.md`）。`test` / `lint` / `e2e` / `markdown-lint` / `actionlint` はそれぞれ読むファイルが違うため、条件も分けている。

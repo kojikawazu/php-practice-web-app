@@ -49,12 +49,12 @@ jobs:
       docs: ${{ steps.docs.outputs.docs }}
       workflows: ${{ steps.workflows.outputs.workflows }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # 除外リスト（AND 評価）。条件を狭める方向の変更なので under-fire（必要な検査が
       # 走らない）が最大のリスク。除外して良いのは「そのジョブが読まないと確認できた
       # ファイル」だけに限る。どの除外にも当たらない変更は必ず発火する（安全側）。
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         id: code
         with:
           predicate-quantifier: every
@@ -127,7 +127,7 @@ jobs:
               - '!Makefile'
 
       # 肯定リスト（既定の OR 評価）: md が 1 つでも変わったら markdown lint を実行する。
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         id: docs
         with:
           filters: |
@@ -142,7 +142,7 @@ jobs:
       # 肯定リスト: actionlint は workflow ファイルだけを読むため、対象を明示して絞る。
       # （除外リストにしないのは、検査対象が .github/workflows/** で閉じており
       #   「未知のファイルが増えたら発火させる」必要がないため。fail-open にならない）
-      - uses: dorny/paths-filter@v3
+      - uses: dorny/paths-filter@v4
         id: workflows
         with:
           filters: |
@@ -153,6 +153,44 @@ jobs:
               - 'Makefile'
               # actionlint の設定ファイル（現在は未設置。追加された時点で拾う）
               - '.github/actionlint.yaml'
+
+      # 除外リストの土台である AND 評価（predicate-quantifier: every）が、実際に AND として
+      # 効いていることを自己検証する。
+      #
+      # dorny/paths-filter は既定でパターンの結果を OR（some）で束ねるため、every が効かないと
+      # 否定パターンは互いを打ち消し、除外が 1 つも効かなくなる（docs/lessons-learned.md
+      # 2026-07-25）。しかもその壊れ方は「全部 true になる」＝**必要なジョブは走り続ける**ため、
+      # CI は緑のままで誰も気づけない。Dependabot が paths-filter のメジャー更新を PR で
+      # 上げるようになった以上（.github/dependabot.yml）、緑を根拠にできない。
+      #
+      # 判定は「同時には満たせない 2 条件」で行う。AND なら false、OR なら true になる。
+      # 対照として単独の '**' も置き、変更ファイルが 0 件で検証が空振りするのを検出する
+      # （.claude/rules/testing.md「ガード自体をテストする」）。
+      - uses: dorny/paths-filter@v4
+        id: quantifier
+        with:
+          predicate-quantifier: every
+          filters: |
+            contradiction:
+              - '**'
+              - '!**'
+            control:
+              - '**'
+
+      - name: Verify predicate-quantifier is AND
+        env:
+          CONTRADICTION: ${{ steps.quantifier.outputs.contradiction }}
+          CONTROL: ${{ steps.quantifier.outputs.control }}
+        run: |
+          if [ "$CONTROL" != "true" ]; then
+            echo "::error::変更ファイルを 1 件も検出できず、AND 評価を検証できませんでした。検査できなかったことを合格として扱いません。"
+            exit 1
+          fi
+          if [ "$CONTRADICTION" != "false" ]; then
+            echo "::error::predicate-quantifier: every が AND として評価されていません（'**' と '!**' が同時に真になっています）。除外リストが無効化され、docs だけの変更でも test / lint / e2e が走る状態です。dorny/paths-filter の更新を差し戻してください。"
+            exit 1
+          fi
+          echo "self-test OK: AND 評価が有効（contradiction=false / control=true）"
 
   # 秘匿ファイルが Git の追跡対象に入った時点で落とすガード。
   #
@@ -177,7 +215,7 @@ jobs:
       # 除外対象: 雛形（*.example 等）と型定義（.env.d.ts）。中身を持たないため誤検知になる。
       ALLOW_PATTERN: '\.(example|sample|template|dist)$|\.env\.d\.ts$'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # 自己検証と本走査を 1 ステップに置くのは、判定式を 1 か所にするため
       # （run: ごとにシェルが分かれるので、複数ステップだと式を書き写すことになる）。
@@ -261,7 +299,7 @@ jobs:
       contents: read
     steps:
       # actionlint は .git からリポジトリルートを判定するため checkout を先に置く。
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # コマンドとイメージのタグは Makefile 1 箇所で定義し、手元と CI で同一のものを実行する
       # （2 箇所に書き写すと、片方だけ上げても CI は緑のまま検査内容がずれる）。
@@ -277,10 +315,10 @@ jobs:
     if: needs.changes.outputs.docs == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '20'
           cache: npm
@@ -308,7 +346,7 @@ jobs:
           - { app: laminas, laravel: false }
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup PHP 8.3
         uses: shivammathur/setup-php@v2
@@ -321,7 +359,7 @@ jobs:
           coverage: pcov
 
       - name: Install dependencies
-        uses: ramsey/composer-install@v3
+        uses: ramsey/composer-install@v4
         with:
           working-directory: apps/${{ matrix.app }}
 
@@ -384,7 +422,7 @@ jobs:
           - { app: laminas, laravel: false }
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup PHP 8.3
         uses: shivammathur/setup-php@v2
@@ -394,7 +432,7 @@ jobs:
           coverage: none
 
       - name: Install dependencies
-        uses: ramsey/composer-install@v3
+        uses: ramsey/composer-install@v4
         with:
           working-directory: apps/${{ matrix.app }}
 
@@ -432,7 +470,7 @@ jobs:
     if: needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # 初期化手順の正本は scripts/setup.sh（ローカルの `make setup` と同じもの）。
       # .env 作成・compose 起動・MySQL 待ち・3 アプリの composer install・書き込み権限・
@@ -442,7 +480,7 @@ jobs:
         run: ./scripts/setup.sh
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: '20'
 
@@ -460,7 +498,7 @@ jobs:
 
       - name: Upload Playwright report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: e2e/playwright-report
