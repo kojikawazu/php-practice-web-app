@@ -33,6 +33,7 @@ globs:
 | 開発タスク・マイルストーン・進捗の変化 | docs/11-tasks.md |
 | 誤り・失敗・ハマりから得た教訓 | docs/lessons-learned.md（運用の正本は .claude/rules/lessons-learned.md） |
 | ルートの構成・セットアップ・起動手順の変更 | README.md |
+| CI のコマンド定義・ジョブ構成・発火条件の変更（`Makefile` / `.github/workflows/**`） | README.md（コマンド例・発火表）/ docs/09-architecture-specification.md |
 | 規約本文の変更（`.claude/rules/`） | 原則不要（正本のルールファイルのみ） |
 | 規約ファイルの追加・削除・改名・適用範囲変更 | CLAUDE.md / AGENTS.md 群 / README.md（AI エージェント向けルール表） |
 
