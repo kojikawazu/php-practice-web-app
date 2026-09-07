@@ -222,6 +222,7 @@ api（JSON・画像バイナリのみ）: `default-src 'none'; base-uri 'none'; 
 
 - **Laravel の依存にセキュリティアドバイザリ（解消済み）**: 初期構築時は Laravel 11 系全バージョンが advisory（CVE-2026-48019: デフォルト email ルールの CRLF インジェクション）該当で、`--no-security-blocking` で暫定導入していた。本 CVE は Laravel 11 系に修正版が存在しない（修正は 12.60.0+ / 13.10.0+）ため、**Laravel 12.61.1 へアップグレードして解消**した。両 Laravel アプリで `composer audit` がクリーンであることを確認済み。今後も依存更新時は `composer audit` を実行すること。
 - **guzzle 依存の CVE（解消済み）**: Larastan 導入（依存更新）時の `composer audit` で `guzzlehttp/guzzle`（CVE-2026-55767 / CVE-2026-55568）・`guzzlehttp/psr7`（CVE-2026-55766）が検出されたため、両 Laravel アプリで guzzle 7.14+ / psr7 2.12+ へ更新して解消した（`composer audit` クリーンを確認）。guzzle は `laravel/framework` の依存。
+- **phpcs の CVE（解消済み）**: laminas に `slevomat/coding-standard` を追加（issue #135）した際の `composer audit` で、**既存の** `squizlabs/php_codesniffer` 3.13.5 が CVE-2026-67434（OS コマンドインジェクション・high / 影響版 `<3.13.6`）に該当していたことが判明した。`^3.7` の制約内で 3.13.6 へ更新して解消（`composer audit` クリーンを確認）。**検出が依存追加のついでになった**のが問題で、3 アプリの `composer.json` は Dependabot に未登録のため（`docs/09` の「依存更新の追跡範囲」）、誰かが依存を触るまで気づけない構造になっている。
 - **DB 認証情報の平文**: 学習用のため `.env` / Laminas `global.php` に開発用認証情報（app/secret）を記載。公開・本番では秘密情報をリポジトリ管理外（local.php・シークレットストア）へ移すこと。
 - **CSRF / セッション**: Laravel web・Laminas はセッション認証（フォームは CSRF 前提）。API は Sanctum のステートレストークン。
 - **セッション Cookie の `Secure` 属性が未設定**: ローカルは HTTP（compose）で動かすため `cookie_secure` を有効にしていない（有効にすると平文 HTTP では Cookie が送られず、ログインできなくなる）。本番化時は HTTPS 必須化（本書「通信」）とあわせて `cookie_secure = true` を設定すること。
