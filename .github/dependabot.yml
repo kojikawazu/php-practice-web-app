@@ -3,10 +3,32 @@
 # Dependabot が見るのは「マニフェストに書かれた依存」だけで、workflow の run: に直接書いた
 # `npx pkg@x.y.z` や `docker run image:tag` は検出できない。そのため markdownlint-cli2 は
 # ルートの package.json に devDependency として置き、完全固定（キャレット無し）している。
+#
+# 追跡できない依存（手動更新が必要）:
+# - Makefile の `rhysd/actionlint:1.7.12`。run: 内の docker run のため github-actions
+#   エコシステムでも docker エコシステム（Dockerfile / compose を読む）でも検出されない。
+#   更新手順は README の「GitHub Actions ワークフローの検査（actionlint）」に置く。
 version: 2
 updates:
   # リポジトリ直下の開発ツール（markdown lint）
   - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+
+  # ci.yml の uses: で参照する GitHub Actions。
+  #
+  # uses: は Dependabot が読める形式なのに登録し忘れており、更新契機が無いまま
+  # 4 アクションが Node.js 20 ランタイムのまま取り残されていた（issue #125）。
+  # 構造としては #114（markdownlint-cli2 が 9 リリース分放置）と同じ欠陥。
+  #
+  # 注意: dorny/paths-filter のメジャー更新は changes ジョブの中核を差し替える。
+  # 除外リストは predicate-quantifier: every（AND 評価）に依存しており、ここが変わると
+  # 除外が黙って効かなくなる。changes ジョブに AND 評価の自己検証を置いてあるため、
+  # 挙動が変わった場合はその PR が落ちる（.claude/rules/github-actions.md）。
+  - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: weekly
