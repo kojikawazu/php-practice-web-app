@@ -97,7 +97,7 @@ make md-fix             # 自動修正できる指摘（テーブルの列スタ
 make actionlint         # 検査（CI の actionlint ジョブと同じコマンド・同じバージョン）
 ```
 
-Docker イメージ `rhysd/actionlint` をバージョン固定で使うため、ホストへのインストールは不要。バージョンを上げるときは `Makefile` と `.github/workflows/ci.yml` の両方を同じタグに揃える。
+Docker イメージ `rhysd/actionlint` をバージョン固定で使うため、ホストへのインストールは不要。バージョンを上げるときは **`Makefile` の `actionlint` ターゲットだけ**を変更する。CI は `make actionlint` を呼ぶため、タグは `Makefile` の 1 箇所にしか存在しない（2 箇所に書き写すと、片方だけ上げても CI は緑のまま検査内容がずれる）。
 
 CI: push / Pull Request 時に GitHub Actions（`.github/workflows/ci.yml`）が 3 アプリの **テスト**（PHPUnit）と **静的チェック**（Laravel=Pint + Larastan / Laminas=phpcs + Psalm）、および **markdown lint** / **actionlint** / **secret scan**（鍵・`.env` の Git 混入検出）を自動実行する。ローカルでの自動修正は Laravel=`vendor/bin/pint`、Laminas=`composer cs-fix`、md=`make md-fix`。
 
@@ -112,6 +112,7 @@ CI: push / Pull Request 時に GitHub Actions（`.github/workflows/ci.yml`）が
 | `phpunit.xml` のみ | `test` |
 | `compose.yaml` / `docker/**` / `e2e/**` | `e2e` |
 | `.github/workflows/**` | `actionlint` + `test` + `lint` + `e2e` |
+| `Makefile`（actionlint のコマンド定義） | `actionlint` |
 
 `secret-scan` は上表の対象外で、**すべての変更で常に実行**される（秘匿ファイルの混入はどの変更種別でも起こりうるため）。
 
