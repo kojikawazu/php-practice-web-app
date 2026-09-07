@@ -20,13 +20,15 @@
 
 | アプリ | ツール | DB | 種別 |
 | -------- | -------- | ---- | ------ |
-| laravel-fullstack | PHPUnit（`php artisan test`） | SQLite in-memory | Feature（HTTP）=**IT** |
-| laravel-api | PHPUnit（`php artisan test`） | SQLite in-memory（Unit は DB 不要） | Feature（JSON API）=**IT** + Unit（Task モデル） |
+| laravel-fullstack | PHPUnit（`php artisan test`） | SQLite in-memory（Unit は DB 不要） | Feature（HTTP）=**IT** + Unit（LinkPreviewService / SizeCappedSink / **規約ガード（`strict_types` 宣言）**） |
+| laravel-api | PHPUnit（`php artisan test`） | SQLite in-memory（Unit は DB 不要） | Feature（JSON API）=**IT** + Unit（Task モデル / **規約ガード（`strict_types` 宣言）**） |
 | laminas | PHPUnit（`vendor/bin/phpunit`） | IT・認可テストは SQLite in-memory（他はモデル/サービス/InputFilter 単体で DB 不要） | Unit（Task / PasswordHasher / InputFilter×3 / **TaskTable 所有者スコープ**）+ **IT（TaskController / AuthController を dispatch）**。実セッション永続は E2E がカバー |
 | 3アプリ横断（E2E） | Playwright（`make e2e` / `npx playwright test`） | 実 MySQL（compose） | **E2E**: fullstack / laminas（ブラウザ）+ api（HTTP/Bearer）。登録→ログイン→CRUD→ログアウトの実フローと認可・境界値・不正入力を実環境で検証 |
 | 接続先ガード（guard） | Playwright（`--project=guard`） | 不要（純関数の検証） | **Unit**: E2E の対象 URL を解決する `e2e/helpers/config.ts` の allowlist 検証。ブラウザも起動中のアプリも要らない |
 
 > テストを SQLite in-memory にしている理由: `RefreshDatabase` は `migrate:fresh`（全テーブル DROP）を行うため、共有 MySQL に対して実行すると他アプリのテーブルを巻き込む。テストは隔離された in-memory DB で実行し、prefix 動作は実 DB へのマイグレーションで確認する。
+>
+> `declare(strict_types=1)` の宣言を Unit で検証している理由: 宣言の有無は**実行時**の型変換を変えるが、Larastan（静的な型整合）も Pint（`pint.json` を置かない既定の Laravel プリセット）もこれを見ておらず、issue #66 の起票から着手までの間に未宣言ファイルが 18 → 30 件へ静かに増えていた。両 Laravel の `tests/Unit/StrictTypesDeclarationTest.php` が「**未宣言のファイル集合 = 雛形として明示的に許容した集合**」を完全一致で固定する。包含ではなく一致にすることで、雛形側に宣言が入った場合も落ちて除外リストの陳腐化を防ぐ（`.claude/rules/coding-standards.md` / `.claude/rules/testing.md`「ガード自体をテストする」）。
 >
 > E2E の対象 URL を allowlist で検証している理由: E2E は登録・作成・削除を繰り返すため、`E2E_FS_URL` 等がローカル以外を指すとその環境を書き換えてしまう。`e2e/helpers/config.ts` に解決を集約し、ホストが `localhost` / `127.0.0.1` / `::1` 以外なら**テストが 1 件も走る前に**落とす（`playwright.config.ts` が読み込み時に解決するため、config のロードで失敗する）。ガード自体は `guard` project で検証する（`.claude/rules/testing.md`「テスト対象・テスト DB の接続先（破壊防止）」）。
 
