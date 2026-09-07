@@ -25,6 +25,22 @@
         <exclude-pattern>public/index.php</exclude-pattern>
     </rule>
 
+    <!-- declare(strict_types=1) の宣言漏れを検出する（issue #135）。
+         宣言の有無は実行時の型変換を変えるが、それを見るゲートがどこにも無く、
+         module/ の 44/44 はスケルトンの慣習に従っていただけだった。
+         spacesCountAroundEqualsSign=0 は本リポジトリの書き方（strict_types=1）に合わせる
+         （sniff の既定は 1 で strict_types = 1 を要求する）。
+         除外は下の PSR12.Files.FileHeader と同じ範囲。config/ はフレームワークへ渡す
+         配列を返すだけのファイル、*.phtml は出力テンプレートで、いずれも「自作クラス」ではない
+         （両 Laravel でも config/ を対象外にしている。issue #66）。 -->
+    <rule ref="SlevomatCodingStandard.TypeHints.DeclareStrictTypes">
+        <properties>
+            <property name="spacesCountAroundEqualsSign" value="0"/>
+        </properties>
+        <exclude-pattern>config/*</exclude-pattern>
+        <exclude-pattern>*.phtml</exclude-pattern>
+    </rule>
+
     <!-- view files adjustments -->
     <rule ref="Generic.Files.LineLength">
         <exclude-pattern>*.phtml</exclude-pattern>
