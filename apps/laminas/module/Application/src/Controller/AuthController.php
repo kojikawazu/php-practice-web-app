@@ -9,8 +9,11 @@ use Application\InputFilter\LoginInputFilter;
 use Application\InputFilter\RegisterInputFilter;
 use Application\Model\UserTable;
 use Application\Service\AuthSessionInterface;
+use Application\Service\AuthThrottle;
 use Application\Service\PasswordHasher;
 use Laminas\Authentication\AuthenticationService;
+use Laminas\Http\PhpEnvironment\Request as HttpRequest;
+use Laminas\Http\Response as HttpResponse;
 use Laminas\Mvc\Controller\AbstractActionController;
 use Laminas\View\Model\ViewModel;
 
@@ -35,8 +38,44 @@ class AuthController extends AbstractActionController
         private AuthenticationService $auth,
         private UserTable $users,
         private PasswordHasher $hasher,
-        private AuthSessionInterface $session
+        private AuthSessionInterface $session,
+        private AuthThrottle $throttle
     ) {
+    }
+
+    /** 上限超過時の表示。何回で解けるかは伝えない（総当たり側に情報を与えないため） */
+    private const THROTTLED_MESSAGE = '試行回数が多すぎます。しばらく待ってから再度お試しください。';
+
+    /**
+     * 上限超過として画面を返す。
+     *
+     * ステータスを 429 にしているのは、両 Laravel の `throttle` ミドルウェアと**同じ意味を
+     * 同じコードで返す**ため（`docs/07` / `docs/06`）。laminas は画面を返すが、
+     * 「200 で普通のログイン画面」に見せると E2E からも監視からも区別できない。
+     */
+    private function throttled(): ViewModel
+    {
+        $response = $this->getResponse();
+        if ($response instanceof HttpResponse) {
+            $response->setStatusCode(429);
+        }
+
+        return new ViewModel(['errors' => [self::THROTTLED_MESSAGE]]);
+    }
+
+    /** 試行を数える単位になるクライアント IP。取れない場合も 1 つのキーへまとめる */
+    private function clientIp(): string
+    {
+        $request = $this->getRequest();
+
+        if (! $request instanceof HttpRequest) {
+            return 'unknown';
+        }
+
+        /** @var string|null $ip REMOTE_ADDR は文字列か未設定（CLI からの dispatch では入らない） */
+        $ip = $request->getServer('REMOTE_ADDR');
+
+        return $ip !== null && $ip !== '' ? $ip : 'unknown';
     }
 
     public function loginAction()
@@ -49,15 +88,32 @@ class AuthController extends AbstractActionController
         $request = $this->getRequest();
 
         if ($request->isPost()) {
+            $ip = $this->clientIp();
+
+            // IP 単位の頭打ちは入力の妥当性より先に見る。後にすると、壊れた入力を
+            // 投げ続けるだけで回数を消費せずに済んでしまう。
+            if ($this->throttle->isIpBlocked($ip)) {
+                return $this->throttled();
+            }
+
             $filter = new LoginInputFilter();
             $filter->setData($request->getPost()->toArray());
 
             if (! $filter->isValid()) {
+                $this->throttle->recordIpAttempt($ip);
                 $errors = ErrorFormatter::flatten($filter);
             } else {
                 $values = $filter->getValues();
-                $user = $this->users->findByUsername($values['username']);
+                $username = (string) $values['username'];
+
+                if ($this->throttle->isUserBlocked($username, $ip)) {
+                    return $this->throttled();
+                }
+
+                $user = $this->users->findByUsername($username);
                 if ($user && $this->hasher->verify($values['password'], (string) $user->password)) {
+                    // 成功したらそのアカウントの履歴を捨てる（正規利用者を巻き込まない）
+                    $this->throttle->clearLoginAttempts($username, $ip);
                     // identity を書く前に ID を振り直す（セッション固定攻撃対策・docs/06）。
                     // この順序なら「認証済み状態は必ず新しい ID の下でだけ存在する」と言い切れる。
                     $this->session->regenerate();
@@ -68,6 +124,7 @@ class AuthController extends AbstractActionController
                     return $this->redirect()->toRoute('tasks');
                 }
 
+                $this->throttle->recordLoginFailure($username, $ip);
                 $errors = ['ユーザー名またはパスワードが正しくありません。'];
             }
         }
@@ -85,6 +142,15 @@ class AuthController extends AbstractActionController
         $request = $this->getRequest();
 
         if ($request->isPost()) {
+            $ip = $this->clientIp();
+
+            if ($this->throttle->isIpBlocked($ip)) {
+                return $this->throttled();
+            }
+
+            // 登録はアカウントを増やす操作なので、成否によらず IP 単位で 1 件数える
+            $this->throttle->recordIpAttempt($ip);
+
             $filter = new RegisterInputFilter();
             $filter->setData($request->getPost()->toArray());
 

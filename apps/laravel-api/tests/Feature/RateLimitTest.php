@@ -26,7 +26,7 @@ class RateLimitTest extends TestCase
 
     private const LOGIN_PER_EMAIL = 5;
 
-    private const REGISTER_PER_IP = 60;
+    private const REGISTER_PER_IP = 120;
 
     private const TOKENS_PER_USER = 30;
 

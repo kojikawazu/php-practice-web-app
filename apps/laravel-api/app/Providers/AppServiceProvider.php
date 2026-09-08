@@ -43,15 +43,19 @@ class AppServiceProvider extends ServiceProvider
      * IP 側を厳しくできないのは、E2E がフル実行で 1 つの Runner IP から数十件の
      * 登録・ログインを投げるため（実測: api は 1 実行あたり登録 19 件・ログイン 2 件）。ここを絞ると
      * **アプリの欠陥ではない理由で E2E が落ちる**。数値は実測から決めている。
+     *
+     * 120 にしているのは、3 アプリで最も試行の多い laminas が **15 秒で 33 件**を投げるため
+     * （分換算で約 132 件/分。issue #142 の実測）。60 だと単発では通るが**連続実行で落ちる**。
+     * 3 アプリで同じ方針・同じ値にすることで、スタック差分だけが読み比べの対象になる。
      */
     private function configureRateLimiting(): void
     {
         RateLimiter::for('login', fn (Request $request) => [
             Limit::perMinute(5)->by($request->string('email')->lower()->toString().'|'.$request->ip()),
-            Limit::perMinute(60)->by($request->ip() ?? 'unknown'),
+            Limit::perMinute(120)->by($request->ip() ?? 'unknown'),
         ]);
 
-        RateLimiter::for('register', fn (Request $request) => Limit::perMinute(60)->by($request->ip() ?? 'unknown'));
+        RateLimiter::for('register', fn (Request $request) => Limit::perMinute(120)->by($request->ip() ?? 'unknown'));
 
         // トークン発行は認証済みのため、IP ではなくユーザー単位で数える
         // （同一 IP の別ユーザーを巻き込まない）。

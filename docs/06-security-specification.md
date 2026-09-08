@@ -37,18 +37,30 @@
 - **レートリミット（認証系）**: ブルートフォース耐性のため、認証系エンドポイントの試行回数を制限する（`.claude/rules/security.md`）。
   - **キーを 2 本立てにする**のが設計の要点。**認証情報（email）+ IP** で厳しく数えて 1 アカウントへの総当たりを止め、**IP のみ**で緩く数えて大量試行に頭打ちを設ける。IP だけで厳しく絞ると、同一 NAT 配下の利用者や CI（E2E は 1 つの Runner IP から数十件の登録・ログインを投げる）を巻き込む。
   - **上限中は正しいパスワードでも通らない**。これが総当たり耐性の実体で、テストで固定している。
-  - 数値は E2E の実測から決めている（fullstack は 1 実行あたり登録 23 件・約 16 秒）。「CI が緑」で満足せず、**制限が効くこと**と **E2E が通ること**の両方を確認する。
+  - 数値は E2E の実測から決めている。**IP 側を 120 回/分にしているのは、最も試行の多い laminas が 15 秒で 33 件を投げるため**（分換算で約 132 件/分）。60 だと単発では通るが**連続実行で落ちる**（33 + 33 = 66）。上限が正当なピーク流量より低い状態は、アプリの欠陥ではない理由で E2E を落とす。「CI が緑」で満足せず、**制限が効くこと**と **E2E が通ること**の両方を確認する。
 
   | アプリ | 対象 | 制限 | 超過時 |
   | --- | --- | --- | --- |
-  | laravel-api | `POST /api/login` | 5 回/分（email + IP）+ 60 回/分（IP） | **429** JSON（`Retry-After` / `X-RateLimit-*`） |
-  | laravel-api | `POST /api/register` | 60 回/分（IP） | 429 JSON |
+  | laravel-api | `POST /api/login` | 5 回/分（email + IP）+ 120 回/分（IP） | **429** JSON（`Retry-After` / `X-RateLimit-*`） |
+  | laravel-api | `POST /api/register` | 120 回/分（IP） | 429 JSON |
   | laravel-api | `POST /api/tokens` | 30 回/分（**ユーザー単位**。認証済みのため IP で数えない） | 429 JSON |
-  | laravel-fullstack | `POST /login` | 5 回/分（email + IP）+ 60 回/分（IP） | **429** 画面 |
-  | laravel-fullstack | `POST /register` | 60 回/分（IP） | 429 画面 |
-  | laminas | `/login` / `/register` | **未実装**（issue #142） | — |
+  | laravel-fullstack | `POST /login` | 5 回/分（email + IP）+ 120 回/分（IP） | **429** 画面 |
+  | laravel-fullstack | `POST /register` | 120 回/分（IP） | 429 画面 |
+  | laminas | `/login` / `/register` | 5 回/分（ユーザー名 + IP）+ 120 回/分（IP） | **429** 画面 |
 
-  実装は Laravel が `AppServiceProvider::boot()` の `RateLimiter::for()` + ルートの `throttle:<name>`（Laravel 11 以降は `RouteServiceProvider` が無い）。laminas はフレームワークの支援が無く自前実装になるため、**3 アプリで最も差分が出る題材**として #142 で扱う。
+  実装は 3 アプリで**方針と数値を揃え、手段だけが違う**。ここが最も差分の出る題材になっている。
+
+  | アプリ | 手段 | 保存先 | 期限切れの掃除 |
+  | --- | --- | --- | --- |
+  | laravel-fullstack / laravel-api | `AppServiceProvider::boot()` の `RateLimiter::for()` + ルートの `throttle:<name>`（Laravel 11 以降は `RouteServiceProvider` が無い） | キャッシュ（`CACHE_STORE`） | 不要（TTL がある） |
+  | laminas | 自前。`Service\AuthThrottle`（ポリシー）+ `Model\LoginAttemptTable`（保存）に分ける | `lam_login_attempts` テーブル（`docs/05`） | **判定のたびに期間外の行を削除**する（TTL が無いため。掃除用バッチを持たない） |
+
+  laminas をポリシーと保存に分けているのは、Laravel が `RateLimiter`（ポリシー）とキャッシュ（保存）に
+  分かれているのと同じ切り方に揃えるため。**同じ設計を、フレームワークが持つ場合と自分で書く場合で読み比べられる。**
+
+  laminas が返すのも **429**（`AuthController::throttled()` で明示設定）。画面を返す点は Laravel の
+  fullstack と同じだが、「200 で普通のログイン画面」に見せると E2E からも監視からも区別できないため、
+  ステータスは 3 アプリで揃えている。
 - **依存の脆弱性の検出**: 2 層で見る。片方だけでは今回の取りこぼし（issue #138）を防げない。
   - **Dependabot alerts**（リポジトリ設定・有効化済み）: 依存グラフ（`composer.lock` / `package-lock.json`）を常時照合し、**誰も依存を触っていなくても**新規アドバイザリを通知する。マージはブロックしない。
   - **CI の `composer audit`**（`lint` ジョブ・`deps == 'true'` のときのみ）: composer マニフェストが変わった PR で**マージをブロックする**。`.claude/rules/coding-standards.md` /  本書の「依存を更新したら `composer audit` を実行し、クリーンを維持する」を機械化したもの。`--abandoned=ignore` を付けているのは、abandoned パッケージ 4 件（laminas 側）があるだけで終了コードが 1 になり、ゲートとして機能しなくなるため。

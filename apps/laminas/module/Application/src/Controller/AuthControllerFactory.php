@@ -6,6 +6,7 @@ namespace Application\Controller;
 
 use Application\Model\UserTable;
 use Application\Service\AuthSessionInterface;
+use Application\Service\AuthThrottle;
 use Application\Service\PasswordHasher;
 use Laminas\Authentication\AuthenticationService;
 use Laminas\ServiceManager\Factory\FactoryInterface;
@@ -19,7 +20,8 @@ class AuthControllerFactory implements FactoryInterface
             $container->get(AuthenticationService::class),
             $container->get(UserTable::class),
             $container->get(PasswordHasher::class),
-            $container->get(AuthSessionInterface::class)
+            $container->get(AuthSessionInterface::class),
+            $container->get(AuthThrottle::class)
         );
     }
 }

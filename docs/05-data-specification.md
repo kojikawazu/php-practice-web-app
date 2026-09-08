@@ -93,9 +93,26 @@ erDiagram
         date start_date "NULL"
         date end_date "NULL"
     }
+    lam_login_attempts {
+        bigint id PK
+        varchar attempt_key
+        timestamp attempted_at
+    }
 ```
 
 3 アプリは同一 DB 内に prefix 違いの独立テーブルを持つ（実体は分離、相互参照は学習で任意に追加）。
+
+`lam_login_attempts` は認証系のレートリミット用（issue #142・`docs/06`）。**業務データではなく短命な運用データ**で、他テーブルへの外部キーを持たない。
+
+- `attempt_key` は「何で区切って数えるか」をそのまま入れる（`login|<ユーザー名>|<IP>` / `ip|<IP>`）。区切りの意味はアプリ側（`Service\AuthThrottle`）が持ち、テーブルは保存だけを担う
+- **期限切れの行は判定のたびに削除する**ため、掃除用のバッチを持たない。Laravel の `RateLimiter` はキャッシュの TTL に任せられるが、TableGateway に相当機構が無いための設計差
+- **両 Laravel に対応テーブルは無い**。Laravel 側は同じ役割をキャッシュ（`CACHE_STORE`）で担うため、3 アプリ差分として現れる
+
+### 既存環境へのスキーマ反映
+
+`docker/mysql/init/*.sql` は **mysql コンテナの初回起動時（空ボリューム時）にしか実行されない**。既存ボリュームにはテーブル追加が反映されず、laminas だけが実行時に落ちる。
+
+そのため `scripts/setup.sh` が**同じ SQL を冪等に流し直す**（`make setup` で復旧できる）。初期化 SQL は `CREATE TABLE IF NOT EXISTS` のみで構成し、**何度実行しても既存データを壊さない形に保つ**（`DROP` / `TRUNCATE` / 無条件 `DELETE` を書かない。`.claude/rules/production-data.md`）。
 
 ## データフロー
 

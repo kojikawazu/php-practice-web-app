@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Application\Model;
 
-use DateTimeImmutable;
 use Laminas\Db\TableGateway\TableGatewayInterface;
 
 /**
@@ -12,6 +11,8 @@ use Laminas\Db\TableGateway\TableGatewayInterface;
  */
 class UserTable
 {
+    use FormatsTimestamps;
+
     public function __construct(private TableGatewayInterface $tableGateway)
     {
     }
@@ -43,18 +44,5 @@ class UserTable
             'password'   => $passwordHash,
             'created_at' => $this->now(),
         ]);
-    }
-
-    /**
-     * 監査列に書く現在時刻。
-     *
-     * 形式・生成元の判断は TaskTable::now() と同じ（MySQL の TIMESTAMP とテストで使う
-     * SQLite の TEXT の双方が解釈できる 'Y-m-d H:i:s' を、アプリの時計で作る）。
-     * 2 箇所目のため共通化しない（.claude/rules/duplication.md「2 回目までは重複を許容し、
-     * 3 回目で共通化する」）。3 箇所目が出たら Table 層の共通トレイト等へ抽出する。
-     */
-    private function now(): string
-    {
-        return (new DateTimeImmutable('now'))->format('Y-m-d H:i:s');
     }
 }

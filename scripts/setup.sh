@@ -97,6 +97,18 @@ for pair in "$@"; do
   fi
 done
 
+# ---- 7. laminas のスキーマ（既存ボリュームにも反映する）----
+# docker/mysql/init/*.sql は mysql コンテナの初回起動時（空ボリューム時）にしか実行されない。
+# そのため既存環境ではテーブル追加が反映されず、laminas だけ実行時に落ちる（docs/05）。
+# ここで同じ SQL を流し直して差を埋める。CREATE TABLE IF NOT EXISTS のみで構成されているため
+# 何度実行しても既存データを壊さない（.claude/rules/production-data.md）。
+log 'laminas のスキーマを適用する（初期化 SQL を冪等に流し直す）'
+for sql in docker/mysql/init/*.sql; do
+  echo "--- $(basename "$sql") ---"
+  docker compose exec -T mysql \
+    mysql -u"${MYSQL_USER:-app}" -p"${MYSQL_PASSWORD:-secret}" "${MYSQL_DATABASE:-php_practice}" < "$sql"
+done
+
 # ---- 7. マイグレーション（lam_tasks は MySQL の初期化 SQL で作成済み）----
 log 'Laravel 2 アプリのマイグレーションを流す'
 docker compose exec -T php-fs php artisan migrate --force
