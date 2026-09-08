@@ -99,7 +99,7 @@ make actionlint         # 手元（push する前に実行する）
 | `docs/**`、`*.md`、`README.md` | ❌ | ❌ | ❌ | markdown lint、リンク切れチェック |
 | `.claude/**`（rules / skills） | ❌ | ❌ | ❌ | markdown lint |
 | `.github/workflows/**` | ✅（自身の検証のため） | ✅ | ❌ | actionlint |
-| 依存関係（`composer.lock` / `package-lock.json`） | ✅ | ✅ | ✅ | — |
+| 依存関係（`composer.lock` / `package-lock.json`） | ✅ | ✅ | ✅ | `composer audit`（composer マニフェスト変更時のみ） |
 | `Makefile`（actionlint のコマンド定義） | ❌ | ❌ | ❌ | actionlint |
 
 - **ドキュメント変更でも「何も動かさない」にはしない**。markdown lint・リンク切れ・必須ファイル（README.md / CLAUDE.md）の存在検証は軽量なので実行する。

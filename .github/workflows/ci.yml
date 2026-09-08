@@ -48,6 +48,7 @@ jobs:
       e2e: ${{ steps.code.outputs.e2e }}
       docs: ${{ steps.docs.outputs.docs }}
       workflows: ${{ steps.workflows.outputs.workflows }}
+      deps: ${{ steps.deps.outputs.deps }}
     steps:
       - uses: actions/checkout@v7
 
@@ -153,6 +154,22 @@ jobs:
               - 'Makefile'
               # actionlint の設定ファイル（現在は未設置。追加された時点で拾う）
               - '.github/actionlint.yaml'
+
+      # 肯定リスト: 依存の脆弱性監査は「依存が変わったとき」だけ走らせる。
+      # .claude/rules/coding-standards.md / security.md の「依存を更新したら composer audit を
+      # 実行し、クリーンを維持する」を機械化したもので、対象は 3 アプリの composer マニフェスト。
+      #
+      # 全 PR で走らせない理由: composer audit は「新しいアドバイザリが公開された」だけでも
+      # 落ちるようになるため、依存を 1 行も触っていない PR が無関係な理由でブロックされる。
+      # 依存を触らないまま公開される新規アドバイザリの検出は Dependabot alerts が担う
+      # （リポジトリ設定で有効化済み。docs/06 の「依存の脆弱性」を参照）。役割を分けている。
+      - uses: dorny/paths-filter@v4
+        id: deps
+        with:
+          filters: |
+            deps:
+              - 'apps/*/composer.json'
+              - 'apps/*/composer.lock'
 
       # 除外リストの土台である AND 評価（predicate-quantifier: every）が、実際に AND として
       # 効いていることを自己検証する。
@@ -460,6 +477,18 @@ jobs:
         if: ${{ !matrix.laravel }}
         working-directory: apps/laminas
         run: ./vendor/bin/psalm --no-progress
+
+      # 依存の脆弱性監査。deps == 'true'（composer マニフェストが変わった PR）でのみ実行する。
+      #
+      # --abandoned=ignore を付けるのは、abandoned（開発終了）パッケージがあるだけで
+      # composer audit が終了コード 1 を返すため。本リポジトリの laminas には既に 4 件あり
+      # （laminas-config / laminas-json / laminas-loader / package-versions-deprecated）、
+      # 付けないと「脆弱性 0 件でも常に赤」になってゲートとして機能しない。
+      # abandoned は脆弱性ではなく別の問題なので、ここでは扱わない。
+      - name: Dependency audit (composer audit)
+        if: needs.changes.outputs.deps == 'true'
+        working-directory: apps/${{ matrix.app }}
+        run: composer audit --abandoned=ignore
 
   # E2E（Playwright）。compose で app + 実 MySQL を起動し、3 アプリ横断のブラウザ/HTTP フローを検証する。
   # test/lint（SQLite・軽量）とは別ジョブに分離し、compose 起動を伴う重い処理を切り離す。

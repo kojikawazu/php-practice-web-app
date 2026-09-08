@@ -118,6 +118,8 @@ CI: push / Pull Request 時に GitHub Actions（`.github/workflows/ci.yml`）が
 
 `secret-scan` は上表の対象外で、**すべての変更で常に実行**される（秘匿ファイルの混入はどの変更種別でも起こりうるため）。
 
+`composer.json` / `composer.lock` が変わった PR では、`lint` ジョブが **`composer audit`** も実行する（依存を触らないまま公開される新規アドバイザリは、Dependabot alerts が通知する。`docs/06`）。
+
 詳細（各ツールが読む範囲の根拠を含む）は `docs/09`。
 
 各アプリ内で artisan / composer を使う例:
