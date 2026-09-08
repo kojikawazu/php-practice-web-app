@@ -34,6 +34,10 @@
 - **認可**: タスクは `user_id` でスコープし、他人のリソースは 404 / 対象外。
 - **アップロード画像**: 公開ディレクトリ外（名前付きボリューム）に保存し、アプリ経由の所有者チェック付きルートでのみ配信（URL を知っても他人は閲覧不可）。`image`/`mimes`/`max:2048` で種別・サイズを検証。
 - **CSP（Content-Security-Policy）**: 全レスポンスにヘッダーを付け、XSS が混入したときの被害をブラウザ側で抑える（下記「CSP の方針」）。
+- **依存の脆弱性の検出**: 2 層で見る。片方だけでは今回の取りこぼし（issue #138）を防げない。
+  - **Dependabot alerts**（リポジトリ設定・有効化済み）: 依存グラフ（`composer.lock` / `package-lock.json`）を常時照合し、**誰も依存を触っていなくても**新規アドバイザリを通知する。マージはブロックしない。
+  - **CI の `composer audit`**（`lint` ジョブ・`deps == 'true'` のときのみ）: composer マニフェストが変わった PR で**マージをブロックする**。`.claude/rules/coding-standards.md` /  本書の「依存を更新したら `composer audit` を実行し、クリーンを維持する」を機械化したもの。`--abandoned=ignore` を付けているのは、abandoned パッケージ 4 件（laminas 側）があるだけで終了コードが 1 になり、ゲートとして機能しなくなるため。
+  - 全 PR で `composer audit` を走らせない理由: **新しいアドバイザリが公開されただけで、依存を 1 行も触っていない PR が落ちる**ようになるため。その検出は alerts 側の役割とし、層を分けている。
 - **SSRF 対策（URL プレビュー）**: ユーザー登録 URL をサーバーが取得する機能（`LinkPreviewService`）は次で防御する:
   - スキームを `http`/`https` に限定（`url:http,https` ＋ サービス側で再確認）
   - ホストを DNS 解決し、public IP 以外（private/loopback/link-local/予約：例 `127.0.0.1`・`10/8`・`192.168/16`・`169.254.169.254`）は拒否
@@ -222,6 +226,7 @@ api（JSON・画像バイナリのみ）: `default-src 'none'; base-uri 'none'; 
 
 - **Laravel の依存にセキュリティアドバイザリ（解消済み）**: 初期構築時は Laravel 11 系全バージョンが advisory（CVE-2026-48019: デフォルト email ルールの CRLF インジェクション）該当で、`--no-security-blocking` で暫定導入していた。本 CVE は Laravel 11 系に修正版が存在しない（修正は 12.60.0+ / 13.10.0+）ため、**Laravel 12.61.1 へアップグレードして解消**した。両 Laravel アプリで `composer audit` がクリーンであることを確認済み。今後も依存更新時は `composer audit` を実行すること。
 - **guzzle 依存の CVE（解消済み）**: Larastan 導入（依存更新）時の `composer audit` で `guzzlehttp/guzzle`（CVE-2026-55767 / CVE-2026-55568）・`guzzlehttp/psr7`（CVE-2026-55766）が検出されたため、両 Laravel アプリで guzzle 7.14+ / psr7 2.12+ へ更新して解消した（`composer audit` クリーンを確認）。guzzle は `laravel/framework` の依存。
+  - **2026-09-08 に再発（解消済み）**: 同じ `guzzlehttp/guzzle` で新たに 6 件（うち high 1: CVE-2026-69246 「Noncanonical host can bypass host-based checks」）、`league/commonmark` で 10 件（high 8 / medium 2）が検出された（issue #138）。guzzle 7.15.5 / psr7 2.13.1 / commonmark 2.10.1 へ更新して解消。**この high は上記「SSRF 対策」のホスト判定を迂回できる欠陥**であり、単なるバージョン遅れではなかった。再発の根本原因は「解消済み」と書いただけで**再発を検知する仕組みが無かった**こと（発見も laminas の依存追加のついでだった）。対策として上記「依存の脆弱性の検出」の 2 層を導入した。
 - **phpcs の CVE（解消済み）**: laminas に `slevomat/coding-standard` を追加（issue #135）した際の `composer audit` で、**既存の** `squizlabs/php_codesniffer` 3.13.5 が CVE-2026-67434（OS コマンドインジェクション・high / 影響版 `<3.13.6`）に該当していたことが判明した。`^3.7` の制約内で 3.13.6 へ更新して解消（`composer audit` クリーンを確認）。**検出が依存追加のついでになった**のが問題で、3 アプリの `composer.json` は Dependabot に未登録のため（`docs/09` の「依存更新の追跡範囲」）、誰かが依存を触るまで気づけない構造になっている。
 - **DB 認証情報の平文**: 学習用のため `.env` / Laminas `global.php` に開発用認証情報（app/secret）を記載。公開・本番では秘密情報をリポジトリ管理外（local.php・シークレットストア）へ移すこと。
 - **CSRF / セッション**: Laravel web・Laminas はセッション認証（フォームは CSRF 前提）。API は Sanctum のステートレストークン。
