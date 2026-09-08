@@ -34,6 +34,21 @@
 - **認可**: タスクは `user_id` でスコープし、他人のリソースは 404 / 対象外。
 - **アップロード画像**: 公開ディレクトリ外（名前付きボリューム）に保存し、アプリ経由の所有者チェック付きルートでのみ配信（URL を知っても他人は閲覧不可）。`image`/`mimes`/`max:2048` で種別・サイズを検証。
 - **CSP（Content-Security-Policy）**: 全レスポンスにヘッダーを付け、XSS が混入したときの被害をブラウザ側で抑える（下記「CSP の方針」）。
+- **レートリミット（認証系）**: ブルートフォース耐性のため、認証系エンドポイントの試行回数を制限する（`.claude/rules/security.md`）。
+  - **キーを 2 本立てにする**のが設計の要点。**認証情報（email）+ IP** で厳しく数えて 1 アカウントへの総当たりを止め、**IP のみ**で緩く数えて大量試行に頭打ちを設ける。IP だけで厳しく絞ると、同一 NAT 配下の利用者や CI（E2E は 1 つの Runner IP から数十件の登録・ログインを投げる）を巻き込む。
+  - **上限中は正しいパスワードでも通らない**。これが総当たり耐性の実体で、テストで固定している。
+  - 数値は E2E の実測から決めている（fullstack は 1 実行あたり登録 23 件・約 16 秒）。「CI が緑」で満足せず、**制限が効くこと**と **E2E が通ること**の両方を確認する。
+
+  | アプリ | 対象 | 制限 | 超過時 |
+  | --- | --- | --- | --- |
+  | laravel-api | `POST /api/login` | 5 回/分（email + IP）+ 60 回/分（IP） | **429** JSON（`Retry-After` / `X-RateLimit-*`） |
+  | laravel-api | `POST /api/register` | 60 回/分（IP） | 429 JSON |
+  | laravel-api | `POST /api/tokens` | 30 回/分（**ユーザー単位**。認証済みのため IP で数えない） | 429 JSON |
+  | laravel-fullstack | `POST /login` | 5 回/分（email + IP）+ 60 回/分（IP） | **429** 画面 |
+  | laravel-fullstack | `POST /register` | 60 回/分（IP） | 429 画面 |
+  | laminas | `/login` / `/register` | **未実装**（issue #142） | — |
+
+  実装は Laravel が `AppServiceProvider::boot()` の `RateLimiter::for()` + ルートの `throttle:<name>`（Laravel 11 以降は `RouteServiceProvider` が無い）。laminas はフレームワークの支援が無く自前実装になるため、**3 アプリで最も差分が出る題材**として #142 で扱う。
 - **依存の脆弱性の検出**: 2 層で見る。片方だけでは今回の取りこぼし（issue #138）を防げない。
   - **Dependabot alerts**（リポジトリ設定・有効化済み）: 依存グラフ（`composer.lock` / `package-lock.json`）を常時照合し、**誰も依存を触っていなくても**新規アドバイザリを通知する。マージはブロックしない。
   - **CI の `composer audit`**（`lint` ジョブ・`deps == 'true'` のときのみ）: composer マニフェストが変わった PR で**マージをブロックする**。`.claude/rules/coding-standards.md` /  本書の「依存を更新したら `composer audit` を実行し、クリーンを維持する」を機械化したもの。`--abandoned=ignore` を付けているのは、abandoned パッケージ 4 件（laminas 側）があるだけで終了コードが 1 になり、ゲートとして機能しなくなるため。
@@ -228,6 +243,7 @@ api（JSON・画像バイナリのみ）: `default-src 'none'; base-uri 'none'; 
 - **guzzle 依存の CVE（解消済み）**: Larastan 導入（依存更新）時の `composer audit` で `guzzlehttp/guzzle`（CVE-2026-55767 / CVE-2026-55568）・`guzzlehttp/psr7`（CVE-2026-55766）が検出されたため、両 Laravel アプリで guzzle 7.14+ / psr7 2.12+ へ更新して解消した（`composer audit` クリーンを確認）。guzzle は `laravel/framework` の依存。
   - **2026-09-08 に再発（解消済み）**: 同じ `guzzlehttp/guzzle` で新たに 6 件（うち high 1: CVE-2026-69246 「Noncanonical host can bypass host-based checks」）、`league/commonmark` で 10 件（high 8 / medium 2）が検出された（issue #138）。guzzle 7.15.5 / psr7 2.13.1 / commonmark 2.10.1 へ更新して解消。**この high は上記「SSRF 対策」のホスト判定を迂回できる欠陥**であり、単なるバージョン遅れではなかった。再発の根本原因は「解消済み」と書いただけで**再発を検知する仕組みが無かった**こと（発見も laminas の依存追加のついでだった）。対策として上記「依存の脆弱性の検出」の 2 層を導入した。
 - **phpcs の CVE（解消済み）**: laminas に `slevomat/coding-standard` を追加（issue #135）した際の `composer audit` で、**既存の** `squizlabs/php_codesniffer` 3.13.5 が CVE-2026-67434（OS コマンドインジェクション・high / 影響版 `<3.13.6`）に該当していたことが判明した。`^3.7` の制約内で 3.13.6 へ更新して解消（`composer audit` クリーンを確認）。**検出が依存追加のついでになった**のが問題で、3 アプリの `composer.json` は Dependabot に未登録のため（`docs/09` の「依存更新の追跡範囲」）、誰かが依存を触るまで気づけない構造になっている。
+- **CORS を設定していない（意図的な妥協）**: `.claude/rules/security.md` は「CORS は許可するオリジンを明示的に指定する」と定めるが、本リポジトリでは**設定していない**（issue #68）。`laravel-api` は E2E も含め**同一オリジンの HTTP 直叩き**でしか使われておらず、ブラウザからの別オリジンアクセスが 1 つも無いため、`config/cors.php` を publish しても**実質 no-op** になる。「設定はあるが誰も通らない」状態は `.claude/rules/dead-code.md` の「将来使うかもしれないものを残さない」に反する。**SPA や別ドメインのフロントから API を叩く構成にした時点で、許可オリジンを明示して導入すること**（`*` は使わない）。
 - **DB 認証情報の平文**: 学習用のため `.env` / Laminas `global.php` に開発用認証情報（app/secret）を記載。公開・本番では秘密情報をリポジトリ管理外（local.php・シークレットストア）へ移すこと。
 - **CSRF / セッション**: Laravel web・Laminas はセッション認証（フォームは CSRF 前提）。API は Sanctum のステートレストークン。
 - **セッション Cookie の `Secure` 属性が未設定**: ローカルは HTTP（compose）で動かすため `cookie_secure` を有効にしていない（有効にすると平文 HTTP では Cookie が送られず、ログインできなくなる）。本番化時は HTTPS 必須化（本書「通信」）とあわせて `cookie_secure = true` を設定すること。
