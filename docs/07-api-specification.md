@@ -118,3 +118,4 @@ POST /api/tasks  {"title": "牛乳を買う"}
 | 401 | 未認証（トークンなし/無効） |
 | 404 | 該当 id のタスクが存在しない、または他人のタスク |
 | 422 | バリデーションエラー（`errors` に詳細） |
+| 429 | レートリミット超過（`Retry-After` / `X-RateLimit-*` ヘッダー付き。対象は `/api/login`・`/api/register`・`POST /api/tokens`） |

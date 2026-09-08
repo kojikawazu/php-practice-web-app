@@ -23,6 +23,8 @@ use SplFileInfo;
  * 雛形に宣言が入った場合も落ちてリストからの削除を促す。**リストが実態から静かにずれない**。
  *
  * 除外してよいのはフレームワーク雛形（中身が `//` だけで規約の対象にならないもの）に限る。
+ * `AppServiceProvider` は雛形だったが、レートリミッタの定義が入って実装を持ったため除外から外した
+ * （issue #141）。そのとき落ちたのが、この完全一致の判定である。
  *
  * 読み比べ（.claude/rules/duplication.md: 3 アプリ間は共通化しない）:
  * - laravel-fullstack: 同じ形のガードを各アプリに独立して置く。
@@ -43,7 +45,6 @@ class StrictTypesDeclarationTest extends TestCase
      */
     private const EXEMPT_FILES = [
         'app/Http/Controllers/Controller.php',
-        'app/Providers/AppServiceProvider.php',
         'tests/TestCase.php',
     ];
 
