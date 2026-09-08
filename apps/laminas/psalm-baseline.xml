@@ -23,7 +23,6 @@
       <code><![CDATA[$values['username']]]></code>
       <code><![CDATA[$values['username']]]></code>
       <code><![CDATA[$values['username']]]></code>
-      <code><![CDATA[$values['username']]]></code>
     </MixedArgument>
     <MixedArrayAccess>
       <code><![CDATA[$values['password']]]></code>

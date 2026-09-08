@@ -72,7 +72,7 @@ abstract class AbstractIntegrationTestCase extends AbstractHttpControllerTestCas
         $this->hasher = new PasswordHasher();
     }
 
-    /** lam_users / lam_tasks の SQLite 相当スキーマ（MySQL 版と同じ列構成）を作成する */
+    /** lam_users / lam_tasks / lam_login_attempts の SQLite 相当スキーマ（MySQL 版と同じ列構成）を作成する */
     private function createSchema(): void
     {
         $this->adapter->query(
@@ -94,6 +94,14 @@ abstract class AbstractIntegrationTestCase extends AbstractHttpControllerTestCas
                 end_date TEXT NULL,
                 created_at TEXT NULL,
                 updated_at TEXT NULL
+            )',
+            Adapter::QUERY_MODE_EXECUTE
+        );
+        $this->adapter->query(
+            'CREATE TABLE lam_login_attempts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                attempt_key TEXT NOT NULL,
+                attempted_at TEXT NOT NULL
             )',
             Adapter::QUERY_MODE_EXECUTE
         );

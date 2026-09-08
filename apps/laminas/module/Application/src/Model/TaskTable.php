@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Application\Model;
 
-use DateTimeImmutable;
 use Laminas\Db\TableGateway\TableGatewayInterface;
 
 /**
@@ -18,6 +17,8 @@ use Laminas\Db\TableGateway\TableGatewayInterface;
  */
 class TaskTable
 {
+    use FormatsTimestamps;
+
     public function __construct(private TableGatewayInterface $tableGateway)
     {
     }
@@ -101,18 +102,6 @@ class TaskTable
         $this->tableGateway->update($data, ['id' => $task->id, 'user_id' => $task->user_id]);
     }
 
-    /**
-     * 監査列に書く現在時刻。
-     *
-     * 形式は MySQL の TIMESTAMP と、テストで使う SQLite の TEXT の双方が解釈できる
-     * 'Y-m-d H:i:s' に固定する。値の生成元を「アプリの時計」にしているのは、Laravel 2 アプリの
-     * Eloquent と同じ経路にするため（DB 側の CURRENT_TIMESTAMP は MySQL サーバの時計という
-     * 別の源になり、同一題材の 3 アプリで値の作られ方が非対称になる）。
-     */
-    private function now(): string
-    {
-        return (new DateTimeImmutable('now'))->format('Y-m-d H:i:s');
-    }
 
     /** 所有者本人のタスクのみ削除（他人の id を指定しても何も起きない） */
     public function deleteForUser(int $id, int $userId): void

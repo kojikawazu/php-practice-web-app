@@ -365,6 +365,26 @@ $task = $this->table->getForUser($id, (int) $user->id); // スコープは Table
 - laminas は**アクションごとに検証しない**。1 箇所（EVENT_ROUTE）で全 POST を見る。個々に書く形は「新しい POST を足したとき書き忘れる = 無防備」になるため（`security.md`）。Laravel のミドルウェアがグループ全体に効くのと同じ考え方を、イベントで実現している。
 - 状態変更を POST に限定するのは CSRF トークン以前の前提。GET で消せるなら `<img src>` を踏ませるだけで成立する（`src/Controller/RequiresPostTrait.php`）。
 
+### Step 6.6: レートリミットを読む（フレームワークが持つか、自分で書くか）
+
+同じ方針・同じ数値を、フレームワークが用意している場合と自分で書く場合で対比する。**「何を作るか」ではなく「何が既にあるか」の差**が最も大きく出る。
+
+| | laravel-fullstack / laravel-api | laminas |
+| --- | --- | --- |
+| ポリシー（何回・何で区切るか） | `app/Providers/AppServiceProvider.php` の `RateLimiter::for()` | `src/Service/AuthThrottle.php` |
+| 適用 | ルートの `->middleware('throttle:login')` | `AuthController` が明示的に呼ぶ |
+| 保存 | キャッシュ（`CACHE_STORE`） | `src/Model/LoginAttemptTable.php` → `lam_login_attempts`（`docs/05`） |
+| 期限切れの掃除 | 不要（キャッシュに TTL がある） | **判定のたびに期間外の行を削除**する |
+| 超過時 | 429（api は JSON + `Retry-After` / fullstack は画面） | 429（`AuthController::throttled()` で明示設定） |
+
+読むポイント:
+
+- **方針と数値は 3 アプリで同じ**（ユーザー識別子 + IP で 5 回/分、IP のみで 120 回/分）。揃えてあるので、差分として残るのは**手段だけ**になる。
+- laminas も**ポリシーと保存を分けている**（`AuthThrottle` と `LoginAttemptTable`）。これは Laravel が `RateLimiter`（ポリシー）とキャッシュ（保存）に分かれている構造に合わせたもの。**フレームワークが隠している内訳が、そのままクラスとして見える**のが読みどころ。
+- **キーを 2 本立てにする理由**が両方で同じコメントとして書いてある。IP だけで厳しく絞ると同一 NAT 配下の利用者や CI を巻き込むため（実測は `docs/06`）。
+- laminas 側にだけ「**掃除**」の関心事が現れる。TTL が無い保存先を選ぶと、期限切れをいつ誰が消すかを自分で決めることになる。`LoginAttemptTable::tooManyAttempts()` が判定のついでに消しているのは、掃除を別経路（cron 等）に持たせると**それが止まったときに気づけない**ため。
+- Laravel 側は `throttle:<name>` をルートに**書き忘れると無防備**になる。laminas はコントローラが明示的に呼ぶため書き忘れは見えやすいが、代わりに**アクションが増えるたびに書く**必要がある。CSRF（Step 6.5）とは逆向きのトレードオフになっている。
+
 ---
 
 ## 重要な差分まとめ

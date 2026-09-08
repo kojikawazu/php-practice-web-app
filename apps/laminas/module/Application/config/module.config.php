@@ -84,6 +84,8 @@ return [
         'factories' => [
             Model\TaskTable::class       => Model\TaskTableFactory::class,
             Model\UserTable::class       => Model\UserTableFactory::class,
+            // レートリミットの試行記録（保存層）。ポリシーは Service\AuthThrottle が持つ
+            Model\LoginAttemptTable::class => Model\LoginAttemptTableFactory::class,
             Service\PasswordHasher::class => InvokableFactory::class,
             // CSP の nonce はリクエスト内で 1 つ。共有インスタンスにすることで
             // ヘッダーと PHTML の nonce が必ず一致する。
@@ -92,6 +94,8 @@ return [
             Service\CsrfGuard::class => Service\CsrfGuardFactory::class,
             // 認証成功・ログアウト時のセッション操作（セッション固定攻撃対策）
             Service\AuthSessionInterface::class => Service\AuthSessionFactory::class,
+            // 認証系の試行回数ポリシー（ユーザー名+IP で厳しく / IP で緩く）
+            Service\AuthThrottle::class => Service\AuthThrottleFactory::class,
             // 認証サービス（identity は共有 SessionManager 上の Session ストレージへ）
             AuthenticationService::class => Service\AuthenticationServiceFactory::class,
         ],

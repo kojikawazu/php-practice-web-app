@@ -27,7 +27,7 @@ class RateLimitTest extends TestCase
 
     private const LOGIN_PER_EMAIL = 5;
 
-    private const REGISTER_PER_IP = 60;
+    private const REGISTER_PER_IP = 120;
 
     /** 誤ったパスワードでログインを試みる（web なので失敗は 302 で戻る） */
     private function attemptLogin(string $email): TestResponse
