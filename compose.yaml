@@ -9,8 +9,10 @@ services:
     # ホスト側ポートは上書き可能にする。既に MySQL を動かしているマシンでも
     # fresh clone がポート衝突で起動できなくならないようにするため（アプリ間は
     # compose ネットワーク経由で繋がるので、公開ポートを変えても動作に影響しない）。
+    # 127.0.0.1 に限定する。既定の認証情報はリポジトリで公開されているため、
+    # 全インターフェースで待ち受けると同一 LAN の第三者から繋がる（docs/06）。
     ports:
-      - "${MYSQL_PORT:-3306}:3306"
+      - "127.0.0.1:${MYSQL_PORT:-3306}:3306"
     volumes:
       - mysql-data:/var/lib/mysql
       - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
@@ -60,10 +62,11 @@ services:
   nginx:
     image: nginx:alpine
     # ホスト側ポートは上書き可能（既定は 8001/8002/8003）。衝突時は .env で変える。
+    # MySQL と同じく 127.0.0.1 に限定する。開発用アプリを LAN へ晒す理由が無い。
     ports:
-      - "${FS_PORT:-8001}:80"        # laravel-fullstack
-      - "${API_PORT:-8002}:81"       # laravel-api
-      - "${LAMINAS_PORT:-8003}:82"   # laminas
+      - "127.0.0.1:${FS_PORT:-8001}:80"        # laravel-fullstack
+      - "127.0.0.1:${API_PORT:-8002}:81"       # laravel-api
+      - "127.0.0.1:${LAMINAS_PORT:-8003}:82"   # laminas
     volumes:
       - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./apps/laravel-fullstack:/var/www/laravel-fullstack:ro
