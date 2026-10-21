@@ -143,6 +143,24 @@ check "http://localhost:${fs_port}/login"
 check "http://localhost:${laminas_port}/login"
 check "http://localhost:${api_port}/api/tasks" -H 'Accept: application/json'
 
+# ---- 9. セキュリティ上の PHP 設定が FPM に効いていることを確認する ----
+# docker/php/session.ini の取りこぼし（COPY 漏れ・ファイル名の誤り・後続の ini による上書き）は
+# 何のエラーにもならず、攻撃面が開いたまま全テストが緑になる。そのためここで明示的に落とす。
+# `php -r 'ini_get(...)'` は CLI の設定を見るだけなので使わず、実際にリクエストを処理する
+# php-fpm 本体（同じ conf.d を読む）の `-i` で確認する。
+# 出力は一度変数に受ける。`php-fpm -i | grep -q` だと grep が一致した時点で読むのをやめ、
+# 大きな出力の書き手が SIGPIPE で落ちて pipefail が一致を失敗に変えることがあるため。
+log 'FPM の session.upload_progress.enabled が Off であることを確認する'
+for svc in php-fs php-api php-laminas; do
+  setting=$(docker compose exec -T "$svc" php-fpm -i | grep '^session.upload_progress.enabled ' || true)
+  if [ "$setting" = 'session.upload_progress.enabled => Off => Off' ]; then
+    echo "$svc: Off"
+  else
+    echo "$svc: session.upload_progress.enabled が Off になっていません（実際: ${setting:-取得できず}。docker/php/session.ini を確認）" >&2
+    exit 1
+  fi
+done
+
 log 'セットアップ完了'
 printf '  fullstack: http://localhost:%s/tasks\n' "$fs_port"
 printf '  api:       http://localhost:%s/api/tasks\n' "$api_port"
