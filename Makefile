@@ -14,7 +14,14 @@ up:
 down:
 	docker compose down
 
+# イメージの作り直し。PHP 本体の修正版はこのターゲットで取り込む（docs/06「PHP 本体の脆弱性」）。
+# 手元のタグ php:8.3-fpm を pull で更新してからビルドする。`docker compose build --pull` では
+# 足りない: BuildKit はそのビルドでだけ最新を使い手元のタグを書き換えないため、次の make up
+# （--build・pull なし）が古いタグから作り直し、旧パッチ版へ黙って戻る（issue #160 で実測）。
+# ベースイメージ名は Dockerfile の FROM から取り、タグを 2 箇所に書き写さない。
+# up / setup は毎回ネットワークが必要になるのを避けるため pull しない。
 build:
+	docker pull "$$(awk '/^FROM /{print $$2; exit}' docker/php/Dockerfile)"
 	docker compose build
 
 logs:

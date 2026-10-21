@@ -43,6 +43,8 @@ CI の `e2e` ジョブも同じ `scripts/setup.sh` を実行する。手順を 2
 
 2 回目以降の起動は `make up` だけでよい。
 
+PHP 本体のセキュリティ修正（ベースイメージ `php:8.3-fpm` の更新）を取り込むときは、`make build` → `make up` を実行する。`make build` だけがベースイメージを pull し直す（`make up` / `make setup` は手元のキャッシュを使う。`docker compose build --pull` では足りない理由も含め `docs/06`「PHP 本体の脆弱性」）。
+
 ### ポートが衝突する場合
 
 既定は MySQL 3306 / fullstack 8001 / api 8002 / laminas 8003。既に使っているポートがあれば `.env` で変更する（アプリ間は compose ネットワークで繋がるため、公開ポートを変えても動作は変わらない）。いずれも `127.0.0.1` にバインドしており、同じネットワークの他の端末からはアクセスできない（`docs/09`）。
