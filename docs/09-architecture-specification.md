@@ -137,6 +137,7 @@ laminas はアップロード機能を持たないため既定の 1m のまま�
 | ルート `package.json`（markdownlint-cli2） | `npm` | 完全固定（キャレット無し）。#114 で導入 |
 | `ci.yml` の `uses:` で参照する GitHub Actions | `github-actions` | #125 で追加。登録漏れにより 4 アクションが Node.js 20 ランタイムのまま取り残されていた |
 | `Makefile` の `rhysd/actionlint:<tag>` | **追跡不可** | `run:` 内の `docker run` はマニフェストではないため、`github-actions` でも `docker`（Dockerfile / compose を読む）でも検出されない。**手動更新**（手順は README） |
+| `docker/php/Dockerfile` の `php:8.3-fpm` | **追跡不要**（浮動タグ） | パッチ版を固定していないため、更新 PR の対象になる版数が無い。修正版はタグの付け替えで公開され、**`make build`（手元のタグを `docker pull` で更新）で取り直したときだけ**取り込まれる（`make up` の `--build` は手元のキャッシュを使う。issue #160・`docs/06`「PHP 本体の脆弱性」） |
 | 3 アプリの `composer.json` | 未登録（更新 PR は上がらない） | 更新は手動。**脆弱性の検出は Dependabot alerts（リポジトリ設定・有効）と CI の `composer audit`（`deps` 変更時）の 2 層**で担保する（issue #138・`docs/06`） |
 
 **「マニフェストに書かれた依存だけが追跡される」**という制約が共通の判断軸になる。`uses:` は追跡できる形式なのに登録し忘れていたのが #125 の原因で、構造としては #114（`npx pkg@x.y.z` の直書き）と同じ欠陥だった。追跡できないものは、**追跡できないと明記して手動更新の手順を残す**（黙って放置しない）。
