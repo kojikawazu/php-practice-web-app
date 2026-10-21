@@ -45,7 +45,7 @@ Docker Compose のサービス構成:
 | `php-laminas` | php:8.3-fpm（自前ビルド） | laminas |
 | `nginx` | nginx:alpine | リバースプロキシ。ポート 8001/8002/8003（`.env` の `FS_PORT` / `API_PORT` / `LAMINAS_PORT` で上書き可） |
 
-PHP 拡張: `pdo_mysql` ほか各 FW が要求するものに加え、カバレッジ計測用の `pcov`（手元で `make coverage` を CI と同じ形で動かすため。CI 側は `setup-php` の `coverage: pcov` で入る）。`docker/php/Dockerfile` で導入。PHP の設定上書きは `docker/php/uploads.ini`（アップロードサイズ）を `conf.d/` へ配置する。
+PHP 拡張: `pdo_mysql` ほか各 FW が要求するものに加え、カバレッジ計測用の `pcov`（手元で `make coverage` を CI と同じ形で動かすため。CI 側は `setup-php` の `coverage: pcov` で入る）。`docker/php/Dockerfile` で導入。PHP の設定上書きは `docker/php/uploads.ini`（アップロードサイズ）と `docker/php/session.ini`（未使用の session Upload Progress の無効化。理由は `docs/06`「PHP 本体の脆弱性」）を `conf.d/` へ配置する。
 
 ### リクエストサイズの上限
 
@@ -152,7 +152,7 @@ laminas はアップロード機能を持たないため既定の 1m のまま�
 学習用のためローカル `docker compose up` のみ。環境変数は `.env`（`.env.example` を雛形）。
 
 ```bash
-make setup   # = scripts/setup.sh（.env・vendor・APP_KEY・書き込み権限・migrate・疎通確認）
+make setup   # = scripts/setup.sh（.env・vendor・APP_KEY・書き込み権限・migrate・疎通確認・PHP 設定の検証）
 ```
 
 `docker compose up` だけでは起動しない。**compose の bind mount がイメージ側の `vendor/` を隠す**ため、コンテナ内で `composer install` をやり直す必要があり、Laravel の `.env` / `APP_KEY` も生成されていないため。初期化手順の正本は `scripts/setup.sh` に置き、ローカル（`make setup`）と CI の `e2e` ジョブが同じものを実行する。

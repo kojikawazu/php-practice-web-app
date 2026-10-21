@@ -20,6 +20,9 @@ RUN pecl install pcov \
 # アップロードのサイズ上限（既定の 2M / 8M を上書き。理由は uploads.ini に記載）
 COPY uploads.ini /usr/local/etc/php/conf.d/uploads.ini
 
+# 未使用の session Upload Progress を無効化（CVE-2026-109619 の攻撃経路。理由は session.ini に記載）
+COPY session.ini /usr/local/etc/php/conf.d/session.ini
+
 # Composer（公式イメージからバイナリをコピー）
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
