@@ -28,6 +28,7 @@ PHP フレームワークの学習用モノレポ。3 つのアプリを 1 リ�
 | FW（×2） | Laravel 12（12.61.1。当初 11 → CVE-2026-48019 解消のため 12 へ） |
 | FW（×1） | Laminas MVC（PHP 8.3 対応） |
 | DB | MySQL 8 |
+| データアクセス | Laravel ×2 = Eloquent ORM（`laravel/framework` 同梱）/ Laminas = laminas-db の TableGateway（`laminas/laminas-db` 2.22。ORM は使わず Table 層で明示的に SQL を組む）。両者の対比は `docs/12` の「Step 3: モデル / データアクセス層を読む」 |
 | Web | nginx |
 | 実行基盤 | Docker / Docker Compose |
 | テスト | PHPUnit（各アプリ） |
