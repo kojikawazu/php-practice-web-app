@@ -6,13 +6,17 @@
 
 PHP フレームワークの学習用モノレポ。3 つのアプリを 1 リポジトリに同居させ、Docker Compose で MySQL を含むコンテナ群を一括起動する。
 
-```text
-[ブラウザ] → [nginx] ┬→ localhost:8001 → php-fs       (laravel-fullstack)
-                     ├→ localhost:8002 → php-api      (laravel-api)
-                     └→ localhost:8003 → php-laminas  (laminas)
-                                               ↓ ↓ ↓
-                                            [mysql] 共有DB: php_practice
+![全体構成図: ホストのブラウザから 127.0.0.1:8001/8002/8003 で nginx に入り、FastCGI で php-fs / php-api / php-laminas に振り分け、3 アプリが共有 MySQL（php_practice、prefix fs_ / api_ / lam_）に接続する](diagrams/architecture.drawio.svg)
+
+図の正本は `docs/diagrams/architecture.drawio.svg`（draw.io の編集データを埋め込んだ SVG）。draw.io で開いて編集し、保存後に次のコマンドで書き出し直す（入力と出力に同じファイルを指定できる）。
+
+```bash
+drawio -x -f svg --embed-diagram --theme light --embed-svg-fonts false \
+  -o docs/diagrams/architecture.drawio.svg docs/diagrams/architecture.drawio.svg
 ```
+
+- `--theme light`: 既定（`auto`）は背景が `light-dark()` になり、GitHub のダークテーマで背景が黒くなって線や枠外の文字が見えなくなる。
+- ラベルは HTML ラベル（`html=1`）にしない。文字が PNG 画像として埋め込まれ、ファイルが数百 KB に膨らむ。
 
 | アプリ | 役割 | フロント | テーブルprefix |
 | -------- | ------ | --------- | ---------------- |
