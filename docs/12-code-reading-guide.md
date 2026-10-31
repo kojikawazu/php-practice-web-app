@@ -36,6 +36,112 @@ grep -rn "読み比べ" apps/ --include="*.php"   # 対比マップを一覧す�
 
 ---
 
+## リクエスト処理の流れ（内部構成）
+
+`docs/09` の全体構成図はコンテナ間（nginx → php-fpm → MySQL）までを描く。ここでは **php-fpm に届いたリクエストが、アプリの中で誰にどの順で渡り、どこで引き返すか**をシーケンス図で描く。題材は「タスクを更新するリクエスト」。メッセージ末尾の `〔Step N〕` が、その層を詳しく読む節を指す。
+
+### laravel-fullstack / laravel-api
+
+2 アプリは登場人物（ライフライン）が同じで、違いは分岐の中身だけなので 1 枚にまとめる。リクエストは fullstack = `PUT /tasks/{task}` / api = `PATCH /api/tasks/{task}`。
+
+```mermaid
+sequenceDiagram
+    participant C as クライアント
+    participant MW as グローバルミドルウェア<br/>ContentSecurityPolicy
+    participant RM as ルートミドルウェア<br/>web グループ / auth / auth:sanctum
+    participant SB as ルートモデル結合<br/>SubstituteBindings
+    participant TC as TaskController
+    participant M as Eloquent（Task）
+    participant DB as MySQL
+
+    C->>MW: PUT /tasks/{task}<br/>（api は PATCH /api/tasks/{task}）
+    MW->>RM: ルート一致 〔Step 1〕<br/>routes/web.php・api.php
+    Note over RM: fullstack のみ 〔Step 6.5〕<br/>セッション開始 → CSRF 検証
+    alt CSRF トークン不一致（fullstack）
+        RM-->>MW: 419
+    end
+    Note over RM: 認証 〔Step 2〕
+    alt 未認証
+        RM-->>MW: fullstack: /login へリダイレクト<br/>api: 401
+    end
+    RM->>SB: {task} を解決 〔Step 3〕
+    SB->>M: Task を id で取得
+    M->>DB: SELECT … WHERE id = ?<br/>（user_id は条件に無い）
+    alt 存在しない
+        SB-->>MW: 404
+    end
+    SB->>TC: update(Request, Task) 〔Step 4〕<br/>依存はコンテナが自動解決
+    alt task.user_id がログインユーザーと違う
+        TC-->>MW: 404<br/>authorizeOwnership で存在を伏せる
+    end
+    Note over TC: $request->validate() 〔Step 5〕<br/>fullstack は確認画面側の POST で実施
+    alt 検証失敗
+        TC-->>MW: fullstack: フォーム再表示<br/>api: 422 JSON
+    end
+    TC->>M: $task->update(…) 〔Step 3〕
+    M->>DB: UPDATE … WHERE id = ?
+    TC-->>MW: fullstack: redirect()<br/>api: response()->json()
+    MW-->>C: CSP ヘッダーを付与 〔Step 6.5〕<br/>途中で引き返した 4xx にも付く
+```
+
+### laminas
+
+リクエストは `POST /tasks/edit/{id}`。ミドルウェアの代わりに、`Application` が MVC イベントを順に発火し、リスナーが割り込む。
+
+```mermaid
+sequenceDiagram
+    participant C as クライアント
+    participant APP as Application<br/>public/index.php
+    participant RT as ルーター<br/>module.config.php
+    participant CG as EVENT_ROUTE リスナー<br/>CsrfGuard
+    participant TC as TaskController<br/>TaskControllerFactory が生成
+    participant TT as TaskTable
+    participant DB as MySQL
+    participant FL as EVENT_FINISH リスナー<br/>ContentSecurityPolicy
+
+    C->>APP: POST /tasks/edit/{id}
+    APP->>RT: EVENT_ROUTE 〔Step 1〕
+    RT-->>APP: RouteMatch（controller / action / id）
+    APP->>CG: 同じ EVENT_ROUTE の後段（優先度 -100）〔Step 6.5〕
+    alt CSRF トークン不一致
+        CG-->>APP: 403（ディスパッチへ進まない）
+    end
+    APP->>TC: EVENT_DISPATCH: editAction()（依存は Factory が注入）〔Step 1〕
+    Note over TC: アクション冒頭で hasIdentity() 〔Step 2〕
+    alt 未認証
+        TC-->>APP: /login へリダイレクト
+    end
+    TC->>TT: getForUser(id, userId) 〔Step 4〕
+    TT->>DB: SELECT … WHERE id = ? AND user_id = ?
+    alt 他人のタスク・存在しない（null）
+        TC-->>APP: 一覧へリダイレクト
+    end
+    Note over TC: TaskInputFilter 〔Step 5〕
+    alt 検証失敗
+        TC-->>APP: フォーム再表示（ViewModel）
+    end
+    TC->>TT: saveTask(task) 〔Step 3〕
+    TT->>DB: UPDATE … WHERE id = ? AND user_id = ?
+    TC-->>APP: 一覧へリダイレクト
+    APP->>FL: EVENT_FINISH 〔Step 6.5〕
+    FL-->>APP: CSP ヘッダーを追加
+    APP-->>C: 応答
+```
+
+### 2 枚を見比べて読み取る差分
+
+詳細は各 Step。
+
+- **横断的関心事をどこに挟むか**: Laravel はミドルウェアがリクエストを包み、行きで CSRF・認証を、戻りで CSP を処理する。laminas にはミドルウェア層が無く、`EVENT_ROUTE` / `EVENT_FINISH` のリスナーが割り込む。そのため認証は、ディスパッチ後のアクション冒頭（`TaskController` のライフライン上）に現れる。
+- **認証がタスクの取得より先に走る**: Laravel の `auth` / `auth:sanctum` はルートモデル結合より前に並ぶ（フレームワークの `$middlewarePriority` が `SubstituteBindings` の前へ並べ替える）。そのため未認証のリクエストは、タスクが存在してもしなくても同じ応答（`/login` / 401）になり、id の有無を探れない。laminas は認証を通るまで `TaskTable` に到達しないため、同じ性質を呼び出し順で満たしている。
+- **所有者条件が SQL に入っているか**: Laravel は id だけで取得し、コントローラで `user_id` を比べる 2 段構成で、UPDATE も `WHERE id = ?` だけになる。laminas は SELECT・UPDATE の両方に `user_id` を入れる。他人のタスクは、Laravel では「取得したうえで 404 を返す」、laminas では「最初から見つからない」になる。
+
+ログインのレートリミット（Step 6.6）は、この題材（タスク更新）の経路には含まれない。置き場所だけ対応させると、Laravel は「ルートミドルウェア」のライフライン上（`throttle:login`）、laminas は `TaskController` と同じくアクションの中（`AuthController` が `AuthThrottle` を呼ぶ）にある。
+
+図はテキスト（Mermaid）で持つ。ミドルウェア・イベント・クラス名や呼び出し順を変えた PR では、同じ PR で図も直す（全体構成図を draw.io にしている理由との使い分けは `docs/09` の「システム構成」）。
+
+---
+
 ## 読む順番（推奨）
 
 ### Step 1: ルーティングから全体像を把握する
